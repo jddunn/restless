@@ -154,6 +154,7 @@ In order of desirability
 * Add analyzing browser URLs (detect clicks and listen for address changes in browser API) for malicious websites
 * Train new model on Mac malware dataset, and load model dynamically based on OS / filetype found (better cross-platform compatability)
 * Add dynamic analysis of executables by executing / testing files inside an isolated sandbox environmnet.
+* Add generating MD5 hashes for new files and checking against known malware databases (like VirusTotal) - this might be the most important actually
 
 <!-- PROJECT AUTHORS -->
 ## Project Authors
