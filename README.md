@@ -27,6 +27,10 @@
   * [CLI](#cli-usage)
   * [REST API](#rest-api-usage)
   * [Web UI](#web-ui-usage)
+* [Docs](#docs)
+  * [Auto-generating docs](#auto-generating-docs)
+  * [API docs (interactive)](#api-docs)
+  * [App docs](#app-docs)
 * [Roadmap](#roadmap)
 * [Acknowledgements](#acknowledgements)
 
@@ -48,7 +52,7 @@ All analyses will be constantly ongoing, occur in real-time, and performed throu
 
 By constantly watching and only scanning new files as verified by timestamps, **restless** can offer ongoing protection with minimal effort resources. You can also configure **restless** to run full or partial system scans on a schedule.
 
-Restless aims to be fast, lightweight, and fully functional offline.
+Restless aims to be fast, lightweight, and fully functional offline. The current configuration is for Ubuntu-based machines, but can be modified for other platforms by editing the `Dockerfile` and `docker-compose.yml` (eventually, Docker images will be built for Mac and Windows and linked here for download).
 
 ###  Concepts overview
 
@@ -62,25 +66,27 @@ Unless drastic changes in programming paradigms occur for writing malware (which
 ### Architecture overview
 
 
-
-
-
 <!-- GETTING STARTED -->
 ## Getting started
 
 ### Prerequisites
 
-* Python 3.7
-* Spark
-* TensorFlow / Keras
-* FastAPI
-* spacey
+* [Python 3.7+](Python 3.7+)
+* [Spark](Spark)
+* [TensorFlow](TensorFlow) / [Keras](Keras)
+* [FastAPI](FastAPI)
+* [Uvicorn](Uvicorn)
+* [spacey](spacey)
+* [pdoc3](pdoc3] (fork of pdoc)
+* [recentmost](recentmost) and C compiler
 
 or
 
-* Docker
+* [Docker](Docker) / [Docker-Compose](Docker-Compose)
 
 ### Installing with Pip
+
+(Skip if using Docker)
 
 ```sh
 pip install -r requirements.txt
@@ -88,7 +94,7 @@ pip install -r requirements.txt
 
 ### Building with Docker
 
-(Skip below if you have Docker-Compose)
+(Skip to Using Docker-Compose if using Docker-Compose)
 
 Build the image
 ```sh
@@ -109,16 +115,16 @@ cd restless/restless/app
 uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
 ```
 
-### Running restless as a service with Docker
+### Running with Docker
 
 ##### Running a container from a built image
+
 The example command will mount all the files in a Ubuntu machine into the container, so a full system scan of the host machine can be performed through the dockerized service.
 
 (Although the training data consists of malware that targets Windows OSes, research has shown that antivirus programs designed for Windows works on average 95% of the time in detecting Linux-based malware, see references at the bottom).
 
 The container also adds an extra barrier of attack for potential bad agents, but keep in mind, is still not completely secure or sandboxed away from the host environment.
 
-If you're using Docker-Compose, skip this part.
 
 ```sh
 docker run -p 80:80 -e APP_ENV=docker --mount source=home,target=/home/ubuntu/restless restless
@@ -128,8 +134,9 @@ docker run -p 80:80 -e APP_ENV=docker --mount source=home,target=/home/ubuntu/re
 $ useful for eventual dynamic analysis of files, when they will need to be tested in an isolated place).
 
 
-##### Docker-Compose 
-See the explanation above ^ to see how Docker will be mounting and communicating with your machine drive.
+##### Using Docker-Compose 
+
+(See the explanation above ^ to see how Docker will be mounting and communicating with your machine drive. If you're not using Ubuntu or a Debian-based Linux distro, then you'll need to edit `docker-compose.yml` to change the `source` and `target` paths under the `volume` key to reflect your OS's filepaths).
 
 When using Docker-Compose, you won't need to build the image, or fiddle with parameters (unless you need to edit the Dockerfile or docker-compose.yml file).
 
@@ -148,15 +155,23 @@ docker-compose up
 
 ### API usage
 
-##### Docs
-
 ### Web UI
+
 
 ##### Running the server
 
+<!-- DOCS -->
+## Docs
+
+### Auto-generating docs
+
 ```sh
-python http-server
+
 ```
+
+### API docs (interactive0
+
+### App / library docs 
 
 <!-- ROADMAP -->
 ## Roadmap
