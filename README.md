@@ -86,16 +86,14 @@ or
 pip install -r requirements.txt
 ```
 
-### Using Docker (no installing dependencies required)
+### Building with Docker
+
+(Skip below if you have Docker-Compose)
 
 Build the image
 ```sh
 docker build -t restless .
 ```
-
-or download from here:
-
-
 
 <!-- USAGE EXAMPLES -->
 ## Usage
@@ -120,12 +118,25 @@ The example command will mount all the files in a Ubuntu machine into the contai
 
 The container also adds an extra barrier of attack for potential bad agents, but keep in mind, is still not completely secure or sandboxed away from the host environment.
 
+If you're using Docker-Compose, skip this part.
+
 ```sh
 docker run -p 80:80 -e APP_ENV=docker --mount source=home,target=/home/ubuntu/restless restless
 ```
 ^ When running the Docker container, an env var `APP_ENV` should be set to `docker` (this var only needs to be set if using Docker). The param `source` would ideally be set to the home / root dir of the host drive (for full protection) or is whatever dir you want to be scanning,  and`target` must always point to the dir containing the Dockerfile and app files.
 
-As new files are saved / ingested in the host machine, the volume mounted in the Docker container should update accordingly (All this will be useful for eventual dynamic analysis of files, when they will need to be tested in an isolated place).
+$ useful for eventual dynamic analysis of files, when they will need to be tested in an isolated place).
+
+
+##### Docker-Compose 
+See the explanation above ^ to see how Docker will be mounting and communicating with your machine drive.
+
+When using Docker-Compose, you won't need to build the image, or fiddle with parameters (unless you need to edit the Dockerfile or docker-compose.yml file).
+
+Just run
+```sh
+docker-compose up
+```
 
 ### CLI usage
 
