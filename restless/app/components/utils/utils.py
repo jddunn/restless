@@ -12,7 +12,7 @@ class Utils:
         else:
             return False
 
-    def check_for_recent_filechanges(self, interval:float=.05f)
+    def check_for_recent_filechanges(self, interval:float=.05):
         interval = str(interval)
         cmd = ['find', '~/', '-mtime', '-1', '-ls']
         cmd = ' '.join(cmd)

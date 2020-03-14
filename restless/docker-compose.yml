@@ -1,0 +1,11 @@
+version: "3.7"
+services:
+  web:
+    build: .
+    ports:
+      - 80:80
+    volumes:
+      - ./:/app
+      - type: bind
+        source: /home
+        target: /home/ubuntu/restless

@@ -116,6 +116,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
 ##### Running a container from a built image
 The example command will mount all the files in a Ubuntu machine into the container, so a full system scan of the host machine can be performed through the dockerized service.
 
+(Although the training data consists of malware that targets Windows OSes, research has shown that antivirus programs designed for Windows works on average 95% of the time in detecting Linux-based malware, see references at the bottom).
+
 The container also adds an extra barrier of attack for potential bad agents, but keep in mind, is still not completely secure or sandboxed away from the host environment.
 
 ```sh
@@ -167,4 +169,4 @@ In order of desirability
 
 * []()
 * []()
-* []()
+* [Detecting Malware Across Operating Systems](https://www.opswat.com/blog/detecting-malware-across-operating-systems)

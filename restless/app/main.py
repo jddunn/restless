@@ -9,6 +9,8 @@ from components.utils import Utils
 
 from fastapi import FastAPI
 
+import uvicorn
+
 app = FastAPI()
 
 utils = Utils()
@@ -28,4 +30,6 @@ print(utils.check_for_recent_filechanges())
 
 print(utils.check_if_in_docker_container())
 
-# print(listdir('../'))
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=80, log_level="info", reload=True)
+
