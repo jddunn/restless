@@ -109,7 +109,7 @@ It is recommended to run **restless** via Docker, unless say, you don't have eno
 Restless's services will be running at port 4712 by default.
 
 ### Running restless locally
-=
+
 ##### Starts ASGI server wth reload (recommended to use a virtualenv with all the dependencies installed)
 
 ```sh
