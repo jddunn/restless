@@ -1,10 +1,20 @@
 import os
 import subprocess
 
+from logger import Logger
+
+logger = Logger()
+
+DEFAULT_LOG_DIR = "./logs"
+
 class Utils:
 
     def __init__(self):
+         self.logger = logger
          pass
+
+    def write_log(filepath=DEFAULT_LOG_DIR, data={}):
+        return
 
     def check_if_in_docker_container(self):
         if os.environ.get('APP_ENV') == 'docker':
