@@ -11,18 +11,20 @@ from fastapi import FastAPI
 
 import uvicorn
 
+from restless import Restless
+
+SERVER_PORT = 4712
+
 app = FastAPI()
 
 utils = Utils()
 
+restless = Restless()
+
 @app.get("/")
 def read_root():
-    return {"Hello": "World"}
+    return {"Restless is running on port: ", 4712}
 
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: str = None):
-    return {"item_id": item_id, "q": q}
 
 print(utils.call_recentmost())
 
@@ -31,5 +33,5 @@ print(utils.check_for_recent_filechanges())
 print(utils.check_if_in_docker_container())
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=80, log_level="info", reload=True)
+    uvicorn.run("server:app", host="0.0.0.0", port=4712, log_level="info", reload=True)
 

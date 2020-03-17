@@ -3,7 +3,7 @@ services:
   web:
     build: .
     ports:
-      - 80:80
+      - 4712:4712
     volumes:
       - ./:/app
       - type: bind

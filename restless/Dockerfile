@@ -2,12 +2,12 @@ FROM python:3.7
 
 RUN pip install fastapi uvicorn
 
-EXPOSE 80
+EXPOSE 5712
 
 COPY ./app /app
 
-# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
-
 WORKDIR ./app/
 
-CMD ["python", "./app/main.py"]
+RUN ["chmod", "550", "./server.py"]
+
+CMD ["python", "./server.py"]

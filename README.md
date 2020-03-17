@@ -106,13 +106,15 @@ docker build -t restless .
 
 It is recommended to run **restless** via Docker, unless say, you don't have enough storage to mount your drive in the container.
 
-### Running restless locally
+Restless's services will be running at port 4712 by default.
 
+### Running restless locally
+=
 ##### Starts ASGI server wth reload (recommended to use a virtualenv with all the dependencies installed)
 
 ```sh
 cd restless/restless/app
-uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
+python server.py
 ```
 
 ### Running with Docker
@@ -127,7 +129,7 @@ The container also adds an extra barrier of attack for potential bad agents, but
 
 
 ```sh
-docker run -p 80:80 -e APP_ENV=docker --mount source=home,target=/home/ubuntu/restless restless
+docker run -p 4712:4712 -e APP_ENV=docker --mount source=home,target=/home/ubuntu/restless restless
 ```
 ^ When running the Docker container, an env var `APP_ENV` should be set to `docker` (this var only needs to be set if using Docker). The param `source` would ideally be set to the home / root dir of the host drive (for full protection) or is whatever dir you want to be scanning,  and`target` must always point to the dir containing the Dockerfile and app files.
 
