@@ -11,7 +11,7 @@ from fastapi import FastAPI
 
 import uvicorn
 
-from restless import Restless
+from .restless import Restless
 
 SERVER_PORT = 4712
 
