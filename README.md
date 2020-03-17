@@ -56,9 +56,9 @@ Restless aims to be fast, lightweight, and fully functional offline. The current
 
 ###  Concepts overview
 
-Signature detection, the traditional method of antiviruses which creates the need to connect to online databases for incesstant updating, cannot keep up with the emergence of new malware, or even of known malware that's able to [change itself](https://nakedsecurity.sophos.com/2012/07/31/server-side-polymorphism-malware/), and while heuirstics-based approaches can combat polymorphic viruses while offering f$
+Signature detection, the traditional method of antiviruses which creates the need to connect to online databases for incesstant updating, cannot keep up with the emergence of new malware, or even of known malware that's able to [change itself](https://nakedsecurity.sophos.com/2012/07/31/server-side-polymorphism-malware/), and while heuirstics-based approaches can combat polymorphic viruses while offering further degrees of granularity, they tend to give off so many false positives that they do more harm than good by wasting computing resources and increasing cognitive load.
 
-The incorporation of machine learning (usually, natural langauge processing techniques although computer vision algorithms can also be applied) in antivirus software empowers them with a level of pattern recognition that previous approaches do not have. Rather than relying on known vulnerabilities / exploits or commonly re-used patterns of malicious code, **restless** and other ML-powered antiviruses can w$
+The incorporation of machine learning (usually, natural langauge processing techniques although computer vision algorithms can also be applied) in antivirus software empowers them with a level of pattern recognition that previous approaches do not have. Rather than relying on known vulnerabilities / exploits or commonly re-used patterns of malicious code, **restless** and other ML-powered antiviruses can work well on classifying malware never seen before. This integration of NLP methods with information security has been dubbed [malicious language processing](https://www.elastic.co/blog/nlp-security-malicious-language-processing) by Elastic.
 
 Unless drastic changes in programming paradigms occur for writing malware (which is possible), **restless** should be able to continue classifying new malware written years and years after the original models were trained with at least some amount of effectiveness (given an adequate training corpus).
 
@@ -154,3 +154,59 @@ docker-compose up
 ##### Testing a dataset
 
 ##### Prediction
+
+### API usage
+
+### Web UI
+
+
+##### Running the server
+
+<!-- DOCS -->
+## Docs
+
+### Auto-generating docs
+
+### API docs (interactive)
+
+### App / library docs 
+
+Lib docs (uses `pdoc` for autogeneration); the below command generates docs and c$
+```sh
+pdoc --html restless --force; cd html; cd restless; mv * .[^.]* ..; cd ..; cd ..;$
+```
+
+Serve doc files on the web:
+```sh
+cd docs
+python -m http.server 4713
+```
+and go to:
+```
+http://localhost:4713
+```
+
+
+<!-- ROADMAP -->
+## Roadmap
+
+In order of desirability
+
+* Add analyzing system logs in real-time (will use k-means clustering to find logs with lots of deviation, or abnormal logs)
+* Add analyzing browser URLs (detect clicks and listen for address changes in browser API) for malicious websites
+* Train new model on Mac malware dataset, and load model dynamically based on OS / filetype found (better cross-platform compatability)
+* Add dynamic analysis of executables by executing / testing files inside an isolated sandbox environmnet.
+* Add generating MD5 hashes for new files and checking against known malware databases (like VirusTotal) - this might be the most important actually
+
+<!-- PROJECT AUTHORS -->
+## Project Authors
+
+* [Johnny Dunn](https://github.com/jddunn) - johnnyddunn@gmail.com
+
+
+<!-- ACKNOWLEDGEMENTS -->
+## Acknowledgements / Other Contributions
+
+* []()
+* []()
+* [Detecting Malware Across Operating Systems](https://www.opswat.com/blog/detecting-malware-across-operating-systems)
