@@ -1,5 +1,3 @@
-  GNU nano 2.9.3                                                                                                                                                                                           README.md                                                                                                                                                                                                      
-
 <!-- PROJECT LOGO -->
 <p align="center">
   <!-- <a href="https://github.com/github_username/repo">
