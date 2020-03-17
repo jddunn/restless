@@ -1,3 +1,5 @@
+  GNU nano 2.9.3                                                                                                                                                                                           README.md                                                                                                                                                                                                      
+
 <!-- PROJECT LOGO -->
 <p align="center">
   <!-- <a href="https://github.com/github_username/repo">
@@ -40,7 +42,7 @@
 ## About
 
 
-**Restless** is (or will be) a suite of platform-agnostic security tools with three key features: 
+**Restless** is (or will be) a suite of platform-agnostic security tools with three key features:
 
 * Analysis of files for malware probabilty based on comparing the extracted metadata and file contents with trained Portable Executable data *(completed)*
 * Analysis of system logs for abnormal activities / deviations *(not started)*
@@ -48,7 +50,7 @@
 
 All analyses will be constantly ongoing, occur in real-time, and performed through machine learning models (using both supervised and unsupervised training techniques).
 
-[Ray](https://ray.io/) is used for parallel / distributed computing, allowing bypassing of Python's bottleneck with the GIL and for asynchronous functionality. Restless also incorporates [recentmost](https://github.com/shadkam/recentmost), a program written in C which can find the most recently updated files on a machine with blazingly fast performance.
+[Ray](https://ray.io/) is used for parallel / distributed computing, allowing bypassing of Python's bottleneck with the GIL and for asynchronous functionality.
 
 By constantly watching and only scanning new files as verified by timestamps, **restless** can offer ongoing protection with minimal effort resources. You can also configure **restless** to run full or partial system scans on a schedule.
 
@@ -56,9 +58,9 @@ Restless aims to be fast, lightweight, and fully functional offline. The current
 
 ###  Concepts overview
 
-Signature detection, the traditional method of antiviruses which creates the need to connect to online databases for incesstant updating, cannot keep up with the emergence of new malware, or even of known malware that's able to [change itself](https://nakedsecurity.sophos.com/2012/07/31/server-side-polymorphism-malware/), and while heuirstics-based approaches can combat polymorphic viruses while offering further degrees of granularity, they tend to give off so many false positives that they do more harm than good by wasting computing resources and increasing cognitive load.
+Signature detection, the traditional method of antiviruses which creates the need to connect to online databases for incesstant updating, cannot keep up with the emergence of new malware, or even of known malware that's able to [change itself](https://nakedsecurity.sophos.com/2012/07/31/server-side-polymorphism-malware/), and while heuirstics-based approaches can combat polymorphic viruses while offering f$
 
-The incorporation of machine learning (usually, natural langauge processing techniques although computer vision algorithms can also be applied) in antivirus software empowers them with a level of pattern recognition that previous approaches do not have. Rather than relying on known vulnerabilities / exploits or commonly re-used patterns of malicious code, **restless** and other ML-powered antiviruses can work well on classifying malware never seen before. This integration of NLP methods with information security has been dubbed [malicious language processing](https://www.elastic.co/blog/nlp-security-malicious-language-processing) by Elastic.
+The incorporation of machine learning (usually, natural langauge processing techniques although computer vision algorithms can also be applied) in antivirus software empowers them with a level of pattern recognition that previous approaches do not have. Rather than relying on known vulnerabilities / exploits or commonly re-used patterns of malicious code, **restless** and other ML-powered antiviruses can w$
 
 Unless drastic changes in programming paradigms occur for writing malware (which is possible), **restless** should be able to continue classifying new malware written years and years after the original models were trained with at least some amount of effectiveness (given an adequate training corpus).
 
@@ -154,47 +156,3 @@ docker-compose up
 ##### Testing a dataset
 
 ##### Prediction
-
-### API usage
-
-### Web UI
-
-
-##### Running the server
-
-<!-- DOCS -->
-## Docs
-
-### Auto-generating docs
-
-```sh
-
-```
-
-### API docs (interactive0
-
-### App / library docs 
-
-<!-- ROADMAP -->
-## Roadmap
-
-In order of desirability
-
-* Add analyzing system logs in real-time (will use k-means clustering to find logs with lots of deviation, or abnormal logs)
-* Add analyzing browser URLs (detect clicks and listen for address changes in browser API) for malicious websites
-* Train new model on Mac malware dataset, and load model dynamically based on OS / filetype found (better cross-platform compatability)
-* Add dynamic analysis of executables by executing / testing files inside an isolated sandbox environmnet.
-* Add generating MD5 hashes for new files and checking against known malware databases (like VirusTotal) - this might be the most important actually
-
-<!-- PROJECT AUTHORS -->
-## Project Authors
-
-* [Johnny Dunn](https://github.com/jddunn) - johnnyddunn@gmail.com
-
-
-<!-- ACKNOWLEDGEMENTS -->
-## Acknowledgements / Other Contributions
-
-* []()
-* []()
-* [Detecting Malware Across Operating Systems](https://www.opswat.com/blog/detecting-malware-across-operating-systems)
