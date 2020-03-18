@@ -2,11 +2,11 @@ FROM python:3.7
 
 RUN pip install fastapi uvicorn
 
-EXPOSE 5712
+EXPOSE 4712
 
-COPY ./app /app
+COPY ./restless /restless
 
-WORKDIR ./app/
+WORKDIR ./restless/
 
 RUN ["chmod", "550", "./server.py"]
 
