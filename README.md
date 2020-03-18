@@ -173,7 +173,7 @@ docker-compose up
 
 Lib docs (uses `pdoc` for autogeneration); the below command generates docs and creates a reasonable folder structure
 ```sh
-pdoc --html restless --force; rm -rf docs; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restlessml docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restles; cd ..
+pdoc --html restless --force; rm -rf docs; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless; cd ..
 ```
 
 Serve doc files on the web:
