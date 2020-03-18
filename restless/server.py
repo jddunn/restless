@@ -11,15 +11,13 @@ from fastapi import FastAPI
 
 import uvicorn
 
-from .restless import Restless
+import restless
 
 SERVER_PORT = 4712
 
 app = FastAPI()
 
 utils = Utils()
-
-restless = Restless()
 
 @app.get("/")
 def read_root():
