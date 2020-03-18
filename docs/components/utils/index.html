@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.5" />
-<title>app.main API documentation</title>
+<title>restless.components.utils API documentation</title>
 <meta name="description" content="" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
@@ -17,85 +17,32 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>app.main</code></h1>
+<h1 class="title">Module <code>restless.components.utils</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python"># Make relative imports work for Docker
-import sys
-import os
-PACKAGE_PARENT = &#39;.&#39;
-SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
-
-from components.utils import Utils
-
-from fastapi import FastAPI
-
-import uvicorn
-
-app = FastAPI()
-
-utils = Utils()
-
-@app.get(&#34;/&#34;)
-def read_root():
-    return {&#34;Hello&#34;: &#34;World&#34;}
-
-
-@app.get(&#34;/items/{item_id}&#34;)
-def read_item(item_id: int, q: str = None):
-    return {&#34;item_id&#34;: item_id, &#34;q&#34;: q}
-
-print(utils.call_recentmost())
-
-print(utils.check_for_recent_filechanges())
-
-print(utils.check_if_in_docker_container())
-
-if __name__ == &#34;__main__&#34;:
-    uvicorn.run(&#34;main:app&#34;, host=&#34;0.0.0.0&#34;, port=80, log_level=&#34;info&#34;, reload=True)</code></pre>
+<pre><code class="python">from .utils import Utils</code></pre>
 </details>
 </section>
 <section>
-</section>
-<section>
-</section>
-<section>
-<h2 class="section-title" id="header-functions">Functions</h2>
+<h2 class="section-title" id="header-submodules">Sub-modules</h2>
 <dl>
-<dt id="app.main.read_item"><code class="name flex">
-<span>def <span class="ident">read_item</span></span>(<span>item_id, q=None)</span>
-</code></dt>
+<dt><code class="name"><a title="restless.components.utils.logger" href="logger.html">restless.components.utils.logger</a></code></dt>
 <dd>
 <section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">@app.get(&#34;/items/{item_id}&#34;)
-def read_item(item_id: int, q: str = None):
-    return {&#34;item_id&#34;: item_id, &#34;q&#34;: q}</code></pre>
-</details>
 </dd>
-<dt id="app.main.read_root"><code class="name flex">
-<span>def <span class="ident">read_root</span></span>(<span>)</span>
-</code></dt>
+<dt><code class="name"><a title="restless.components.utils.utils" href="utils.html">restless.components.utils.utils</a></code></dt>
 <dd>
 <section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">@app.get(&#34;/&#34;)
-def read_root():
-    return {&#34;Hello&#34;: &#34;World&#34;}</code></pre>
-</details>
 </dd>
 </dl>
+</section>
+<section>
+</section>
+<section>
 </section>
 <section>
 </section>
@@ -108,13 +55,13 @@ def read_root():
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="app" href="index.html">app</a></code></li>
+<li><code><a title="restless.components" href="../index.html">restless.components</a></code></li>
 </ul>
 </li>
-<li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="">
-<li><code><a title="app.main.read_item" href="#app.main.read_item">read_item</a></code></li>
-<li><code><a title="app.main.read_root" href="#app.main.read_root">read_root</a></code></li>
+<li><h3><a href="#header-submodules">Sub-modules</a></h3>
+<ul>
+<li><code><a title="restless.components.utils.logger" href="logger.html">restless.components.utils.logger</a></code></li>
+<li><code><a title="restless.components.utils.utils" href="utils.html">restless.components.utils.utils</a></code></li>
 </ul>
 </li>
 </ul>

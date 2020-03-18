@@ -171,9 +171,9 @@ docker-compose up
 
 ### App / library docs 
 
-Lib docs (uses `pdoc` for autogeneration); the below command generates docs and c$
+Lib docs (uses `pdoc` for autogeneration); the below command generates docs and creates a reasonable folder structure
 ```sh
-pdoc --html restless --force; cd html; cd restless; mv * .[^.]* ..; cd ..; cd ..;$
+pdoc --html restless --force; rm -rf docs; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restlessml docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restles; cd ..
 ```
 
 Serve doc files on the web:
