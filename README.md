@@ -186,6 +186,12 @@ and go to:
 http://localhost:4713
 ```
 
+<!-- TESTS -->
+## Tests
+
+```sh
+python -m unittest discover
+```
 
 <!-- ROADMAP -->
 ## Roadmap
