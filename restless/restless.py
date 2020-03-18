@@ -9,7 +9,9 @@ sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 from components.utils import Utils
 
 class Restless:
-
-     def __init__(self):
+    """
+    Main Restless module.
+    """
+    def __init__(self):
          print("I'm restless")
 
