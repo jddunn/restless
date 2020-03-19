@@ -22,7 +22,7 @@ class Restless(object):
     Main Restless module.
     """
 
-    def __init__(self, run_system_scan):
+    def __init__(self, run_system_scan=False):
         self.run_system_scan = run_system_scan
         print("Restless initializing. Running system-wide scan: ", self.run_system_scan)
         if self.run_system_scan:
