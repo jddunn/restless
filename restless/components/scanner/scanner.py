@@ -1,10 +1,12 @@
+from ..utils import utils
+
 class Scanner:
     """
     Extracts and analyzes information from files and classifies it for malware probability using NLP models.
     """
 
     def __init__(self):
-        print("Creating Restless.Scanner..")
+        utils.print_logm("Initializing Restless.Scanner..")
         pass
 
     def scan_full_system(self):

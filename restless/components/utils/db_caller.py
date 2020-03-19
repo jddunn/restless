@@ -7,5 +7,4 @@ class DB_Caller:
     """
     def __init__(self):
         self.context = sc
-        print("Database init: ", self.context)
         pass

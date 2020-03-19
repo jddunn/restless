@@ -8,11 +8,9 @@ SCRIPT_DIR = os.path.dirname(
 )
 sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
-from components.utils import Utils
+from components.utils import utils
 from components.watcher import Watcher
 from components.scanner import Scanner
-
-utils = Utils()
 
 class Restless(object):
     """

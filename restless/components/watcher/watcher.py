@@ -1,13 +1,4 @@
-from ..utils import Utils
-
-utils = Utils()
-
-# print(utils.call_recentmost())
-
-# print(utils.check_for_recent_filechanges())
-
-# print(utils.check_if_in_docker_container())
-
+from ..utils import utils
 
 class Watcher:
 
@@ -17,7 +8,7 @@ class Watcher:
     """
 
     def __init__(self):
-        print(
+        utils.print_logm(
             "Restless.Watcher is now watching over system and scanning new incoming files."
         )
         pass

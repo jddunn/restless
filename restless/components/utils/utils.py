@@ -17,6 +17,7 @@ class Utils:
     def __init__(self):
         self.logger = logger
         self.db = db
+        self.print_logm("Initializing db: " + str(self.db.context))
         pass
 
     def print_logm(self, message:str):
