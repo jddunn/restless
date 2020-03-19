@@ -24,10 +24,43 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class Watcher:
+<pre><code class="python">from ..utils import Utils
+
+utils = Utils()
+
+print(utils.call_recentmost())
+
+print(utils.check_for_recent_filechanges())
+
+print(utils.check_if_in_docker_container())
+
+
+class Watcher:
+
+    &#34;&#34;&#34;
+    Watcher constantly monitors the system scanning for newly updated or newly saved files, sending them to the classification / defense pipeline.&#34;
+    &#34;&#34;&#34;
 
     def __init__(self):
-        pass</code></pre>
+        print(
+            &#34;Restless.Watcher is now watching over system and scanning new incoming files.&#34;
+        )
+        pass
+
+    def constant_scan(self):
+        &#34;&#34;&#34;
+        Main Watcher function.
+
+        Returns:
+            list: List of filenames (with absolute paths) that have been updated or saved since the last `scan` was performed (in descending order of modification timestamps).
+        &#34;&#34;&#34;
+        return
+
+    def check_for_new_data(self):
+        &#34;&#34;&#34;
+        Checks to see if there&#39;s any new incoming data saved or updated to the system (verified by file modification timestamps).
+        &#34;&#34;&#34;
+        return</code></pre>
 </details>
 </section>
 <section>
@@ -43,16 +76,81 @@
 <span>class <span class="ident">Watcher</span></span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Watcher constantly monitors the system scanning for newly updated or newly saved files, sending them to the classification / defense pipeline."</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class Watcher:
 
+    &#34;&#34;&#34;
+    Watcher constantly monitors the system scanning for newly updated or newly saved files, sending them to the classification / defense pipeline.&#34;
+    &#34;&#34;&#34;
+
     def __init__(self):
-        pass</code></pre>
+        print(
+            &#34;Restless.Watcher is now watching over system and scanning new incoming files.&#34;
+        )
+        pass
+
+    def constant_scan(self):
+        &#34;&#34;&#34;
+        Main Watcher function.
+
+        Returns:
+            list: List of filenames (with absolute paths) that have been updated or saved since the last `scan` was performed (in descending order of modification timestamps).
+        &#34;&#34;&#34;
+        return
+
+    def check_for_new_data(self):
+        &#34;&#34;&#34;
+        Checks to see if there&#39;s any new incoming data saved or updated to the system (verified by file modification timestamps).
+        &#34;&#34;&#34;
+        return</code></pre>
 </details>
+<h3>Methods</h3>
+<dl>
+<dt id="restless.components.watcher.watcher.Watcher.check_for_new_data"><code class="name flex">
+<span>def <span class="ident">check_for_new_data</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Checks to see if there's any new incoming data saved or updated to the system (verified by file modification timestamps).</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def check_for_new_data(self):
+    &#34;&#34;&#34;
+    Checks to see if there&#39;s any new incoming data saved or updated to the system (verified by file modification timestamps).
+    &#34;&#34;&#34;
+    return</code></pre>
+</details>
+</dd>
+<dt id="restless.components.watcher.watcher.Watcher.constant_scan"><code class="name flex">
+<span>def <span class="ident">constant_scan</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Main Watcher function.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>list</code></strong></dt>
+<dd>List of filenames (with absolute paths) that have been updated or saved since the last <code>scan</code> was performed (in descending order of modification timestamps).</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def constant_scan(self):
+    &#34;&#34;&#34;
+    Main Watcher function.
+
+    Returns:
+        list: List of filenames (with absolute paths) that have been updated or saved since the last `scan` was performed (in descending order of modification timestamps).
+    &#34;&#34;&#34;
+    return</code></pre>
+</details>
+</dd>
+</dl>
 </dd>
 </dl>
 </section>
@@ -72,6 +170,10 @@
 <ul>
 <li>
 <h4><code><a title="restless.components.watcher.watcher.Watcher" href="#restless.components.watcher.watcher.Watcher">Watcher</a></code></h4>
+<ul class="">
+<li><code><a title="restless.components.watcher.watcher.Watcher.check_for_new_data" href="#restless.components.watcher.watcher.Watcher.check_for_new_data">check_for_new_data</a></code></li>
+<li><code><a title="restless.components.watcher.watcher.Watcher.constant_scan" href="#restless.components.watcher.watcher.Watcher.constant_scan">constant_scan</a></code></li>
+</ul>
 </li>
 </ul>
 </li>

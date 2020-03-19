@@ -27,11 +27,12 @@
 <pre><code class="python"># Make relative imports work for Docker
 import sys
 import os
-PACKAGE_PARENT = &#39;.&#39;
-SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
-from components.utils import Utils
+PACKAGE_PARENT = &#34;.&#34;
+SCRIPT_DIR = os.path.dirname(
+    os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__)))
+)
+sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
 from fastapi import FastAPI
 
@@ -43,21 +44,16 @@ SERVER_PORT = 4712
 
 app = FastAPI()
 
-utils = Utils()
 
 @app.get(&#34;/&#34;)
 def read_root():
-    return {&#34;Restless is running on port: &#34;, 4712}
+    return {&#34;Restless is running on port: &#34;, SERVER_PORT}
 
-
-print(utils.call_recentmost())
-
-print(utils.check_for_recent_filechanges())
-
-print(utils.check_if_in_docker_container())
 
 if __name__ == &#34;__main__&#34;:
-    uvicorn.run(&#34;server:app&#34;, host=&#34;0.0.0.0&#34;, port=4712, log_level=&#34;info&#34;, reload=True)</code></pre>
+    uvicorn.run(
+        &#34;server:app&#34;, host=&#34;0.0.0.0&#34;, port=SERVER_PORT, log_level=&#34;info&#34;, reload=True
+    )</code></pre>
 </details>
 </section>
 <section>
@@ -78,7 +74,7 @@ if __name__ == &#34;__main__&#34;:
 </summary>
 <pre><code class="python">@app.get(&#34;/&#34;)
 def read_root():
-    return {&#34;Restless is running on port: &#34;, 4712}</code></pre>
+    return {&#34;Restless is running on port: &#34;, SERVER_PORT}</code></pre>
 </details>
 </dd>
 </dl>
