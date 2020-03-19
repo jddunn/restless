@@ -19,17 +19,28 @@ class Utils:
         self.db = db
         pass
 
-    def print_log(data={}):
+    def print_logm(self, message:str):
+        """
+        Prints a log to sys output, by default to `INFO` level. Accepts a str message as only param.
+
+        Args:
+          message (str): Message to print to `INFO` level.
+        """
+        self.logger._print_log({"message": message})
+        return
+
+    def print_log(self, data:dict):
         """
         Prints a log to sys output.
 
         Args:
-          data (dict): Keys include: `level`, `text`. Timestamp will automatically be included.
+          data (dict): Keys include: `level`, `message`. Timestamp will automatically be included.
+                       `Level` will default to `INFO`.
         """
         self.logger._print_log(data)
         return
 
-    def write_log(filepath=DEFAULT_LOG_DIR, data={}):
+    def write_log(self, data:dict, filepath:str=DEFAULT_LOG_DIR):
         """
         Prints and writes a log to disk.
 
