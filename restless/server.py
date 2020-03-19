@@ -20,11 +20,9 @@ SERVER_PORT = 4712
 
 app = FastAPI()
 
-
 @app.get("/")
 def read_root():
     return("Restless is running on port: ", SERVER_PORT)
-
 
 if __name__ == "__main__":
     uvicorn.run(

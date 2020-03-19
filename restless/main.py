@@ -13,9 +13,6 @@ from components.watcher import Watcher
 from components.scanner import Scanner
 
 utils = Utils()
-# watcher = Watcher()
-# scanner = Scanner()
-
 
 class Restless(object):
     """
