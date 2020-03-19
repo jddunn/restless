@@ -86,7 +86,7 @@ COPY . ./restless
 # COPY ./tests /tests
 
 # Run docs auto-generation
-# RUN pdoc --html restless --force; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless; cd ..
+RUN pdoc --html restless --force; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless; cd ..
 # cd docs; cd restless; mv * .[^.]* ..;
 
 WORKDIR ./restless/restless
