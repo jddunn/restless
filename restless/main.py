@@ -1,4 +1,3 @@
-
 # Make relative imports work for Docker
 import sys
 import os

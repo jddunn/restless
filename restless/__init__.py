@@ -1,3 +1,3 @@
-from .restless import Restless
+from .main import Restless
 
 restless = Restless
