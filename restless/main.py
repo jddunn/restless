@@ -16,17 +16,18 @@ utils = Utils()
 # watcher = Watcher()
 # scanner = Scanner()
 
-ran_system_scan = False
-
-
-class Restless:
+class Restless(object):
     """
     Main Restless module.
     """
 
-    def __init__(self):
-        print("I'm restless")
-        if ran_sytem_scan:
+    def __init__(self, run_system_scan):
+        self.run_system_scan = run_system_scan
+        print("Restless initializing. Running system-wide scan: ", self.run_system_scan)
+        if self.run_system_scan:
+            pass
+            # Get last system scan time
+        else:
             self.watcher = Watcher()
         self.scanner = Scanner()
         return

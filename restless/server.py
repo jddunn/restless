@@ -14,7 +14,7 @@ import uvicorn
 
 from main import Restless
 
-restless = Restless()
+restless = Restless(run_system_scan=True)
 
 SERVER_PORT = 4712
 

@@ -4,7 +4,12 @@ class Logger:
     """
 
     def __init__(self):
-        print("Init logger")
+        pass
 
-    def save_log(self, fp):
+    def print_log(self, data:dict):
+       if data['level'] is None:
+           data['level'] = 'info'
+       print(data)
+
+    def write_log(self, fp:str, data:dict):
         return

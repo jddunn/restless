@@ -7,11 +7,14 @@ logger = Logger()
 
 DEFAULT_LOG_DIR = "./logs"
 
-
 class Utils:
     def __init__(self):
         self.logger = logger
         pass
+
+    def print_log(data={}):
+        self.logger.print_log(data)
+        return
 
     def write_log(filepath=DEFAULT_LOG_DIR, data={}):
         return
