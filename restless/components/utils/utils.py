@@ -24,7 +24,7 @@ class Utils:
         Args:
           data (dict): Keys include: `level`, `text`. Timestamp will automatically be included.
         """
-        self.logger.print_log(data)
+        self.logger._print_log(data)
         return
 
     def write_log(filepath=DEFAULT_LOG_DIR, data={}):

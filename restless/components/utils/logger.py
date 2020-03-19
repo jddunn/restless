@@ -1,15 +1,15 @@
 class Logger:
     """
-    Logger.
+    Logger component. Private methods will be called by higher-level `Utils`.
     """
 
     def __init__(self):
         pass
 
-    def print_log(self, data: dict):
+    def _print_log(self, data: dict):
         if data["level"] is None:
             data["level"] = "info"
         print(data)
 
-    def write_log(self, fp: str, data: dict):
+    def _write_log(self, fp: str, data: dict):
         return
