@@ -9,6 +9,7 @@ SCRIPT_DIR = os.path.dirname(
 sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 import uvicorn
 
@@ -19,6 +20,13 @@ restless = Restless(run_system_scan=True)
 SERVER_PORT = 4712
 
 app = FastAPI()
+
+docs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'docs'))
+
+print(os.path.dirname(__file__))
+print("THIS IS DOCS_PATH: ", docs_path)
+
+app.mount(docs_path, StaticFiles(directory=docs_path), name="docs")
 
 @app.get("/")
 def read_root():

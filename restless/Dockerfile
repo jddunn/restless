@@ -1,3 +1,4 @@
+
 FROM python:3.7
 
 RUN apt-get update \
@@ -72,23 +73,25 @@ RUN pip install -r requirements.txt
 
 # Expose default port for Restless
 EXPOSE 4712 
+EXPOSE 4713
 
 COPY . /restless
 
 # Run docs auto-generation
-RUN cd ..
-RUN pdoc --html restless --force
-RUN rm -rf docs; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless
+RUN cd ..; pdoc --html restless --force; rm -rf docs; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless
 # RUN cd docs
 # RUN python -m http.server 4713
-# RUN cd ..
 
-# WORKDIR ./restless/
+WORKDIR ./restless/
 
-RUN ["chmod", "550", "restless/server.py"]
+RUN ["chmod", "550", "server.py"]
 
-# CMD ["python", "./server.py"]
+# WORKDIR /home/ubuntu/restless/restless/docs
 
-CMD cd docs; nohup python -m http.server 4713 &; cd ..; python restless/server.py
+# CMD ["nohup", "python", "-m", "http.server", "4713"]
 
-# CMD ["python", "restless/server.py"]
+# CMD sh -c cd docs && nohup python -m http.server 4713 > /dev/null 2>&1 && disown && cd .. && python restless/server.py
+
+# WORKDIR ./restless
+
+CMD ["python", "server.py"]
