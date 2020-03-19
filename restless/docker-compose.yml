@@ -5,7 +5,7 @@ services:
     ports:
       - 4712:4712
     volumes:
-      - ./:/app
+      - ./:/restless
       - type: bind
         source: /home
         target: /home/ubuntu/restless

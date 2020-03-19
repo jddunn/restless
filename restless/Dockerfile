@@ -2,16 +2,12 @@ FROM python:3.7
 
 RUN apt-get update \
  && apt-get install software-properties-common -y
-
 RUN apt-get --allow-releaseinfo-change update
-
 RUN apt-get update
 
-# RUN apt-get install oracle-java8-installer
-
-# RUN apt install openjdk-11-jdk
-
+# Java
 RUN apt-get install default-jdk -y
+
 
 
 RUN apt-get update \
@@ -29,27 +25,10 @@ ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
 
-# RUN apt-get update \
-#  && apt-get install -y curl unzip \
-#     python3 python3-setuptools \
-#  && ln -s /usr/bin/python3 /usr/bin/python \
-#  && easy_install3 pip py4j \
-#  && apt-get clean \
-#  && rm -rf /var/lib/apt/lists/*
-
 # http://blog.stuart.axelbrooke.com/python-3-on-spark-return-of-the-pythonhashseed
 ENV PYTHONHASHSEED 0
 ENV PYTHONIOENCODING UTF-8
 ENV PIP_DISABLE_PIP_VERSION_CHECK 1
-
-# JAVA
-# RUN add-apt-repository ppa:webupd8team/java
-# RUN apt-get update
-
-# RUN apt-get update \
-# && apt-get install -y openjdk-8-jre \
-# && apt-get clean \
-# && rm -rf /var/lib/apt/lists/*
 
 # HADOOP
 ENV HADOOP_VERSION 3.0.0
@@ -76,28 +55,25 @@ RUN curl -sL --retry 3 \
  && mv /usr/$SPARK_PACKAGE $SPARK_HOME \
  && chown -R root:root $SPARK_HOME
 
-# WORKDIR $SPARK_HOME
 CMD [$SPARK_HOME + "bin/spark-class", "org.apache.spark.deploy.master.Master"]
 
-# End Spark deps
 
 RUN pip install fastapi uvicorn
 RUN pip install pdoc3
 
-EXPOSE 4712
+# Expose default port for Restless
+EXPOSE 4712 
 
 COPY . /restless
 
 WORKDIR ./restless/
 
-RUN ["chmod", "550", "./server.py"]
-
+# Run docs auto-generation
 # RUN "pdoc --html restless --force"
-
 # rm -rf docs; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless"
-
 # RUN ["python -m http.server 4713"]
-
 # RUN ["cd .."]
+
+RUN ["chmod", "550", "./server.py"]
 
 CMD ["python", "./server.py"]
