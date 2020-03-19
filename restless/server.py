@@ -6,6 +6,7 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.
 sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
 from components.utils import Utils
+from components.watcher import Watcher
 
 from fastapi import FastAPI
 
