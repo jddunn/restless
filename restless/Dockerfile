@@ -73,25 +73,14 @@ RUN pip install -r requirements.txt
 
 # Expose default port for Restless
 EXPOSE 4712 
-EXPOSE 4713
 
 COPY . /restless
 
 # Run docs auto-generation
 RUN cd ..; pdoc --html restless --force; rm -rf docs; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless
-# RUN cd docs
-# RUN python -m http.server 4713
 
 WORKDIR ./restless/
 
 RUN ["chmod", "550", "server.py"]
-
-# WORKDIR /home/ubuntu/restless/restless/docs
-
-# CMD ["nohup", "python", "-m", "http.server", "4713"]
-
-# CMD sh -c cd docs && nohup python -m http.server 4713 > /dev/null 2>&1 && disown && cd .. && python restless/server.py
-
-# WORKDIR ./restless
 
 CMD ["python", "server.py"]

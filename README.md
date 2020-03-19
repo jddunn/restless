@@ -168,6 +168,11 @@ docker-compose up
 ### Auto-generating docs
 
 ### API docs (interactive)
+FastAPI will automatically generate interactive API docs according to [OpenAPI Spec](https://swagger.io/docs/specification/about/).
+
+```sh
+http://localhost:4712/docs
+```
 
 ### App / library docs 
 
@@ -176,15 +181,13 @@ Lib docs (uses `pdoc` for autogeneration); the below command generates docs and 
 pdoc --html restless --force; rm -rf docs; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless; cd ..
 ```
 
-Serve doc files on the web:
-```sh
-cd docs
-python -m http.server 4713
+You can then browse the documentation web files or run a web server.
+
+If you're using Docker, the app docs will be accessible (served statically) here:
 ```
-and go to:
+http://localhost:4712/app_docs/index.html
 ```
-http://localhost:4713
-```
+
 
 <!-- CODE -->
 ## Code

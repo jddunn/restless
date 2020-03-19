@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.7.5" />
+<title>restless.components.utils.utils API documentation</title>
+<meta name="description" content="" />
+<link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
+<link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
+<style>.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{font-weight:bold}#index h4 + ul{margin-bottom:.6em}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>restless.components.utils.utils</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import os
+import subprocess
+
+from .logger import Logger
+from .db_caller import DB_Caller
+
+logger = Logger()
+db = DB_Caller()
+
+DEFAULT_LOG_DIR = &#34;./logs&#34;
+
+class Utils:
+    &#34;&#34;&#34;
+    Various tools, including logging, database, and other high-level functions.
+    &#34;&#34;&#34;
+
+    def __init__(self):
+        self.logger = logger
+        self.db = db
+        self.print_logm(&#34;Initializing db: &#34; + str(self.db.context))
+        pass
+
+    def print_logm(self, message:str):
+        &#34;&#34;&#34;
+        Prints a log to sys output, by default to `INFO` level. Accepts a str message as only param.
+
+        Args:
+          message (str): Message to print to `INFO` level.
+        &#34;&#34;&#34;
+        self.logger._print_log({&#34;message&#34;: message})
+        return
+
+    def print_log(self, data:dict):
+        &#34;&#34;&#34;
+        Prints a log to sys output.
+
+        Args:
+          data (dict): Keys include: `level`, `message`. Timestamp will automatically be included.
+                       `Level` will default to `INFO`.
+        &#34;&#34;&#34;
+        self.logger._print_log(data)
+        return
+
+    def write_log(self, data:dict, filepath:str=DEFAULT_LOG_DIR):
+        &#34;&#34;&#34;
+        Prints and writes a log to disk.
+
+        Args:
+          filepath (str): Filepath of log to write to. Will default to latest log created in default directory.
+          data (dict): Keys include: `level`, `text`. Timestamp will automatically be included.
+        &#34;&#34;&#34;
+        return
+
+    def check_if_in_docker_container(self):
+        &#34;&#34;&#34;
+        Check to see if we&#39;re running inside a Docker container (via checking env var `APP_ENV`).
+        &#34;&#34;&#34;
+        if os.environ.get(&#34;APP_ENV&#34;) == &#34;docker&#34;:
+            return True
+        else:
+            return False
+
+    def get_list_of_most_recent_files(self, count: int = 1):
+        &#34;&#34;&#34;
+        Returns list of most recent files modified / saved on disk.
+
+        Args:
+          count (int): Number of files to return (defaults to 1)
+
+        Returns:
+          list: List containing filenames in ascending order of modification time (oldest first).
+        &#34;&#34;&#34;
+        count = str(ount)
+        result = []
+        return result
+
+    def check_for_recent_filechanges(self, time_to_check: float = 60.0):
+        &#34;&#34;&#34;
+        Checks to see if any files have been modified in the last time given (defaults to 60 seconds).
+
+        Args:
+          time_to_check (float): Number of seconds to go back in time to look
+
+        Returns:
+          bool: Whether any files have been changed or added to the system.
+        &#34;&#34;&#34;
+        interval = str(interval)
+        cmd = [&#34;find&#34;, &#34;~/&#34;, &#34;-mtime&#34;, &#34;-1&#34;, &#34;-ls&#34;]
+        cmd = &#34; &#34;.join(cmd)
+        res = subprocess.Popen(
+            cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        stderr, stdout = res.communicate()
+        print(stderr, stdout)
+        return
+
+    def call_recentmost(self, count: int = 1):
+        &#34;&#34;&#34;
+        Calls recentmost, which will sort the output of `find` using heapsort.
+        &#34;&#34;&#34;
+        threshold = str(threshold)
+        if self.check_if_in_docker_container():
+            cmd = [
+                &#34;find&#34;,
+                &#34;~/&#34;,
+                &#34;-type&#34;,
+                &#34;f|./app/components/utils/recentmost&#34;,
+                threshold,
+            ]
+        else:
+            cmd = [&#34;find&#34;, &#34;~/&#34;, &#34;-type&#34;, &#34;f|./components/utils/recentmost&#34;, threshold]
+        cmd = &#34; &#34;.join(cmd)
+        res = subprocess.Popen(
+            cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        stderr, stdout = res.communicate()
+        print(stderr, stdout)
+        return</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="restless.components.utils.utils.Utils"><code class="flex name class">
+<span>class <span class="ident">Utils</span></span>
+</code></dt>
+<dd>
+<section class="desc"><p>Various tools, including logging, database, and other high-level functions.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Utils:
+    &#34;&#34;&#34;
+    Various tools, including logging, database, and other high-level functions.
+    &#34;&#34;&#34;
+
+    def __init__(self):
+        self.logger = logger
+        self.db = db
+        self.print_logm(&#34;Initializing db: &#34; + str(self.db.context))
+        pass
+
+    def print_logm(self, message:str):
+        &#34;&#34;&#34;
+        Prints a log to sys output, by default to `INFO` level. Accepts a str message as only param.
+
+        Args:
+          message (str): Message to print to `INFO` level.
+        &#34;&#34;&#34;
+        self.logger._print_log({&#34;message&#34;: message})
+        return
+
+    def print_log(self, data:dict):
+        &#34;&#34;&#34;
+        Prints a log to sys output.
+
+        Args:
+          data (dict): Keys include: `level`, `message`. Timestamp will automatically be included.
+                       `Level` will default to `INFO`.
+        &#34;&#34;&#34;
+        self.logger._print_log(data)
+        return
+
+    def write_log(self, data:dict, filepath:str=DEFAULT_LOG_DIR):
+        &#34;&#34;&#34;
+        Prints and writes a log to disk.
+
+        Args:
+          filepath (str): Filepath of log to write to. Will default to latest log created in default directory.
+          data (dict): Keys include: `level`, `text`. Timestamp will automatically be included.
+        &#34;&#34;&#34;
+        return
+
+    def check_if_in_docker_container(self):
+        &#34;&#34;&#34;
+        Check to see if we&#39;re running inside a Docker container (via checking env var `APP_ENV`).
+        &#34;&#34;&#34;
+        if os.environ.get(&#34;APP_ENV&#34;) == &#34;docker&#34;:
+            return True
+        else:
+            return False
+
+    def get_list_of_most_recent_files(self, count: int = 1):
+        &#34;&#34;&#34;
+        Returns list of most recent files modified / saved on disk.
+
+        Args:
+          count (int): Number of files to return (defaults to 1)
+
+        Returns:
+          list: List containing filenames in ascending order of modification time (oldest first).
+        &#34;&#34;&#34;
+        count = str(ount)
+        result = []
+        return result
+
+    def check_for_recent_filechanges(self, time_to_check: float = 60.0):
+        &#34;&#34;&#34;
+        Checks to see if any files have been modified in the last time given (defaults to 60 seconds).
+
+        Args:
+          time_to_check (float): Number of seconds to go back in time to look
+
+        Returns:
+          bool: Whether any files have been changed or added to the system.
+        &#34;&#34;&#34;
+        interval = str(interval)
+        cmd = [&#34;find&#34;, &#34;~/&#34;, &#34;-mtime&#34;, &#34;-1&#34;, &#34;-ls&#34;]
+        cmd = &#34; &#34;.join(cmd)
+        res = subprocess.Popen(
+            cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        stderr, stdout = res.communicate()
+        print(stderr, stdout)
+        return
+
+    def call_recentmost(self, count: int = 1):
+        &#34;&#34;&#34;
+        Calls recentmost, which will sort the output of `find` using heapsort.
+        &#34;&#34;&#34;
+        threshold = str(threshold)
+        if self.check_if_in_docker_container():
+            cmd = [
+                &#34;find&#34;,
+                &#34;~/&#34;,
+                &#34;-type&#34;,
+                &#34;f|./app/components/utils/recentmost&#34;,
+                threshold,
+            ]
+        else:
+            cmd = [&#34;find&#34;, &#34;~/&#34;, &#34;-type&#34;, &#34;f|./components/utils/recentmost&#34;, threshold]
+        cmd = &#34; &#34;.join(cmd)
+        res = subprocess.Popen(
+            cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        stderr, stdout = res.communicate()
+        print(stderr, stdout)
+        return</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="restless.components.utils.utils.Utils.call_recentmost"><code class="name flex">
+<span>def <span class="ident">call_recentmost</span></span>(<span>self, count=1)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Calls recentmost, which will sort the output of <code>find</code> using heapsort.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def call_recentmost(self, count: int = 1):
+    &#34;&#34;&#34;
+    Calls recentmost, which will sort the output of `find` using heapsort.
+    &#34;&#34;&#34;
+    threshold = str(threshold)
+    if self.check_if_in_docker_container():
+        cmd = [
+            &#34;find&#34;,
+            &#34;~/&#34;,
+            &#34;-type&#34;,
+            &#34;f|./app/components/utils/recentmost&#34;,
+            threshold,
+        ]
+    else:
+        cmd = [&#34;find&#34;, &#34;~/&#34;, &#34;-type&#34;, &#34;f|./components/utils/recentmost&#34;, threshold]
+    cmd = &#34; &#34;.join(cmd)
+    res = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    stderr, stdout = res.communicate()
+    print(stderr, stdout)
+    return</code></pre>
+</details>
+</dd>
+<dt id="restless.components.utils.utils.Utils.check_for_recent_filechanges"><code class="name flex">
+<span>def <span class="ident">check_for_recent_filechanges</span></span>(<span>self, time_to_check=60.0)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Checks to see if any files have been modified in the last time given (defaults to 60 seconds).</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>time_to_check</code></strong> :&ensp;<code>float</code></dt>
+<dd>Number of seconds to go back in time to look</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>bool</code></strong></dt>
+<dd>Whether any files have been changed or added to the system.</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def check_for_recent_filechanges(self, time_to_check: float = 60.0):
+    &#34;&#34;&#34;
+    Checks to see if any files have been modified in the last time given (defaults to 60 seconds).
+
+    Args:
+      time_to_check (float): Number of seconds to go back in time to look
+
+    Returns:
+      bool: Whether any files have been changed or added to the system.
+    &#34;&#34;&#34;
+    interval = str(interval)
+    cmd = [&#34;find&#34;, &#34;~/&#34;, &#34;-mtime&#34;, &#34;-1&#34;, &#34;-ls&#34;]
+    cmd = &#34; &#34;.join(cmd)
+    res = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    stderr, stdout = res.communicate()
+    print(stderr, stdout)
+    return</code></pre>
+</details>
+</dd>
+<dt id="restless.components.utils.utils.Utils.check_if_in_docker_container"><code class="name flex">
+<span>def <span class="ident">check_if_in_docker_container</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Check to see if we're running inside a Docker container (via checking env var <code>APP_ENV</code>).</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def check_if_in_docker_container(self):
+    &#34;&#34;&#34;
+    Check to see if we&#39;re running inside a Docker container (via checking env var `APP_ENV`).
+    &#34;&#34;&#34;
+    if os.environ.get(&#34;APP_ENV&#34;) == &#34;docker&#34;:
+        return True
+    else:
+        return False</code></pre>
+</details>
+</dd>
+<dt id="restless.components.utils.utils.Utils.get_list_of_most_recent_files"><code class="name flex">
+<span>def <span class="ident">get_list_of_most_recent_files</span></span>(<span>self, count=1)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Returns list of most recent files modified / saved on disk.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>count</code></strong> :&ensp;<code>int</code></dt>
+<dd>Number of files to return (defaults to 1)</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>list</code></strong></dt>
+<dd>List containing filenames in ascending order of modification time (oldest first).</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_list_of_most_recent_files(self, count: int = 1):
+    &#34;&#34;&#34;
+    Returns list of most recent files modified / saved on disk.
+
+    Args:
+      count (int): Number of files to return (defaults to 1)
+
+    Returns:
+      list: List containing filenames in ascending order of modification time (oldest first).
+    &#34;&#34;&#34;
+    count = str(ount)
+    result = []
+    return result</code></pre>
+</details>
+</dd>
+<dt id="restless.components.utils.utils.Utils.print_log"><code class="name flex">
+<span>def <span class="ident">print_log</span></span>(<span>self, data)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Prints a log to sys output.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>dict</code></dt>
+<dd>Keys include: <code>level</code>, <code>message</code>. Timestamp will automatically be included.
+<code>Level</code> will default to <code>INFO</code>.</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def print_log(self, data:dict):
+    &#34;&#34;&#34;
+    Prints a log to sys output.
+
+    Args:
+      data (dict): Keys include: `level`, `message`. Timestamp will automatically be included.
+                   `Level` will default to `INFO`.
+    &#34;&#34;&#34;
+    self.logger._print_log(data)
+    return</code></pre>
+</details>
+</dd>
+<dt id="restless.components.utils.utils.Utils.print_logm"><code class="name flex">
+<span>def <span class="ident">print_logm</span></span>(<span>self, message)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Prints a log to sys output, by default to <code>INFO</code> level. Accepts a str message as only param.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>message</code></strong> :&ensp;<code>str</code></dt>
+<dd>Message to print to <code>INFO</code> level.</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def print_logm(self, message:str):
+    &#34;&#34;&#34;
+    Prints a log to sys output, by default to `INFO` level. Accepts a str message as only param.
+
+    Args:
+      message (str): Message to print to `INFO` level.
+    &#34;&#34;&#34;
+    self.logger._print_log({&#34;message&#34;: message})
+    return</code></pre>
+</details>
+</dd>
+<dt id="restless.components.utils.utils.Utils.write_log"><code class="name flex">
+<span>def <span class="ident">write_log</span></span>(<span>self, data, filepath='./logs')</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Prints and writes a log to disk.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>filepath</code></strong> :&ensp;<code>str</code></dt>
+<dd>Filepath of log to write to. Will default to latest log created in default directory.</dd>
+<dt><strong><code>data</code></strong> :&ensp;<code>dict</code></dt>
+<dd>Keys include: <code>level</code>, <code>text</code>. Timestamp will automatically be included.</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def write_log(self, data:dict, filepath:str=DEFAULT_LOG_DIR):
+    &#34;&#34;&#34;
+    Prints and writes a log to disk.
+
+    Args:
+      filepath (str): Filepath of log to write to. Will default to latest log created in default directory.
+      data (dict): Keys include: `level`, `text`. Timestamp will automatically be included.
+    &#34;&#34;&#34;
+    return</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="restless.components.utils" href="index.html">restless.components.utils</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="restless.components.utils.utils.Utils" href="#restless.components.utils.utils.Utils">Utils</a></code></h4>
+<ul class="">
+<li><code><a title="restless.components.utils.utils.Utils.call_recentmost" href="#restless.components.utils.utils.Utils.call_recentmost">call_recentmost</a></code></li>
+<li><code><a title="restless.components.utils.utils.Utils.check_for_recent_filechanges" href="#restless.components.utils.utils.Utils.check_for_recent_filechanges">check_for_recent_filechanges</a></code></li>
+<li><code><a title="restless.components.utils.utils.Utils.check_if_in_docker_container" href="#restless.components.utils.utils.Utils.check_if_in_docker_container">check_if_in_docker_container</a></code></li>
+<li><code><a title="restless.components.utils.utils.Utils.get_list_of_most_recent_files" href="#restless.components.utils.utils.Utils.get_list_of_most_recent_files">get_list_of_most_recent_files</a></code></li>
+<li><code><a title="restless.components.utils.utils.Utils.print_log" href="#restless.components.utils.utils.Utils.print_log">print_log</a></code></li>
+<li><code><a title="restless.components.utils.utils.Utils.print_logm" href="#restless.components.utils.utils.Utils.print_logm">print_logm</a></code></li>
+<li><code><a title="restless.components.utils.utils.Utils.write_log" href="#restless.components.utils.utils.Utils.write_log">write_log</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.7.5</a>.</p>
+</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad()</script>
+</body>
+</html>
