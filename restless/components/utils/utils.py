@@ -2,11 +2,12 @@ import os
 import subprocess
 
 from .logger import Logger
+from .db_caller import DB_Caller
 
 logger = Logger()
+db = DB_Caller()
 
 DEFAULT_LOG_DIR = "./logs"
-
 
 class Utils:
     """
@@ -15,6 +16,7 @@ class Utils:
 
     def __init__(self):
         self.logger = logger
+        self.db = db
         pass
 
     def print_log(data={}):

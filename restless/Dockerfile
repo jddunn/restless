@@ -8,8 +8,7 @@ RUN apt-get update
 # Java
 RUN apt-get install default-jdk -y
 
-
-
+# Locale
 RUN apt-get update \
  && apt-get install -y locales \
  && dpkg-reconfigure -f noninteractive locales \
@@ -57,9 +56,10 @@ RUN curl -sL --retry 3 \
 
 CMD [$SPARK_HOME + "bin/spark-class", "org.apache.spark.deploy.master.Master"]
 
-
+# Python deps
 RUN pip install fastapi uvicorn
 RUN pip install pdoc3
+RUN pip install pyspark
 
 # Expose default port for Restless
 EXPOSE 4712 
