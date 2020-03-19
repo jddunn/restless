@@ -10,7 +10,7 @@ sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
 from components.utils import Utils
 from components.watcher import Watcher
-from components.watcher import Scanner
+from components.scanner import Scanner
 
 utils = Utils()
 watcher = Watcher()
