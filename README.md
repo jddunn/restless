@@ -186,6 +186,15 @@ and go to:
 http://localhost:4713
 ```
 
+<!-- CODE -->
+## Code
+
+### Linting
+
+```sh
+black restless
+```
+
 <!-- TESTS -->
 ## Tests
 
