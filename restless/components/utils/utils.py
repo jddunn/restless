@@ -9,10 +9,9 @@ DEFAULT_LOG_DIR = "./logs"
 
 
 class Utils:
-       """
-       Various tools, including logging, database, and other high-level functions.
-       """
-
+    """
+    Various tools, including logging, database, and other high-level functions.
+    """
     def __init__(self):
         self.logger = logger
         pass
