@@ -12,6 +12,7 @@ class Utils:
     """
     Various tools, including logging, database, and other high-level functions.
     """
+
     def __init__(self):
         self.logger = logger
         pass
@@ -85,7 +86,13 @@ class Utils:
         """
         threshold = str(threshold)
         if self.check_if_in_docker_container():
-            cmd = ["find", "~/", "-type", "f|./app/components/utils/recentmost", threshold]
+            cmd = [
+                "find",
+                "~/",
+                "-type",
+                "f|./app/components/utils/recentmost",
+                threshold,
+            ]
         else:
             cmd = ["find", "~/", "-type", "f|./components/utils/recentmost", threshold]
         cmd = " ".join(cmd)
