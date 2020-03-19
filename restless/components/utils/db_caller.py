@@ -1,5 +1,6 @@
 import pyspark
-sc = pyspark.SparkContext('local[*]')
+conf = pyspark.SparkConf().setMaster("local[*]").setAppName("restless-db")
+sc = pyspark.SparkContext.getOrCreate(conf=conf)
 
 class DB_Caller:
     """

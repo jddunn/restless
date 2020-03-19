@@ -5,6 +5,11 @@ RUN apt-get update \
 RUN apt-get --allow-releaseinfo-change update
 RUN apt-get update
 
+RUN apt-get install \
+  -y python3-virtualenv
+
+RUN pip install virtualenv
+
 # Java
 RUN apt-get install default-jdk -y
 
@@ -28,6 +33,11 @@ ENV LC_ALL en_US.UTF-8
 ENV PYTHONHASHSEED 0
 ENV PYTHONIOENCODING UTF-8
 ENV PIP_DISABLE_PIP_VERSION_CHECK 1
+
+# VENV
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m virtualenv --python=/usr/bin/python3 $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # HADOOP
 ENV HADOOP_VERSION 3.0.0
@@ -57,23 +67,28 @@ RUN curl -sL --retry 3 \
 CMD [$SPARK_HOME + "bin/spark-class", "org.apache.spark.deploy.master.Master"]
 
 # Python deps
-RUN pip install fastapi uvicorn
-RUN pip install pdoc3
-RUN pip install pyspark
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
 # Expose default port for Restless
 EXPOSE 4712 
 
 COPY . /restless
 
-WORKDIR ./restless/
-
 # Run docs auto-generation
-# RUN "pdoc --html restless --force"
-# rm -rf docs; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless"
-# RUN ["python -m http.server 4713"]
-# RUN ["cd .."]
+RUN cd ..
+RUN pdoc --html restless --force
+RUN rm -rf docs; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless
+# RUN cd docs
+# RUN python -m http.server 4713
+# RUN cd ..
 
-RUN ["chmod", "550", "./server.py"]
+# WORKDIR ./restless/
 
-CMD ["python", "./server.py"]
+RUN ["chmod", "550", "restless/server.py"]
+
+# CMD ["python", "./server.py"]
+
+CMD cd docs; nohup python -m http.server 4713 &; cd ..; python restless/server.py
+
+# CMD ["python", "restless/server.py"]
