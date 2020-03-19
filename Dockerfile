@@ -74,14 +74,17 @@ RUN pip install -r requirements.txt
 # Expose default port for Restless
 EXPOSE 4712 
 
-COPY ./restless /restless
-COPY ./docs /docs
-COPY ./tests /tests
+COPY . /restless
+
+# COPY ./restless /restless
+# COPY ./docs /docs
+# COPY ./tests /tests
 
 # Run docs auto-generation
-RUN cd ..; pdoc --html restless --force; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless
+RUN pdoc --html restless --force; mv html docs;
+# cd docs; cd restless; mv * .[^.]* ..;
 
-# WORKDIR ./restless
+WORKDIR ./restless/restless
 
 RUN ["chmod", "550", "./server.py"]
 

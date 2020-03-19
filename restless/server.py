@@ -21,11 +21,14 @@ SERVER_PORT = 4712
 
 app = FastAPI()
 
-STATIC_ROOT = '/home/ubuntu/restless/'
-docs_path = os.path.abspath(os.path.join(STATIC_ROOT, 'docs'))
-print("THIS IS DOCS PATH: ", docs_path)
+STATIC_ROOT = '/home/ubuntu/restless/docs'
+# docs_path = os.path.abspath(os.path.join(STATIC_ROOT, 'docs'))
+# print("THIS IS DOCS PATH: ", docs_path)
 
-app.mount('/app_docs', StaticFiles(directory=docs_path), name="app_docs")
+try:
+    app.mount('/app_docs', StaticFiles(directory=static_root), name="app_docs")
+except:
+     pass
 
 @app.get("/")
 def read_root():
