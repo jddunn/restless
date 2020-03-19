@@ -18,9 +18,6 @@ SERVER_PORT = 4712
 
 app = FastAPI()
 
-utils = Utils()
-
-
 @app.get("/")
 def read_root():
     return {"Restless is running on port: ", SERVER_PORT}
