@@ -23,7 +23,7 @@ app = FastAPI()
 
 @app.get("/")
 def read_root():
-    return {"Restless is running on port: ", SERVER_PORT}
+    return("Restless is running on port: ", SERVER_PORT)
 
 
 if __name__ == "__main__":
