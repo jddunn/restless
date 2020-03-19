@@ -6,6 +6,7 @@ utils = Utils()
 watcher = Watcher()
 scanner = Scanner()
 
+
 class Restless:
     """
     Main Restless module.
