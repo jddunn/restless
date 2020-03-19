@@ -7,6 +7,7 @@ logger = Logger()
 
 DEFAULT_LOG_DIR = "./logs"
 
+
 class Utils:
     def __init__(self):
         self.logger = logger
