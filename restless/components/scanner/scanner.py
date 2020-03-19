@@ -4,4 +4,14 @@ class Scanner:
     """
 
     def __init__(self):
+        print("Creating Restless.Scanner..")
         pass
+
+    def scan_full_system(self):
+        return
+
+    def scan_folder(self, folderpath: str):
+        return
+
+    def scan_file(self, filepath: str):
+        return

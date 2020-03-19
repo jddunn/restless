@@ -13,8 +13,10 @@ from components.watcher import Watcher
 from components.scanner import Scanner
 
 utils = Utils()
-watcher = Watcher()
-scanner = Scanner()
+# watcher = Watcher()
+# scanner = Scanner()
+
+ran_system_scan = False
 
 
 class Restless:
@@ -24,3 +26,7 @@ class Restless:
 
     def __init__(self):
         print("I'm restless")
+        if ran_sytem_scan:
+            self.watcher = Watcher()
+        self.scanner = Scanner()
+        return

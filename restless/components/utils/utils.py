@@ -22,6 +22,11 @@ class Utils:
         else:
             return False
 
+    def get_list_of_most_recent_files(self, count: int = 1000):
+        count = str(ount)
+
+        return
+
     def check_for_recent_filechanges(self, interval: float = 0.05):
         interval = str(interval)
         cmd = ["find", "~/", "-mtime", "-1", "-ls"]
