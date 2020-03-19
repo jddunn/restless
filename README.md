@@ -77,11 +77,9 @@ Unless drastic changes in programming paradigms occur for writing malware (which
 * [FastAPI](FastAPI)
 * [Uvicorn](Uvicorn)
 * [spacey](spacey)
-* [pdoc3](pdoc3] (fork of pdoc)
+* [pdoc3](pdoc3) (fork of pdoc)
 * [recentmost](recentmost) and C compiler
-
 or
-
 * [Docker](Docker) / [Docker-Compose](Docker-Compose)
 
 ### Installing with Pip
@@ -113,7 +111,7 @@ Restless's services will be running at port 4712 by default.
 ##### Starts ASGI server wth reload (recommended to use a virtualenv with all the dependencies installed)
 
 ```sh
-cd restless/restless/app
+cd restless
 python server.py
 ```
 
@@ -126,7 +124,6 @@ The example command will mount all the files in a Ubuntu machine into the contai
 (Although the training data consists of malware that targets Windows OSes, research has shown that antivirus programs designed for Windows works on average 95% of the time in detecting Linux-based malware, see references at the bottom).
 
 The container also adds an extra barrier of attack for potential bad agents, but keep in mind, is still not completely secure or sandboxed away from the host environment.
-
 
 ```sh
 docker run -p 4712:4712 -e APP_ENV=docker --mount source=home,target=/home/ubuntu/restless restless
@@ -171,7 +168,7 @@ docker-compose up
 FastAPI will automatically generate interactive API docs according to [OpenAPI Spec](https://swagger.io/docs/specification/about/).
 
 ```sh
-http://localhost:4712/docs
+http://localhost:4712/api_docs
 ```
 
 ### App / library docs 

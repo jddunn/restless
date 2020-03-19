@@ -9,6 +9,7 @@ db = DB_Caller()
 
 DEFAULT_LOG_DIR = "./logs"
 
+
 class Utils:
     """
     Various tools, including logging, database, and other high-level functions.
@@ -20,7 +21,7 @@ class Utils:
         self.print_logm("Initializing db: " + str(self.db.context))
         pass
 
-    def print_logm(self, message:str):
+    def print_logm(self, message: str):
         """
         Prints a log to sys output, by default to `INFO` level. Accepts a str message as only param.
 
@@ -30,7 +31,7 @@ class Utils:
         self.logger._print_log({"message": message})
         return
 
-    def print_log(self, data:dict):
+    def print_log(self, data: dict):
         """
         Prints a log to sys output.
 
@@ -41,7 +42,7 @@ class Utils:
         self.logger._print_log(data)
         return
 
-    def write_log(self, data:dict, filepath:str=DEFAULT_LOG_DIR):
+    def write_log(self, data: dict, filepath: str = DEFAULT_LOG_DIR):
         """
         Prints and writes a log to disk.
 

@@ -12,6 +12,7 @@ from components.utils import utils
 from components.watcher import Watcher
 from components.scanner import Scanner
 
+
 class Restless(object):
     """
     Main Restless module.
@@ -19,7 +20,10 @@ class Restless(object):
 
     def __init__(self, run_system_scan=False):
         self.run_system_scan = run_system_scan
-        utils.print_logm("Restless initializing. Running system-wide scan: " + str(self.run_system_scan))
+        utils.print_logm(
+            "Restless initializing. Running system-wide scan: "
+            + str(self.run_system_scan)
+        )
         if self.run_system_scan:
             pass
             # Get last system scan time
