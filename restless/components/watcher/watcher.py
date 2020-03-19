@@ -8,6 +8,7 @@ print(utils.check_for_recent_filechanges())
 
 print(utils.check_if_in_docker_container())
 
+
 class Watcher:
 
     """
@@ -15,7 +16,9 @@ class Watcher:
     """
 
     def __init__(self):
-        print("Restless.Watcher is now watching over system and scanning new incoming files.")
+        print(
+            "Restless.Watcher is now watching over system and scanning new incoming files."
+        )
         pass
 
     def constant_scan(self):
