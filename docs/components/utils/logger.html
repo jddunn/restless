@@ -30,9 +30,14 @@
     &#34;&#34;&#34;
 
     def __init__(self):
-        print(&#34;Init logger&#34;)
+        pass
 
-    def save_log(self, fp):
+    def print_log(self, data: dict):
+        if data[&#34;level&#34;] is None:
+            data[&#34;level&#34;] = &#34;info&#34;
+        print(data)
+
+    def write_log(self, fp: str, data: dict):
         return</code></pre>
 </details>
 </section>
@@ -60,15 +65,20 @@
     &#34;&#34;&#34;
 
     def __init__(self):
-        print(&#34;Init logger&#34;)
+        pass
 
-    def save_log(self, fp):
+    def print_log(self, data: dict):
+        if data[&#34;level&#34;] is None:
+            data[&#34;level&#34;] = &#34;info&#34;
+        print(data)
+
+    def write_log(self, fp: str, data: dict):
         return</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
-<dt id="restless.components.utils.logger.Logger.save_log"><code class="name flex">
-<span>def <span class="ident">save_log</span></span>(<span>self, fp)</span>
+<dt id="restless.components.utils.logger.Logger.print_log"><code class="name flex">
+<span>def <span class="ident">print_log</span></span>(<span>self, data)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -76,7 +86,22 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def save_log(self, fp):
+<pre><code class="python">def print_log(self, data: dict):
+    if data[&#34;level&#34;] is None:
+        data[&#34;level&#34;] = &#34;info&#34;
+    print(data)</code></pre>
+</details>
+</dd>
+<dt id="restless.components.utils.logger.Logger.write_log"><code class="name flex">
+<span>def <span class="ident">write_log</span></span>(<span>self, fp, data)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def write_log(self, fp: str, data: dict):
     return</code></pre>
 </details>
 </dd>
@@ -101,7 +126,8 @@
 <li>
 <h4><code><a title="restless.components.utils.logger.Logger" href="#restless.components.utils.logger.Logger">Logger</a></code></h4>
 <ul class="">
-<li><code><a title="restless.components.utils.logger.Logger.save_log" href="#restless.components.utils.logger.Logger.save_log">save_log</a></code></li>
+<li><code><a title="restless.components.utils.logger.Logger.print_log" href="#restless.components.utils.logger.Logger.print_log">print_log</a></code></li>
+<li><code><a title="restless.components.utils.logger.Logger.write_log" href="#restless.components.utils.logger.Logger.write_log">write_log</a></code></li>
 </ul>
 </li>
 </ul>

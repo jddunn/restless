@@ -39,17 +39,25 @@ from components.watcher import Watcher
 from components.scanner import Scanner
 
 utils = Utils()
-watcher = Watcher()
-scanner = Scanner()
+# watcher = Watcher()
+# scanner = Scanner()
 
 
-class Restless:
+class Restless(object):
     &#34;&#34;&#34;
     Main Restless module.
     &#34;&#34;&#34;
 
-    def __init__(self):
-        print(&#34;I&#39;m restless&#34;)</code></pre>
+    def __init__(self, run_system_scan):
+        self.run_system_scan = run_system_scan
+        print(&#34;Restless initializing. Running system-wide scan: &#34;, self.run_system_scan)
+        if self.run_system_scan:
+            pass
+            # Get last system scan time
+        else:
+            self.watcher = Watcher()
+        self.scanner = Scanner()
+        return</code></pre>
 </details>
 </section>
 <section>
@@ -63,6 +71,7 @@ class Restless:
 <dl>
 <dt id="restless.main.Restless"><code class="flex name class">
 <span>class <span class="ident">Restless</span></span>
+<span>(</span><span>run_system_scan)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Main Restless module.</p></section>
@@ -70,13 +79,21 @@ class Restless:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class Restless:
+<pre><code class="python">class Restless(object):
     &#34;&#34;&#34;
     Main Restless module.
     &#34;&#34;&#34;
 
-    def __init__(self):
-        print(&#34;I&#39;m restless&#34;)</code></pre>
+    def __init__(self, run_system_scan):
+        self.run_system_scan = run_system_scan
+        print(&#34;Restless initializing. Running system-wide scan: &#34;, self.run_system_scan)
+        if self.run_system_scan:
+            pass
+            # Get last system scan time
+        else:
+            self.watcher = Watcher()
+        self.scanner = Scanner()
+        return</code></pre>
 </details>
 </dd>
 </dl>

@@ -39,6 +39,10 @@ class Utils:
         self.logger = logger
         pass
 
+    def print_log(data={}):
+        self.logger.print_log(data)
+        return
+
     def write_log(filepath=DEFAULT_LOG_DIR, data={}):
         return
 
@@ -47,6 +51,11 @@ class Utils:
             return True
         else:
             return False
+
+    def get_list_of_most_recent_files(self, count: int = 1000):
+        count = str(ount)
+
+        return
 
     def check_for_recent_filechanges(self, interval: float = 0.05):
         interval = str(interval)
@@ -96,6 +105,10 @@ class Utils:
         self.logger = logger
         pass
 
+    def print_log(data={}):
+        self.logger.print_log(data)
+        return
+
     def write_log(filepath=DEFAULT_LOG_DIR, data={}):
         return
 
@@ -104,6 +117,11 @@ class Utils:
             return True
         else:
             return False
+
+    def get_list_of_most_recent_files(self, count: int = 1000):
+        count = str(ount)
+
+        return
 
     def check_for_recent_filechanges(self, interval: float = 0.05):
         interval = str(interval)
@@ -191,6 +209,35 @@ class Utils:
         return False</code></pre>
 </details>
 </dd>
+<dt id="restless.components.utils.utils.Utils.get_list_of_most_recent_files"><code class="name flex">
+<span>def <span class="ident">get_list_of_most_recent_files</span></span>(<span>self, count=1000)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_list_of_most_recent_files(self, count: int = 1000):
+    count = str(ount)
+
+    return</code></pre>
+</details>
+</dd>
+<dt id="restless.components.utils.utils.Utils.print_log"><code class="name flex">
+<span>def <span class="ident">print_log</span></span>(<span>data={})</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def print_log(data={}):
+    self.logger.print_log(data)
+    return</code></pre>
+</details>
+</dd>
 <dt id="restless.components.utils.utils.Utils.write_log"><code class="name flex">
 <span>def <span class="ident">write_log</span></span>(<span>filepath='./logs', data={})</span>
 </code></dt>
@@ -228,6 +275,8 @@ class Utils:
 <li><code><a title="restless.components.utils.utils.Utils.call_recentmost" href="#restless.components.utils.utils.Utils.call_recentmost">call_recentmost</a></code></li>
 <li><code><a title="restless.components.utils.utils.Utils.check_for_recent_filechanges" href="#restless.components.utils.utils.Utils.check_for_recent_filechanges">check_for_recent_filechanges</a></code></li>
 <li><code><a title="restless.components.utils.utils.Utils.check_if_in_docker_container" href="#restless.components.utils.utils.Utils.check_if_in_docker_container">check_if_in_docker_container</a></code></li>
+<li><code><a title="restless.components.utils.utils.Utils.get_list_of_most_recent_files" href="#restless.components.utils.utils.Utils.get_list_of_most_recent_files">get_list_of_most_recent_files</a></code></li>
+<li><code><a title="restless.components.utils.utils.Utils.print_log" href="#restless.components.utils.utils.Utils.print_log">print_log</a></code></li>
 <li><code><a title="restless.components.utils.utils.Utils.write_log" href="#restless.components.utils.utils.Utils.write_log">write_log</a></code></li>
 </ul>
 </li>

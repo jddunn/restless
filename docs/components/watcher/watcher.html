@@ -28,17 +28,18 @@
 
 utils = Utils()
 
-print(utils.call_recentmost())
+# print(utils.call_recentmost())
 
-print(utils.check_for_recent_filechanges())
+# print(utils.check_for_recent_filechanges())
 
-print(utils.check_if_in_docker_container())
+# print(utils.check_if_in_docker_container())
 
 
 class Watcher:
 
     &#34;&#34;&#34;
-    Watcher constantly monitors the system scanning for newly updated or newly saved files, sending them to the classification / defense pipeline.&#34;
+    Watcher constantly monitors the system scanning for newly updated or newly saved files,
+    sending them to the classification / defense pipeline.&#34;
     &#34;&#34;&#34;
 
     def __init__(self):
@@ -52,13 +53,16 @@ class Watcher:
         Main Watcher function.
 
         Returns:
-            list: List of filenames (with absolute paths) that have been updated or saved since the last `scan` was performed (in descending order of modification timestamps).
+            list: List of filenames (with absolute paths) that have been updated or saved
+                  since the last `scan` was performed (in descending order of modification
+                  timestamps).
         &#34;&#34;&#34;
         return
 
     def check_for_new_data(self):
         &#34;&#34;&#34;
-        Checks to see if there&#39;s any new incoming data saved or updated to the system (verified by file modification timestamps).
+        Checks to see if there&#39;s any new incoming data saved or updated to the system
+        (verified by file modification timestamps).
         &#34;&#34;&#34;
         return</code></pre>
 </details>
@@ -76,7 +80,8 @@ class Watcher:
 <span>class <span class="ident">Watcher</span></span>
 </code></dt>
 <dd>
-<section class="desc"><p>Watcher constantly monitors the system scanning for newly updated or newly saved files, sending them to the classification / defense pipeline."</p></section>
+<section class="desc"><p>Watcher constantly monitors the system scanning for newly updated or newly saved files,
+sending them to the classification / defense pipeline."</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -84,7 +89,8 @@ class Watcher:
 <pre><code class="python">class Watcher:
 
     &#34;&#34;&#34;
-    Watcher constantly monitors the system scanning for newly updated or newly saved files, sending them to the classification / defense pipeline.&#34;
+    Watcher constantly monitors the system scanning for newly updated or newly saved files,
+    sending them to the classification / defense pipeline.&#34;
     &#34;&#34;&#34;
 
     def __init__(self):
@@ -98,13 +104,16 @@ class Watcher:
         Main Watcher function.
 
         Returns:
-            list: List of filenames (with absolute paths) that have been updated or saved since the last `scan` was performed (in descending order of modification timestamps).
+            list: List of filenames (with absolute paths) that have been updated or saved
+                  since the last `scan` was performed (in descending order of modification
+                  timestamps).
         &#34;&#34;&#34;
         return
 
     def check_for_new_data(self):
         &#34;&#34;&#34;
-        Checks to see if there&#39;s any new incoming data saved or updated to the system (verified by file modification timestamps).
+        Checks to see if there&#39;s any new incoming data saved or updated to the system
+        (verified by file modification timestamps).
         &#34;&#34;&#34;
         return</code></pre>
 </details>
@@ -114,14 +123,16 @@ class Watcher:
 <span>def <span class="ident">check_for_new_data</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>Checks to see if there's any new incoming data saved or updated to the system (verified by file modification timestamps).</p></section>
+<section class="desc"><p>Checks to see if there's any new incoming data saved or updated to the system
+(verified by file modification timestamps).</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def check_for_new_data(self):
     &#34;&#34;&#34;
-    Checks to see if there&#39;s any new incoming data saved or updated to the system (verified by file modification timestamps).
+    Checks to see if there&#39;s any new incoming data saved or updated to the system
+    (verified by file modification timestamps).
     &#34;&#34;&#34;
     return</code></pre>
 </details>
@@ -134,7 +145,9 @@ class Watcher:
 <h2 id="returns">Returns</h2>
 <dl>
 <dt><strong><code>list</code></strong></dt>
-<dd>List of filenames (with absolute paths) that have been updated or saved since the last <code>scan</code> was performed (in descending order of modification timestamps).</dd>
+<dd>List of filenames (with absolute paths) that have been updated or saved
+since the last <code>scan</code> was performed (in descending order of modification
+timestamps).</dd>
 </dl></section>
 <details class="source">
 <summary>
@@ -145,7 +158,9 @@ class Watcher:
     Main Watcher function.
 
     Returns:
-        list: List of filenames (with absolute paths) that have been updated or saved since the last `scan` was performed (in descending order of modification timestamps).
+        list: List of filenames (with absolute paths) that have been updated or saved
+              since the last `scan` was performed (in descending order of modification
+              timestamps).
     &#34;&#34;&#34;
     return</code></pre>
 </details>
