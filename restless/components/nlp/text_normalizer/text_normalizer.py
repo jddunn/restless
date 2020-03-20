@@ -25,13 +25,18 @@ class TextNormalizer:
             "R": wordnet.ADV,
         }
 
-    def tokenize_text(self, text: str):
+    def tokenize_text(self, text: str) -> list:
         """
         Tokenizes text.
+
+        Args:
+          text (str): Text to tokenize.
+        Returns:
+          list: List of tokens.
         """
         return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
 
-    def lemmatize_text(self, text: str, lemmatizer: obj=default_lemmatizer):
+    def lemmatize_text(self, text: str, lemmatizer: object=default_lemmatizer) -> str:
         """
         Lemmatizes text.
 
@@ -52,7 +57,7 @@ class TextNormalizer:
         else:
             return " ".join([lemmatizer.lemmatize(token) for token in tokens])
 
-    def stem_text(self, text: str, stemmer=default_stemmer):
+    def stem_text(self, text: str, stemmer=default_stemmer) -> str:
         """
         Stems text.
 
@@ -65,7 +70,7 @@ class TextNormalizer:
         tokens = self.tokenize_text(text)
         return " ".join([stemmer.stem(t) for t in tokens])
 
-    def remove_stopwords(self, text: str, stop_words=default_stopwords):
+    def remove_stopwords(self, text: str, stop_words=default_stopwords) -> str:
         """
         Removes stopwords from text.
 
@@ -78,7 +83,7 @@ class TextNormalizer:
         tokens = [w for w in self.tokenize_text(text) if w not in stop_words]
         return " ".join(tokens)
 
-    def strip_whitepsace(self, text: str):
+    def strip_whitepsace(self, text: str) -> str:
         """
         Strips whitespace from text.
 
@@ -89,7 +94,7 @@ class TextNormalizer:
         """
         return text.strip()
 
-    def lowercase_text(self, text: str):
+    def lowercase_text(self, text: str) -> str:
         """
         Converts text to lowercase.
 
@@ -100,7 +105,7 @@ class TextNormalizer:
         """
         return text.lower()
 
-    def strip_punctuation(self, text: str):
+    def strip_punctuation(self, text: str) -> str:
         """
         Strips punctuation from text.
 
@@ -127,7 +132,7 @@ class TextNormalizer:
         remove_stopwords: bool = False,
         lemmatize_text: bool = False,
         stem_text: bool = False,
-    ):
+    ) -> str:
         """
         Normalizes text.
 
