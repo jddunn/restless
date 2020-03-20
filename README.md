@@ -81,6 +81,8 @@ File features found for:  /home/ubuntu/restless/restless/data/malicious/0.exe [2
 ```
 ---------------------------------------------------
 
+Malicious executables obtained from [http://www.tekdefense.com/downloads/malware-samples/](http://www.tekdefense.com/downloads/malware-samples/)
+
 ###  Concepts overview
 
 Signature detection, the traditional method of antiviruses which creates the need to connect to online databases for incesstant updating, cannot keep up with the emergence of new malware, or even of known malware that's able to [change itself](https://nakedsecurity.sophos.com/2012/07/31/server-side-polymorphism-malware/), and while heuirstics-based approaches can combat polym$
