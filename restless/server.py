@@ -25,7 +25,7 @@ app = FastAPI(docs_url="/api_docs")
 if utils.check_if_in_docker_container():
     STATIC_DOCS_PATH = "restless/docs"
 else:
-    STATIC_DOCS_PATH = "../docs"
+    STATIC_DOCS_PATH = "/home/ubuntu/restless/docs"
 
 app.mount("/app_docs", StaticFiles(directory=STATIC_DOCS_PATH), name="app_docs")
 
