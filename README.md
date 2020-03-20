@@ -7,8 +7,6 @@
   <p align="center">
     Always-on anti-malware software using malicious language processing (nlp-inspired) techniques.
         <br>
-    <a href="https://github.com/github_username/repo">Explore the docs »</a>
-    <a href="https://github.com/github_username/repo">View Demo</a>
         </p>
 </p>
 
@@ -223,7 +221,7 @@ http://localhost:4712/app_docs/index.html
 
 They'll look like this:
 
-![Restless app docs screenshot](/screenshots/restless-app-docs-screensht.png?raw=true)
+![Restless app docs screenshot](/screenshots/restless-app-docs-screenshot.png?raw=true)
 
 
 <!-- CODE -->
