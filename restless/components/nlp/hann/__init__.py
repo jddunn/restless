@@ -1,1 +1,1 @@
-from .hann import HANN
+from .hann import HierarchicalAttentionNetwork
