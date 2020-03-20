@@ -59,11 +59,13 @@ GLOVE_DIR_PATH = "."
 
 MAX_DOCS = 100000 # Limit number of records to train for speed
 
+DEFAULT_MODEL_PATH = "/home/ubuntu/restless/restless/components/nlp/hann/default.h5"
+
 class HierarchicalAttentionNetwork:
     """
     Hierarchical Attention Network implementation.
     """
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.model = None
         self.MAX_SENTENCE_LENGTH = MAX_SENTENCE_LENGTH
         self.MAX_SENTENCE_COUNT = MAX_SENTENCE_COUNT
@@ -95,7 +97,7 @@ class HierarchicalAttentionNetwork:
         return
 
     def load_model(self, filepath: str):
-        res = load_model(filepath)
+        res = load_model(filepath, custom_objects={'AttentionLayer': AttentionLayer(Layer)})
         if res:
             self.model = res
             return self.model
@@ -216,7 +218,7 @@ class HierarchicalAttentionNetwork:
         self, embeddings_matrix, model_filepath: str = None
     ):
         if model_filepath is None:
-            model_filepath = "default" + ".h5"
+            model_filepath = DEFAULT_MODEL_PATH
         embedding_layer = Embedding(
             len(self.word_index) + 1,
             self.EMBEDDING_DIM,
@@ -262,7 +264,7 @@ class AttentionLayer(Layer):
     Attention layer for Hierarchical Attention Network.
     """
 
-    def __init__(self, attention_dim):
+    def __init__(self, attention_dim=100, **kwargs):
         self.init = initializers.get("normal")
         self.supports_masking = False
         self.attention_dim = attention_dim
@@ -311,7 +313,7 @@ if __name__ == "__main__":
 else:
     utils.print_logm("Initializing HANN.")
     hann = HierarchicalAttentionNetwork()
-    if hann.load(model('default.h5'):
+    if hann.load_model(DEFAULT_MODEL_PATH):
         hann.GLOVE_DIR = "components/nlp/hann"
     else:
         try:
