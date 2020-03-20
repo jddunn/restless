@@ -57,14 +57,16 @@ VALIDATION_SPLIT = 0.2
 
 GLOVE_DIR_PATH = "."
 
-MAX_DOCS = 100000 # Limit number of records to train for speed
+MAX_DOCS = 100000  # Limit number of records to train for speed
 
 DEFAULT_MODEL_PATH = "/home/ubuntu/restless/restless/components/nlp/hann/default.h5"
+
 
 class HierarchicalAttentionNetwork:
     """
     Hierarchical Attention Network implementation.
     """
+
     def __init__(self, **kwargs):
         self.model = None
         self.MAX_SENTENCE_LENGTH = MAX_SENTENCE_LENGTH
@@ -97,7 +99,9 @@ class HierarchicalAttentionNetwork:
         return
 
     def load_model(self, filepath: str):
-        res = load_model(filepath, custom_objects={'AttentionLayer': AttentionLayer(Layer)})
+        res = load_model(
+            filepath, custom_objects={"AttentionLayer": AttentionLayer(Layer)}
+        )
         if res:
             self.model = res
             return self.model
@@ -139,8 +143,9 @@ class HierarchicalAttentionNetwork:
             self.labels.append(data_train.classification[idx])
             print(data_train.CheckSum[idx], data_train.classification[idx])
             self.data = np.zeros(
-            (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32"
-        )
+                (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
+                dtype="int32",
+            )
         self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
         self.tokenizer.fit_on_texts(self.texts)
         for i, sentences in enumerate(self.checksums):

@@ -13,6 +13,7 @@ from components.watcher import Watcher
 from components.scanner import Scanner
 from components.nlp import nlp
 
+
 class Restless(object):
     """
     Main Restless module.

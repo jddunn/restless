@@ -15,7 +15,7 @@ if __name__ == "__main__":
                         )
     args = parser.parse_args()
     fp = args.input
-    if fp is "*"
+    if fp is "*":
         # Run full system scan
     else:
        if os.path.exists(fp):

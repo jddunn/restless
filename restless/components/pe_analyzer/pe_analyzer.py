@@ -191,6 +191,7 @@ class PE_Analyzer:
                             print("Error while saving features: ", e)
         return results
 
+
 if __name__ == "__main__":
     pea = PE_Analyzer()
     pea.send_files_recursive()
