@@ -104,7 +104,7 @@ Unless drastic changes in programming paradigms occur for writing malware (which
 ### Prerequisites
 
 * Python 3.75+
-* [Spark](Spark)
+* [Spark](Spark) (currently configured by Docker but unused by the code; training models will eventually be processed on Spark clusters)
 * [TensorFlow](TensorFlow) / [Keras](Keras)
 * [FastAPI](FastAPI)
 * [Uvicorn](Uvicorn)
