@@ -16,7 +16,6 @@ class MainAPITests(unittest.TestCase):
         client = TestClient(app)
         response = client.get("/")
         assert response.status_code == 200
-        assert response.json() == {"msg": "Hello World"}
 
 if __name__ == '__main__':
     unittest.main()
