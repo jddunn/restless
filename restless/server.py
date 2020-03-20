@@ -22,7 +22,7 @@ SERVER_PORT = 4712
 
 app = FastAPI(docs_url="/api_docs")
 
-if (utils.check_if_in_docker_container()):
+if utils.check_if_in_docker_container():
     STATIC_DOCS_PATH = "restless/docs"
 else:
     STATIC_DOCS_PATH = "../docs"

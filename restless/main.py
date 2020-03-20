@@ -15,6 +15,7 @@ from components.nlp.nlp import NLP
 
 nlp = NLP()
 
+
 class Restless(object):
     """
     Main Restless module.

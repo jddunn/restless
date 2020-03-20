@@ -69,24 +69,21 @@ CMD [$SPARK_HOME + "bin/spark-class", "org.apache.spark.deploy.master.Master"]
 
 # Python deps
 COPY requirements.txt .
+COPY misc_scripts/ ./misc_scripts/
 RUN pip install -r requirements.txt
+
+# RUN ["chmod" "777", "./misc_scripts/nltk_download.py"]
+RUN ["python", "./misc_scripts/nltk_download.py"]
 
 # Expose default port for Restless
 EXPOSE 4712 
 # WORKDIR /restless
 
-# COPY restless/ ./
-# COPY docs/ ./restless/docs
-# COPY tests ./
-
 COPY . ./restless
 
-# COPY ./restless /restless
-# COPY ./docs /docs
-# COPY ./tests /tests
 
 # Run docs auto-generation
-RUN pdoc --html restless --force; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless; cd ..
+# RUN pdoc --html restless --force; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless; cd ..
 # cd docs; cd restless; mv * .[^.]* ..;
 
 WORKDIR ./restless/restless
