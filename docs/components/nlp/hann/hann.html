@@ -56,15 +56,17 @@ from keras.layers import (
     Bidirectional,
     TimeDistributed,
 )
-from keras.models import Model
+from keras.models import Model, load_model
 
 from keras import backend as K
 from keras.engine.topology import Layer, InputSpec
 from keras import initializers
 
+from sklearn.preprocessing import OneHotEncoder
+
 import nltk
 
-
+# Make imports work for Docker package and when running as a script
 try:
     from restless.components.utils import utils
 except:
@@ -81,13 +83,17 @@ VALIDATION_SPLIT = 0.2
 
 GLOVE_DIR_PATH = &#34;.&#34;
 
+MAX_DOCS = 100000  # Limit number of records to train for speed
+
+DEFAULT_MODEL_PATH = &#34;/home/ubuntu/restless/restless/components/nlp/hann/default.h5&#34;
+
 
 class HierarchicalAttentionNetwork:
     &#34;&#34;&#34;
     Hierarchical Attention Network implementation.
     &#34;&#34;&#34;
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.model = None
         self.MAX_SENTENCE_LENGTH = MAX_SENTENCE_LENGTH
         self.MAX_SENTENCE_COUNT = MAX_SENTENCE_COUNT
@@ -102,7 +108,7 @@ class HierarchicalAttentionNetwork:
 
         self.data = None
 
-        self.reviews = []
+        self.checksums = []
         self.labels = []
         self.texts = []
 
@@ -114,16 +120,27 @@ class HierarchicalAttentionNetwork:
         self.word_index = None
         self.embeddings_matrix = None
 
-        self.GLOVE_DIR = &#39;components/nlp/hann&#39;
+        self.GLOVE_DIR = &#34;components/nlp/hann&#34;
+        self.MAX_DOCS = MAX_DOCS
         return
+
+    def load_model(self, filepath: str):
+        res = load_model(
+            filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
+        )
+        if res:
+            self.model = res
+            return self.model
+        else:
+            return None
 
     def read_data(self, filepath: str = None):
         data_train = None
         if filepath:
-            data_train = pd.read_csv(filepath, sep=&#34;\t&#34;, nrows=100)
+            data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
             print(data_train.shape)
         else:
-            data_train = pd.read_csv(&#34;labeledTrainData.tsv&#34;, sep=&#34;\t&#34;, nrows=100)
+            data_train = pd.read_csv(&#34;labeledTrainData.tsv&#34;, sep=&#34;\t&#34;, nrows=MAX_DOCS)
             print(data_train.shape)
         samples, labels = self.preprocess_data(data_train)
         self.prepare_training_and_validation_data(samples, labels)
@@ -133,11 +150,12 @@ class HierarchicalAttentionNetwork:
         return
 
     def preprocess_data(self, data_train: object):
-        for idx in range(data_train.review.shape[0]):
+        for idx in range(data_train.CheckSum.shape[0]):
             # text = BeautifulSoup(data_train.review[idx])
             # text = clean_str(text.get_text().encode(&#39;ascii&#39;, &#39;ignore&#39;))
+            text = str(data_train.CheckSum[idx])
             text = text_normalizer.normalize_text(
-                data_train.review[idx],
+                text,
                 lowercase=True,
                 strip_punct=True,
                 # remove_stopwords=True,
@@ -147,14 +165,16 @@ class HierarchicalAttentionNetwork:
             print(idx)
             self.texts.append(text)
             sentences = nltk.tokenize.sent_tokenize(text)
-            self.reviews.append(sentences)
-            self.labels.append(data_train.sentiment[idx])
-        self.data = np.zeros(
-            (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;
-        )
+            self.checksums.append(sentences)
+            self.labels.append(data_train.classification[idx])
+            print(data_train.CheckSum[idx], data_train.classification[idx])
+            self.data = np.zeros(
+                (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
+                dtype=&#34;int32&#34;,
+            )
         self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
         self.tokenizer.fit_on_texts(self.texts)
-        for i, sentences in enumerate(self.reviews):
+        for i, sentences in enumerate(self.checksums):
             for j, sent in enumerate(sentences):
                 if j &lt; MAX_SENTENCE_COUNT:
                     wordTokens = text_to_word_sequence(sent)
@@ -168,10 +188,9 @@ class HierarchicalAttentionNetwork:
                         k = k + 1
         self.word_index = self.tokenizer.word_index
         print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
+        print(&#34;Shape of data tensor before: &#34;, self.data)
+        print(&#34;Shape of labels before: &#34;, self.labels)
         self.labels = to_categorical(np.asarray(self.labels))
-        print(&#34;Shape of data tensor:&#34;, self.data.shape)
-        print(&#34;Shape of label tensor:&#34;, self.labels.shape)
-
         indices = np.arange(self.data.shape[0])
         np.random.shuffle(indices)
         self.data = self.data[indices]
@@ -184,7 +203,7 @@ class HierarchicalAttentionNetwork:
         self.y_train = self.labels[:-samples]
         self.x_val = self.data[-samples:]
         self.y_val = labels[-samples:]
-        print(&#34;Number of positive and negative reviews in traing and validation set&#34;)
+        print(&#34;Number of checksums in traing and validation set&#34;)
         print(self.y_train.sum(axis=0))
         print(self.y_val.sum(axis=0))
         return
@@ -197,7 +216,14 @@ class HierarchicalAttentionNetwork:
         try:
             f = open(os.path.abspath(os.path.join(glove_dir, &#34;glove.6B.100d.txt&#34;)))
         except:
-            f = open(os.path.abspath(os.path.join(&#39;/home/ubuntu/restless/restless/components/nlp/hann&#39;, &#34;glove.6B.100d.txt&#34;)))
+            f = open(
+                os.path.abspath(
+                    os.path.join(
+                        &#34;/home/ubuntu/restless/restless/components/nlp/hann&#34;,
+                        &#34;glove.6B.100d.txt&#34;,
+                    )
+                )
+            )
         for line in f:
             values = line.split()
             word = values[0]
@@ -223,7 +249,7 @@ class HierarchicalAttentionNetwork:
         self, embeddings_matrix, model_filepath: str = None
     ):
         if model_filepath is None:
-            model_filepath = &#34;default&#34; + &#34;.h5&#34;
+            model_filepath = DEFAULT_MODEL_PATH
         embedding_layer = Embedding(
             len(self.word_index) + 1,
             self.EMBEDDING_DIM,
@@ -232,21 +258,20 @@ class HierarchicalAttentionNetwork:
             trainable=True,
             mask_zero=True,
         )
-
         sentence_input = Input(shape=(MAX_SENTENCE_LENGTH,), dtype=&#34;int32&#34;)
         embedded_sequences = embedding_layer(sentence_input)
         l_lstm = Bidirectional(GRU(100, return_sequences=True))(embedded_sequences)
         l_att = AttentionLayer(100)(l_lstm)
         sentEncoder = Model(sentence_input, l_att)
 
-        review_input = Input(
+        checksum_input = Input(
             shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;
         )
-        review_encoder = TimeDistributed(sentEncoder)(review_input)
-        l_lstm_sent = Bidirectional(GRU(100, return_sequences=True))(review_encoder)
+        checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
+        l_lstm_sent = Bidirectional(GRU(100, return_sequences=True))(checksum_encoder)
         l_att_sent = AttentionLayer(100)(l_lstm_sent)
         preds = Dense(2, activation=&#34;softmax&#34;)(l_att_sent)
-        model = Model(review_input, preds)
+        model = Model(checksum_input, preds)
         model.compile(
             loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=[&#34;acc&#34;]
         )
@@ -255,11 +280,14 @@ class HierarchicalAttentionNetwork:
             self.x_train,
             self.y_train,
             validation_data=(self.x_val, self.y_val),
-            nb_epoch=10,
-            batch_size=50,
+            nb_epoch=2,
+            batch_size=25,
         )
         model.save(model_filepath)
         self.model = model
+
+    def predict(self, vectors):
+        return
 
 
 class AttentionLayer(Layer):
@@ -267,9 +295,9 @@ class AttentionLayer(Layer):
     Attention layer for Hierarchical Attention Network.
     &#34;&#34;&#34;
 
-    def __init__(self, attention_dim):
+    def __init__(self, attention_dim=100, **kwargs):
         self.init = initializers.get(&#34;normal&#34;)
-        self.supports_masking = True
+        self.supports_masking = False
         self.attention_dim = attention_dim
         super(AttentionLayer, self).__init__()
 
@@ -316,16 +344,15 @@ if __name__ == &#34;__main__&#34;:
 else:
     utils.print_logm(&#34;Initializing HANN.&#34;)
     hann = HierarchicalAttentionNetwork()
-    # try:
-      #  hann.read_data(&#34;./labeledTrainData.tsv&#34;)
-       # hann.GLOVE_DIR = &#34;./&#34;
-    # except:
-    try:
-        hann.read_data(&#34;components/nlp/hann/labeledTrainData.tsv&#34;)
-        hann.GLOVE_DIR = &#34;components/nlp/hann/&#34;
-    except Exception as e:
-        hann.read_data(&#34;restless/components/nlp/hann/labeledTrainData.tsv&#34;)
-        hann.GLOVE_DIR = &#34;restless/components/nlp/hann/&#34;</code></pre>
+    if hann.load_model(DEFAULT_MODEL_PATH):
+        hann.GLOVE_DIR = &#34;components/nlp/hann&#34;
+    else:
+        try:
+            hann.read_data(&#34;components/nlp/hann/malware-dataset.csv&#34;)
+            hann.GLOVE_DIR = &#34;components/nlp/hann/&#34;
+        except Exception as e:
+            hann.read_data(&#34;restless/components/nlp/hann/malware-dataset.csv&#34;)
+            hann.GLOVE_DIR = &#34;restless/components/nlp/hann/&#34;</code></pre>
 </details>
 </section>
 <section>
@@ -339,7 +366,7 @@ else:
 <dl>
 <dt id="restless.components.nlp.hann.hann.AttentionLayer"><code class="flex name class">
 <span>class <span class="ident">AttentionLayer</span></span>
-<span>(</span><span>attention_dim)</span>
+<span>(</span><span>attention_dim=100, **kwargs)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Attention layer for Hierarchical Attention Network.</p></section>
@@ -352,9 +379,9 @@ else:
     Attention layer for Hierarchical Attention Network.
     &#34;&#34;&#34;
 
-    def __init__(self, attention_dim):
+    def __init__(self, attention_dim=100, **kwargs):
         self.init = initializers.get(&#34;normal&#34;)
-        self.supports_masking = True
+        self.supports_masking = False
         self.attention_dim = attention_dim
         super(AttentionLayer, self).__init__()
 
@@ -510,6 +537,7 @@ to match that input shape provided.</p>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork"><code class="flex name class">
 <span>class <span class="ident">HierarchicalAttentionNetwork</span></span>
+<span>(</span><span>**kwargs)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Hierarchical Attention Network implementation.</p></section>
@@ -522,7 +550,7 @@ to match that input shape provided.</p>
     Hierarchical Attention Network implementation.
     &#34;&#34;&#34;
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.model = None
         self.MAX_SENTENCE_LENGTH = MAX_SENTENCE_LENGTH
         self.MAX_SENTENCE_COUNT = MAX_SENTENCE_COUNT
@@ -537,7 +565,7 @@ to match that input shape provided.</p>
 
         self.data = None
 
-        self.reviews = []
+        self.checksums = []
         self.labels = []
         self.texts = []
 
@@ -549,16 +577,27 @@ to match that input shape provided.</p>
         self.word_index = None
         self.embeddings_matrix = None
 
-        self.GLOVE_DIR = &#39;components/nlp/hann&#39;
+        self.GLOVE_DIR = &#34;components/nlp/hann&#34;
+        self.MAX_DOCS = MAX_DOCS
         return
+
+    def load_model(self, filepath: str):
+        res = load_model(
+            filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
+        )
+        if res:
+            self.model = res
+            return self.model
+        else:
+            return None
 
     def read_data(self, filepath: str = None):
         data_train = None
         if filepath:
-            data_train = pd.read_csv(filepath, sep=&#34;\t&#34;, nrows=100)
+            data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
             print(data_train.shape)
         else:
-            data_train = pd.read_csv(&#34;labeledTrainData.tsv&#34;, sep=&#34;\t&#34;, nrows=100)
+            data_train = pd.read_csv(&#34;labeledTrainData.tsv&#34;, sep=&#34;\t&#34;, nrows=MAX_DOCS)
             print(data_train.shape)
         samples, labels = self.preprocess_data(data_train)
         self.prepare_training_and_validation_data(samples, labels)
@@ -568,11 +607,12 @@ to match that input shape provided.</p>
         return
 
     def preprocess_data(self, data_train: object):
-        for idx in range(data_train.review.shape[0]):
+        for idx in range(data_train.CheckSum.shape[0]):
             # text = BeautifulSoup(data_train.review[idx])
             # text = clean_str(text.get_text().encode(&#39;ascii&#39;, &#39;ignore&#39;))
+            text = str(data_train.CheckSum[idx])
             text = text_normalizer.normalize_text(
-                data_train.review[idx],
+                text,
                 lowercase=True,
                 strip_punct=True,
                 # remove_stopwords=True,
@@ -582,14 +622,16 @@ to match that input shape provided.</p>
             print(idx)
             self.texts.append(text)
             sentences = nltk.tokenize.sent_tokenize(text)
-            self.reviews.append(sentences)
-            self.labels.append(data_train.sentiment[idx])
-        self.data = np.zeros(
-            (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;
-        )
+            self.checksums.append(sentences)
+            self.labels.append(data_train.classification[idx])
+            print(data_train.CheckSum[idx], data_train.classification[idx])
+            self.data = np.zeros(
+                (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
+                dtype=&#34;int32&#34;,
+            )
         self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
         self.tokenizer.fit_on_texts(self.texts)
-        for i, sentences in enumerate(self.reviews):
+        for i, sentences in enumerate(self.checksums):
             for j, sent in enumerate(sentences):
                 if j &lt; MAX_SENTENCE_COUNT:
                     wordTokens = text_to_word_sequence(sent)
@@ -603,10 +645,9 @@ to match that input shape provided.</p>
                         k = k + 1
         self.word_index = self.tokenizer.word_index
         print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
+        print(&#34;Shape of data tensor before: &#34;, self.data)
+        print(&#34;Shape of labels before: &#34;, self.labels)
         self.labels = to_categorical(np.asarray(self.labels))
-        print(&#34;Shape of data tensor:&#34;, self.data.shape)
-        print(&#34;Shape of label tensor:&#34;, self.labels.shape)
-
         indices = np.arange(self.data.shape[0])
         np.random.shuffle(indices)
         self.data = self.data[indices]
@@ -619,7 +660,7 @@ to match that input shape provided.</p>
         self.y_train = self.labels[:-samples]
         self.x_val = self.data[-samples:]
         self.y_val = labels[-samples:]
-        print(&#34;Number of positive and negative reviews in traing and validation set&#34;)
+        print(&#34;Number of checksums in traing and validation set&#34;)
         print(self.y_train.sum(axis=0))
         print(self.y_val.sum(axis=0))
         return
@@ -632,7 +673,14 @@ to match that input shape provided.</p>
         try:
             f = open(os.path.abspath(os.path.join(glove_dir, &#34;glove.6B.100d.txt&#34;)))
         except:
-            f = open(os.path.abspath(os.path.join(&#39;/home/ubuntu/restless/restless/components/nlp/hann&#39;, &#34;glove.6B.100d.txt&#34;)))
+            f = open(
+                os.path.abspath(
+                    os.path.join(
+                        &#34;/home/ubuntu/restless/restless/components/nlp/hann&#34;,
+                        &#34;glove.6B.100d.txt&#34;,
+                    )
+                )
+            )
         for line in f:
             values = line.split()
             word = values[0]
@@ -658,7 +706,7 @@ to match that input shape provided.</p>
         self, embeddings_matrix, model_filepath: str = None
     ):
         if model_filepath is None:
-            model_filepath = &#34;default&#34; + &#34;.h5&#34;
+            model_filepath = DEFAULT_MODEL_PATH
         embedding_layer = Embedding(
             len(self.word_index) + 1,
             self.EMBEDDING_DIM,
@@ -667,21 +715,20 @@ to match that input shape provided.</p>
             trainable=True,
             mask_zero=True,
         )
-
         sentence_input = Input(shape=(MAX_SENTENCE_LENGTH,), dtype=&#34;int32&#34;)
         embedded_sequences = embedding_layer(sentence_input)
         l_lstm = Bidirectional(GRU(100, return_sequences=True))(embedded_sequences)
         l_att = AttentionLayer(100)(l_lstm)
         sentEncoder = Model(sentence_input, l_att)
 
-        review_input = Input(
+        checksum_input = Input(
             shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;
         )
-        review_encoder = TimeDistributed(sentEncoder)(review_input)
-        l_lstm_sent = Bidirectional(GRU(100, return_sequences=True))(review_encoder)
+        checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
+        l_lstm_sent = Bidirectional(GRU(100, return_sequences=True))(checksum_encoder)
         l_att_sent = AttentionLayer(100)(l_lstm_sent)
         preds = Dense(2, activation=&#34;softmax&#34;)(l_att_sent)
-        model = Model(review_input, preds)
+        model = Model(checksum_input, preds)
         model.compile(
             loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=[&#34;acc&#34;]
         )
@@ -690,11 +737,14 @@ to match that input shape provided.</p>
             self.x_train,
             self.y_train,
             validation_data=(self.x_val, self.y_val),
-            nb_epoch=10,
-            batch_size=50,
+            nb_epoch=2,
+            batch_size=25,
         )
         model.save(model_filepath)
-        self.model = model</code></pre>
+        self.model = model
+
+    def predict(self, vectors):
+        return</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
@@ -711,7 +761,7 @@ to match that input shape provided.</p>
     self, embeddings_matrix, model_filepath: str = None
 ):
     if model_filepath is None:
-        model_filepath = &#34;default&#34; + &#34;.h5&#34;
+        model_filepath = DEFAULT_MODEL_PATH
     embedding_layer = Embedding(
         len(self.word_index) + 1,
         self.EMBEDDING_DIM,
@@ -720,21 +770,20 @@ to match that input shape provided.</p>
         trainable=True,
         mask_zero=True,
     )
-
     sentence_input = Input(shape=(MAX_SENTENCE_LENGTH,), dtype=&#34;int32&#34;)
     embedded_sequences = embedding_layer(sentence_input)
     l_lstm = Bidirectional(GRU(100, return_sequences=True))(embedded_sequences)
     l_att = AttentionLayer(100)(l_lstm)
     sentEncoder = Model(sentence_input, l_att)
 
-    review_input = Input(
+    checksum_input = Input(
         shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;
     )
-    review_encoder = TimeDistributed(sentEncoder)(review_input)
-    l_lstm_sent = Bidirectional(GRU(100, return_sequences=True))(review_encoder)
+    checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
+    l_lstm_sent = Bidirectional(GRU(100, return_sequences=True))(checksum_encoder)
     l_att_sent = AttentionLayer(100)(l_lstm_sent)
     preds = Dense(2, activation=&#34;softmax&#34;)(l_att_sent)
-    model = Model(review_input, preds)
+    model = Model(checksum_input, preds)
     model.compile(
         loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=[&#34;acc&#34;]
     )
@@ -743,8 +792,8 @@ to match that input shape provided.</p>
         self.x_train,
         self.y_train,
         validation_data=(self.x_val, self.y_val),
-        nb_epoch=10,
-        batch_size=50,
+        nb_epoch=2,
+        batch_size=25,
     )
     model.save(model_filepath)
     self.model = model</code></pre>
@@ -767,7 +816,14 @@ to match that input shape provided.</p>
     try:
         f = open(os.path.abspath(os.path.join(glove_dir, &#34;glove.6B.100d.txt&#34;)))
     except:
-        f = open(os.path.abspath(os.path.join(&#39;/home/ubuntu/restless/restless/components/nlp/hann&#39;, &#34;glove.6B.100d.txt&#34;)))
+        f = open(
+            os.path.abspath(
+                os.path.join(
+                    &#34;/home/ubuntu/restless/restless/components/nlp/hann&#34;,
+                    &#34;glove.6B.100d.txt&#34;,
+                )
+            )
+        )
     for line in f:
         values = line.split()
         word = values[0]
@@ -776,6 +832,26 @@ to match that input shape provided.</p>
     f.close()
     print(&#34;Total %s word vectors.&#34; % len(embeddings_index))
     return embeddings_index</code></pre>
+</details>
+</dd>
+<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.load_model"><code class="name flex">
+<span>def <span class="ident">load_model</span></span>(<span>self, filepath)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_model(self, filepath: str):
+    res = load_model(
+        filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
+    )
+    if res:
+        self.model = res
+        return self.model
+    else:
+        return None</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.make_embeddings_matrix"><code class="name flex">
@@ -800,6 +876,19 @@ to match that input shape provided.</p>
     return embeddings_matrix</code></pre>
 </details>
 </dd>
+<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.predict"><code class="name flex">
+<span>def <span class="ident">predict</span></span>(<span>self, vectors)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def predict(self, vectors):
+    return</code></pre>
+</details>
+</dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.prepare_training_and_validation_data"><code class="name flex">
 <span>def <span class="ident">prepare_training_and_validation_data</span></span>(<span>self, samples, labels)</span>
 </code></dt>
@@ -814,7 +903,7 @@ to match that input shape provided.</p>
     self.y_train = self.labels[:-samples]
     self.x_val = self.data[-samples:]
     self.y_val = labels[-samples:]
-    print(&#34;Number of positive and negative reviews in traing and validation set&#34;)
+    print(&#34;Number of checksums in traing and validation set&#34;)
     print(self.y_train.sum(axis=0))
     print(self.y_val.sum(axis=0))
     return</code></pre>
@@ -830,11 +919,12 @@ to match that input shape provided.</p>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def preprocess_data(self, data_train: object):
-    for idx in range(data_train.review.shape[0]):
+    for idx in range(data_train.CheckSum.shape[0]):
         # text = BeautifulSoup(data_train.review[idx])
         # text = clean_str(text.get_text().encode(&#39;ascii&#39;, &#39;ignore&#39;))
+        text = str(data_train.CheckSum[idx])
         text = text_normalizer.normalize_text(
-            data_train.review[idx],
+            text,
             lowercase=True,
             strip_punct=True,
             # remove_stopwords=True,
@@ -844,14 +934,16 @@ to match that input shape provided.</p>
         print(idx)
         self.texts.append(text)
         sentences = nltk.tokenize.sent_tokenize(text)
-        self.reviews.append(sentences)
-        self.labels.append(data_train.sentiment[idx])
-    self.data = np.zeros(
-        (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;
-    )
+        self.checksums.append(sentences)
+        self.labels.append(data_train.classification[idx])
+        print(data_train.CheckSum[idx], data_train.classification[idx])
+        self.data = np.zeros(
+            (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
+            dtype=&#34;int32&#34;,
+        )
     self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
     self.tokenizer.fit_on_texts(self.texts)
-    for i, sentences in enumerate(self.reviews):
+    for i, sentences in enumerate(self.checksums):
         for j, sent in enumerate(sentences):
             if j &lt; MAX_SENTENCE_COUNT:
                 wordTokens = text_to_word_sequence(sent)
@@ -865,10 +957,9 @@ to match that input shape provided.</p>
                     k = k + 1
     self.word_index = self.tokenizer.word_index
     print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
+    print(&#34;Shape of data tensor before: &#34;, self.data)
+    print(&#34;Shape of labels before: &#34;, self.labels)
     self.labels = to_categorical(np.asarray(self.labels))
-    print(&#34;Shape of data tensor:&#34;, self.data.shape)
-    print(&#34;Shape of label tensor:&#34;, self.labels.shape)
-
     indices = np.arange(self.data.shape[0])
     np.random.shuffle(indices)
     self.data = self.data[indices]
@@ -889,10 +980,10 @@ to match that input shape provided.</p>
 <pre><code class="python">def read_data(self, filepath: str = None):
     data_train = None
     if filepath:
-        data_train = pd.read_csv(filepath, sep=&#34;\t&#34;, nrows=100)
+        data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
         print(data_train.shape)
     else:
-        data_train = pd.read_csv(&#34;labeledTrainData.tsv&#34;, sep=&#34;\t&#34;, nrows=100)
+        data_train = pd.read_csv(&#34;labeledTrainData.tsv&#34;, sep=&#34;\t&#34;, nrows=MAX_DOCS)
         print(data_train.shape)
     samples, labels = self.preprocess_data(data_train)
     self.prepare_training_and_validation_data(samples, labels)
@@ -934,7 +1025,9 @@ to match that input shape provided.</p>
 <ul class="">
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_network_and_train_model" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_network_and_train_model">build_network_and_train_model</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_glove_embeddings" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_glove_embeddings">get_glove_embeddings</a></code></li>
+<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.load_model" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.load_model">load_model</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.make_embeddings_matrix" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.make_embeddings_matrix">make_embeddings_matrix</a></code></li>
+<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.predict" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.predict">predict</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.prepare_training_and_validation_data" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.prepare_training_and_validation_data">prepare_training_and_validation_data</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.preprocess_data" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.preprocess_data">preprocess_data</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.read_data" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.read_data">read_data</a></code></li>

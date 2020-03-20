@@ -191,15 +191,18 @@ class PE_Analyzer:
         return IMAGE_DOS_HEADER_data + FILE_HEADER_data + OPTIONAL_HEADER_data
 
     def send_files_recursive(self, rootdir: str = None):
+        resuts = []
         if not rootdir:
             rootdir = self.rootdir
         for dirpath, dirs, files in os.walk(rootdir):
+            result = ()
             for filename in files:
                 fname = os.path.join(dirpath, filename)
                 with open(fname) as myfile:
                     # print(myfile.read())
                     try:
                         pe = pefile.PE(fname)
+                        result[0] = fname
                     except Exception as e:
                         print(&#34;Exception while loading file: &#34;, e)
                         pass
@@ -207,9 +210,12 @@ class PE_Analyzer:
                         try:
                             features = self.extract_features(pe)
                             print(&#34;Writing features for: fname&#34;, features + class_label)
+                            result[1] = features
+                            results.append(result)
                             # writer.writerow(features+class_label)
                         except Exception as e:
                             print(&#34;Error while saving features: &#34;, e)
+        return results
 
 
 if __name__ == &#34;__main__&#34;:
@@ -324,15 +330,18 @@ if __name__ == &#34;__main__&#34;:
         return IMAGE_DOS_HEADER_data + FILE_HEADER_data + OPTIONAL_HEADER_data
 
     def send_files_recursive(self, rootdir: str = None):
+        resuts = []
         if not rootdir:
             rootdir = self.rootdir
         for dirpath, dirs, files in os.walk(rootdir):
+            result = ()
             for filename in files:
                 fname = os.path.join(dirpath, filename)
                 with open(fname) as myfile:
                     # print(myfile.read())
                     try:
                         pe = pefile.PE(fname)
+                        result[0] = fname
                     except Exception as e:
                         print(&#34;Exception while loading file: &#34;, e)
                         pass
@@ -340,9 +349,12 @@ if __name__ == &#34;__main__&#34;:
                         try:
                             features = self.extract_features(pe)
                             print(&#34;Writing features for: fname&#34;, features + class_label)
+                            result[1] = features
+                            results.append(result)
                             # writer.writerow(features+class_label)
                         except Exception as e:
-                            print(&#34;Error while saving features: &#34;, e)</code></pre>
+                            print(&#34;Error while saving features: &#34;, e)
+        return results</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
@@ -464,15 +476,18 @@ if __name__ == &#34;__main__&#34;:
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def send_files_recursive(self, rootdir: str = None):
+    resuts = []
     if not rootdir:
         rootdir = self.rootdir
     for dirpath, dirs, files in os.walk(rootdir):
+        result = ()
         for filename in files:
             fname = os.path.join(dirpath, filename)
             with open(fname) as myfile:
                 # print(myfile.read())
                 try:
                     pe = pefile.PE(fname)
+                    result[0] = fname
                 except Exception as e:
                     print(&#34;Exception while loading file: &#34;, e)
                     pass
@@ -480,9 +495,12 @@ if __name__ == &#34;__main__&#34;:
                     try:
                         features = self.extract_features(pe)
                         print(&#34;Writing features for: fname&#34;, features + class_label)
+                        result[1] = features
+                        results.append(result)
                         # writer.writerow(features+class_label)
                     except Exception as e:
-                        print(&#34;Error while saving features: &#34;, e)</code></pre>
+                        print(&#34;Error while saving features: &#34;, e)
+    return results</code></pre>
 </details>
 </dd>
 </dl>

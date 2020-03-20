@@ -51,12 +51,12 @@ class Restless(object):
             &#34;Restless initializing. Running system-wide scan: &#34;
             + str(self.run_system_scan)
         )
+        self.scanner = Scanner()
         if self.run_system_scan:
-            pass
             # Get last system scan time
+            self.scanner.scan_full_system()
         else:
             self.watcher = Watcher()
-        self.scanner = Scanner()
         return</code></pre>
 </details>
 </section>
@@ -90,12 +90,12 @@ class Restless(object):
             &#34;Restless initializing. Running system-wide scan: &#34;
             + str(self.run_system_scan)
         )
+        self.scanner = Scanner()
         if self.run_system_scan:
-            pass
             # Get last system scan time
+            self.scanner.scan_full_system()
         else:
             self.watcher = Watcher()
-        self.scanner = Scanner()
         return</code></pre>
 </details>
 </dd>
