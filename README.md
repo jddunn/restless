@@ -153,7 +153,7 @@ docker run -p 4712:4712 -e APP_ENV=docker --mount source=home,target=/home/ubunt
 ```
 ^ When running the Docker container, an env var `APP_ENV` should be set to `docker` (this var only needs to be set if using Docker). The param `source` would ideally be set to the home / root dir of the host drive (for full protection) or is whatever dir you want to be scanning,  and`target` must always point to the dir containing the Dockerfile and app files.
 
-$ useful for eventual dynamic analysis of files, when they will need to be tested in an isolated place).
+This will also be useful for eventual dynamic analysis of files, when they will need to be tested in an isolated place).
 
 
 ### Using Docker-Compose
