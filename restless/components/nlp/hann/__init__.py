@@ -1,2 +1,1 @@
 from .hann import HierarchicalAttentionNetwork
-
