@@ -43,6 +43,7 @@ class TextNormalizer:
     &#34;&#34;&#34;
     Tools for text pre-processing.
     &#34;&#34;&#34;
+
     def __init__(self):
         self.wordnet_tags = {
             &#34;J&#34;: wordnet.ADJ,
@@ -62,7 +63,7 @@ class TextNormalizer:
         &#34;&#34;&#34;
         return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
 
-    def lemmatize_text(self, text: str, lemmatizer: object=default_lemmatizer) -&gt; str:
+    def lemmatize_text(self, text: str, lemmatizer: object = default_lemmatizer) -&gt; str:
         &#34;&#34;&#34;
         Lemmatizes text.
 
@@ -214,6 +215,7 @@ class TextNormalizer:
     &#34;&#34;&#34;
     Tools for text pre-processing.
     &#34;&#34;&#34;
+
     def __init__(self):
         self.wordnet_tags = {
             &#34;J&#34;: wordnet.ADJ,
@@ -233,7 +235,7 @@ class TextNormalizer:
         &#34;&#34;&#34;
         return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
 
-    def lemmatize_text(self, text: str, lemmatizer: object=default_lemmatizer) -&gt; str:
+    def lemmatize_text(self, text: str, lemmatizer: object = default_lemmatizer) -&gt; str:
         &#34;&#34;&#34;
         Lemmatizes text.
 
@@ -385,7 +387,7 @@ class TextNormalizer:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def lemmatize_text(self, text: str, lemmatizer: object=default_lemmatizer) -&gt; str:
+<pre><code class="python">def lemmatize_text(self, text: str, lemmatizer: object = default_lemmatizer) -&gt; str:
     &#34;&#34;&#34;
     Lemmatizes text.
 

@@ -24,16 +24,18 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">from .hann import HANN
+<pre><code class="python">from .hann import HierarchicalAttentionNetwork
 from .text_normalizer import TextNormalizer
 
-hann = HANN()
+hann = HierarchicalAttentionNetwork()
 text_normalizer = TextNormalizer()
+
 
 class NLP:
     &#34;&#34;&#34;
     Module with all NLP and text processing related features.
     &#34;&#34;&#34;
+
     def __init__(self):
         self.hann = hann
         self.text_normalizer = text_normalizer</code></pre>
@@ -61,6 +63,7 @@ class NLP:
     &#34;&#34;&#34;
     Module with all NLP and text processing related features.
     &#34;&#34;&#34;
+
     def __init__(self):
         self.hann = hann
         self.text_normalizer = text_normalizer</code></pre>
