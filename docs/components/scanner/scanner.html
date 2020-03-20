@@ -26,6 +26,21 @@
 </summary>
 <pre><code class="python">from ..utils import utils
 
+import sys
+import os
+
+sys.path.append(&#34;../&#34;)
+sys.path.append(&#34;../../&#34;)
+
+# Following lines are for assigning parent directory dynamically.
+dir_path = os.path.dirname(os.path.realpath(__file__))
+parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
+sys.path.insert(0, parent_dir_path)
+
+from pe_analyzer import PE_Analyzer
+
+pea = PE_Analyzer()
+
 
 class Scanner:
     &#34;&#34;&#34;
@@ -33,16 +48,22 @@ class Scanner:
     &#34;&#34;&#34;
 
     def __init__(self):
-        utils.print_logm(&#34;Initializing Restless.Scanner..&#34;)
+        self.pea = pea
+        utils.print_logm(
+            &#34;Initializing Restless.Scanner with PE Analyzer: &#34; + str(self.pea)
+        )
         pass
 
     def scan_full_system(self):
-        return
+        results = self.pea.send_files_recursive(&#34;/home/ubuntu&#34;)
+        return results
 
     def scan_folder(self, folderpath: str):
+        results = self.pea.send_files_recursive(folderpath)
         return
 
     def scan_file(self, filepath: str):
+        results = self.pea.send_files_recursive(filepath)
         return</code></pre>
 </details>
 </section>
@@ -70,16 +91,22 @@ class Scanner:
     &#34;&#34;&#34;
 
     def __init__(self):
-        utils.print_logm(&#34;Initializing Restless.Scanner..&#34;)
+        self.pea = pea
+        utils.print_logm(
+            &#34;Initializing Restless.Scanner with PE Analyzer: &#34; + str(self.pea)
+        )
         pass
 
     def scan_full_system(self):
-        return
+        results = self.pea.send_files_recursive(&#34;/home/ubuntu&#34;)
+        return results
 
     def scan_folder(self, folderpath: str):
+        results = self.pea.send_files_recursive(folderpath)
         return
 
     def scan_file(self, filepath: str):
+        results = self.pea.send_files_recursive(filepath)
         return</code></pre>
 </details>
 <h3>Methods</h3>
@@ -94,6 +121,7 @@ class Scanner:
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def scan_file(self, filepath: str):
+    results = self.pea.send_files_recursive(filepath)
     return</code></pre>
 </details>
 </dd>
@@ -107,6 +135,7 @@ class Scanner:
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def scan_folder(self, folderpath: str):
+    results = self.pea.send_files_recursive(folderpath)
     return</code></pre>
 </details>
 </dd>
@@ -120,7 +149,8 @@ class Scanner:
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def scan_full_system(self):
-    return</code></pre>
+    results = self.pea.send_files_recursive(&#34;/home/ubuntu&#34;)
+    return results</code></pre>
 </details>
 </dd>
 </dl>

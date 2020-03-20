@@ -27,19 +27,14 @@
 <pre><code class="python">import numpy as np
 import pandas as pd
 from collections import defaultdict
-import re
-
-import sys
-
-sys.path.append(&#34;..&#34;)
-sys.path.append(&#34;../..&#34;)
-sys.path.append(&#34;../../..&#34;)
 
 import sys
 import os
 
-# Following lines are for assigning parent directory dynamically.
+sys.path.append(&#34;../&#34;)
+sys.path.append(&#34;../../&#34;)
 
+# Following lines are for assigning parent directory dynamically.
 dir_path = os.path.dirname(os.path.realpath(__file__))
 parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
 sys.path.insert(0, parent_dir_path)
@@ -69,6 +64,11 @@ from keras import initializers
 
 import nltk
 
+
+try:
+    from restless.components.utils import utils
+except:
+    from utils import utils
 from text_normalizer import TextNormalizer
 
 text_normalizer = TextNormalizer()
@@ -78,6 +78,8 @@ MAX_SENTENCE_COUNT = 15
 VOCABULARY_SIZE = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
+
+GLOVE_DIR_PATH = &#34;.&#34;
 
 
 class HierarchicalAttentionNetwork:
@@ -111,6 +113,8 @@ class HierarchicalAttentionNetwork:
 
         self.word_index = None
         self.embeddings_matrix = None
+
+        self.GLOVE_DIR = &#39;components/nlp/hann&#39;
         return
 
     def read_data(self, filepath: str = None):
@@ -185,9 +189,15 @@ class HierarchicalAttentionNetwork:
         print(self.y_val.sum(axis=0))
         return
 
-    def get_glove_embeddings(self, glove_dir: str = &#34;.&#34;):
+    def get_glove_embeddings(self, glove_dir: str = None):
         embeddings_index = {}
-        f = open(os.path.join(glove_dir, &#34;glove.6B.100d.txt&#34;))
+        f = None
+        if not glove_dir:
+            glove_dir = self.GLOVE_DIR
+        try:
+            f = open(os.path.abspath(os.path.join(glove_dir, &#34;glove.6B.100d.txt&#34;)))
+        except:
+            f = open(os.path.abspath(os.path.join(&#39;/home/ubuntu/restless/restless/components/nlp/hann&#39;, &#34;glove.6B.100d.txt&#34;)))
         for line in f:
             values = line.split()
             word = values[0]
@@ -301,7 +311,21 @@ class AttentionLayer(Layer):
 
 if __name__ == &#34;__main__&#34;:
     hann = HierarchicalAttentionNetwork()
-    hann.read_data(&#34;labeledTrainData.tsv&#34;)</code></pre>
+    # hann.read_data(&#34;./labeledTrainData.tsv&#34;)
+    hann.read_data(&#34;./malware-dataset.csv&#34;)
+else:
+    utils.print_logm(&#34;Initializing HANN.&#34;)
+    hann = HierarchicalAttentionNetwork()
+    # try:
+      #  hann.read_data(&#34;./labeledTrainData.tsv&#34;)
+       # hann.GLOVE_DIR = &#34;./&#34;
+    # except:
+    try:
+        hann.read_data(&#34;components/nlp/hann/labeledTrainData.tsv&#34;)
+        hann.GLOVE_DIR = &#34;components/nlp/hann/&#34;
+    except Exception as e:
+        hann.read_data(&#34;restless/components/nlp/hann/labeledTrainData.tsv&#34;)
+        hann.GLOVE_DIR = &#34;restless/components/nlp/hann/&#34;</code></pre>
 </details>
 </section>
 <section>
@@ -524,6 +548,8 @@ to match that input shape provided.</p>
 
         self.word_index = None
         self.embeddings_matrix = None
+
+        self.GLOVE_DIR = &#39;components/nlp/hann&#39;
         return
 
     def read_data(self, filepath: str = None):
@@ -598,9 +624,15 @@ to match that input shape provided.</p>
         print(self.y_val.sum(axis=0))
         return
 
-    def get_glove_embeddings(self, glove_dir: str = &#34;.&#34;):
+    def get_glove_embeddings(self, glove_dir: str = None):
         embeddings_index = {}
-        f = open(os.path.join(glove_dir, &#34;glove.6B.100d.txt&#34;))
+        f = None
+        if not glove_dir:
+            glove_dir = self.GLOVE_DIR
+        try:
+            f = open(os.path.abspath(os.path.join(glove_dir, &#34;glove.6B.100d.txt&#34;)))
+        except:
+            f = open(os.path.abspath(os.path.join(&#39;/home/ubuntu/restless/restless/components/nlp/hann&#39;, &#34;glove.6B.100d.txt&#34;)))
         for line in f:
             values = line.split()
             word = values[0]
@@ -719,7 +751,7 @@ to match that input shape provided.</p>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_glove_embeddings"><code class="name flex">
-<span>def <span class="ident">get_glove_embeddings</span></span>(<span>self, glove_dir='.')</span>
+<span>def <span class="ident">get_glove_embeddings</span></span>(<span>self, glove_dir=None)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -727,9 +759,15 @@ to match that input shape provided.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def get_glove_embeddings(self, glove_dir: str = &#34;.&#34;):
+<pre><code class="python">def get_glove_embeddings(self, glove_dir: str = None):
     embeddings_index = {}
-    f = open(os.path.join(glove_dir, &#34;glove.6B.100d.txt&#34;))
+    f = None
+    if not glove_dir:
+        glove_dir = self.GLOVE_DIR
+    try:
+        f = open(os.path.abspath(os.path.join(glove_dir, &#34;glove.6B.100d.txt&#34;)))
+    except:
+        f = open(os.path.abspath(os.path.join(&#39;/home/ubuntu/restless/restless/components/nlp/hann&#39;, &#34;glove.6B.100d.txt&#34;)))
     for line in f:
         values = line.split()
         word = values[0]

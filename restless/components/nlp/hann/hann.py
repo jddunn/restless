@@ -87,6 +87,8 @@ class HierarchicalAttentionNetwork:
 
         self.word_index = None
         self.embeddings_matrix = None
+
+        self.GLOVE_DIR = "components/nlp/hann"
         return
 
     def read_data(self, filepath: str = None):
@@ -161,13 +163,22 @@ class HierarchicalAttentionNetwork:
         print(self.y_val.sum(axis=0))
         return
 
-    def get_glove_embeddings(self, glove_dir: str = GLOVE_DIR_PATH):
+    def get_glove_embeddings(self, glove_dir: str = None):
         embeddings_index = {}
         f = None
+        if not glove_dir:
+            glove_dir = self.GLOVE_DIR
         try:
-            f = open(os.path.join(glove_dir, "glove.6B.100d.txt"))
+            f = open(os.path.abspath(os.path.join(glove_dir, "glove.6B.100d.txt")))
         except:
-            f = open(os.path.join("./components/nlp/hann", "glove.6B.100d.txt"))
+            f = open(
+                os.path.abspath(
+                    os.path.join(
+                        "/home/ubuntu/restless/restless/components/nlp/hann",
+                        "glove.6B.100d.txt",
+                    )
+                )
+            )
         for line in f:
             values = line.split()
             word = values[0]
@@ -286,6 +297,13 @@ if __name__ == "__main__":
 else:
     utils.print_logm("Initializing HANN.")
     hann = HierarchicalAttentionNetwork()
-    hann.read_data("./components/nlp/hann/labeledTrainData.tsv")
-    # hann.read_data("./components/nlp/hann/malware-dataset.csv")
-    GLOVE_DIR_PATH = "./components/nlp/hann"
+    # try:
+    #  hann.read_data("./labeledTrainData.tsv")
+    # hann.GLOVE_DIR = "./"
+    # except:
+    try:
+        hann.read_data("components/nlp/hann/labeledTrainData.tsv")
+        hann.GLOVE_DIR = "components/nlp/hann/"
+    except Exception as e:
+        hann.read_data("restless/components/nlp/hann/labeledTrainData.tsv")
+        hann.GLOVE_DIR = "restless/components/nlp/hann/"
