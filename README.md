@@ -89,8 +89,6 @@ Signature detection, the traditional method of antiviruses which creates the nee
 
 The incorporation of machine learning (usually, natural langauge processing techniques although computer vision algorithms can also be applied) in antivirus software empowers them with a level of pattern recognition that previous approaches do not have. Rather than relying on known vulnerabilities / exploits or commonly re-used patterns of malicious code, **restless** and other ML-powered antimalware programs will be able to see and understand new patterns / exploits never seen before.
 
-Unless drastic changes in programming paradigms occur for writing malware (which is possible), **restless** should be able to continue classifying new malware written years and years after the original models were trained with at least some amount of effectiveness (given an adequate training corpus).
-
 ### Architecture overview
 
 * Hierarchical attention network (LSTM) for binary classification (benign vs malicious) of EXE files via extracting PE data / other metadata (like CheckSum, which is currently completed). The HANN model is perfect as it retains some element of document structure, which is important when analyzing file contents and looking for potentially destructive patterns in code.
