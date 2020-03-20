@@ -112,3 +112,5 @@ crashlytics-build.properties
 
 # Custom
 Pipfile.lock
+
+glove.6B.zip
