@@ -17,7 +17,6 @@ class TextNormalizer:
     """
     Tools for text pre-processing.
     """
-
     def __init__(self):
         self.wordnet_tags = {
             "J": wordnet.ADJ,
@@ -32,7 +31,16 @@ class TextNormalizer:
         """
         return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
 
-    def lemmatize_text(self, text: str, lemmatizer=default_lemmatizer):
+    def lemmatize_text(self, text: str, lemmatizer: obj=default_lemmatizer):
+        """
+        Lemmatizes text.
+
+        Args:
+          text (str): Text to lemmatize.
+          lemmatizer (obj): Lemmatizer (defaults to WordNetLemmatizer).
+        Returns:
+          str: Lemmatized text.
+        """
         tokens = self.tokenize_text(text)
         if isinstance(default_lemmatizer, WordNetLemmatizer):
             return " ".join(
@@ -45,20 +53,62 @@ class TextNormalizer:
             return " ".join([lemmatizer.lemmatize(token) for token in tokens])
 
     def stem_text(self, text: str, stemmer=default_stemmer):
+        """
+        Stems text.
+
+        Args:
+          text (str): Text to stem.
+          stemmer (obj): Stemmer (defaults to LancasterStemmer).
+        Returns:
+          str: Stemmed text.
+        """
         tokens = self.tokenize_text(text)
         return " ".join([stemmer.stem(t) for t in tokens])
 
     def remove_stopwords(self, text: str, stop_words=default_stopwords):
+        """
+        Removes stopwords from text.
+
+        Args:
+          text (str): Text to remove stopwords from.
+          stop_words (list): List of stopwords (defaults to NLTK)..
+        Returns:
+          str: Text with stopwords removed.
+        """
         tokens = [w for w in self.tokenize_text(text) if w not in stop_words]
         return " ".join(tokens)
 
     def strip_whitepsace(self, text: str):
+        """
+        Strips whitespace from text.
+
+        Args:
+          text (str): Text to strip whitespace from.
+        Returns:
+          str: Text with whitespace stripped.
+        """
         return text.strip()
 
     def lowercase_text(self, text: str):
+        """
+        Converts text to lowercase.
+
+        Args:
+          text (str): Text to make lowercase.
+        Returns:
+          str: Lowercased text.
+        """
         return text.lower()
 
     def strip_punctuation(self, text: str):
+        """
+        Strips punctuation from text.
+
+        Args:
+          text (str): Text to strip punctuation from from.
+        Returns:
+          str: Text with punctuation stripped.
+        """
         return text.translate(str.maketrans("", "", string.punctuation))
 
     def _get_wordnet_pos(self, word: str, wordnet_tags: dict = None):
@@ -78,6 +128,20 @@ class TextNormalizer:
         lemmatize_text: bool = False,
         stem_text: bool = False,
     ):
+        """
+        Normalizes text.
+
+        Args:
+          text (str): Text to normalize.
+          lowercase (bool): Lowercase text (Defaults to False).
+          strip_punct (bool): Strip punctuation (Defaults to False).
+          strip_whitespace (bool): Strip whitespace (Defaults to False).
+          remove_stopworsd (bool): Remove stopwords (Defaults to False).
+          lemmatize_text (bool): Lemmatize text (Defaults to False).
+          stem_text (bool): Stem text (Defaults to False).
+        Returns:
+          str: Normalized text.
+        """
         normalized_text = text
         if lowercase:
             # we don't want to lowercase by default, because capitalization means
