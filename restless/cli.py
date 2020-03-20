@@ -20,7 +20,7 @@ if __name__ == "__main__":
         # Run full system scan
     else:
         if os.path.exists(fp):
-            restless.scanner.scan_folder(fp)
+            restless.scan_folder(fp)
         else:
            print("Input is not a valid filepath! Please pass the absolute path or relative path if the files are inside the same dir.")
            exit()

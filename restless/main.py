@@ -13,7 +13,6 @@ from components.watcher import Watcher
 from components.scanner import Scanner
 from components.nlp import nlp
 
-
 class Restless(object):
     """
     Main Restless module.
@@ -31,4 +30,21 @@ class Restless(object):
             self.scanner.scan_full_system()
         else:
             self.watcher = Watcher()
+        self.nlp = nlp
         return
+
+    def scan_full_system(self):
+        results = self.scanner.scan_full_system()
+        return results
+
+    def scan_folder(self, filepath:str):
+        results = []
+        file_results = self.scanner.scan_folder(filepath)
+        for file_result in file_results:
+            fname = file_result[0]
+            features = file_result[1]
+            matrix_results = self.nlp.hann.build_matrix_from_features(features)
+            res = (fname, self.nlp.hann.predict(matrix_results))
+            results.append(res)
+            utils.print_logm("Scanned " + str(res[0]) + " - predicted: " + str(res[1][0]) + " benign and " + str(res[1][1]) + " malicious")
+        return results

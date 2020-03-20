@@ -4,6 +4,7 @@ from collections import defaultdict
 
 import sys
 import os
+import string
 
 sys.path.append("../")
 sys.path.append("../../")
@@ -18,7 +19,7 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.utils.np_utils import to_categorical
 
 from keras.layers import Embedding
-from keras.layers import Dense, Input, Flatten
+from keras.layers import Dense, Input, InputLayer, Flatten
 from keras.layers import (
     Conv1D,
     MaxPooling1D,
@@ -68,7 +69,8 @@ class HierarchicalAttentionNetwork:
     """
 
     def __init__(self, **kwargs):
-        self.model = None
+        self.model = load_model(DEFAULT_MODEL_PATH, custom_objects={'AttentionLayer': AttentionLayer})
+        self.model.load_weights(DEFAULT_MODEL_PATH)
         self.MAX_SENTENCE_LENGTH = MAX_SENTENCE_LENGTH
         self.MAX_SENTENCE_COUNT = MAX_SENTENCE_COUNT
         self.VOCABULARY_SIZE = VOCABULARY_SIZE
@@ -104,7 +106,7 @@ class HierarchicalAttentionNetwork:
         )
         if res:
             self.model = res
-            return self.model
+            return True
         else:
             return None
 
@@ -142,10 +144,10 @@ class HierarchicalAttentionNetwork:
             self.checksums.append(sentences)
             self.labels.append(data_train.classification[idx])
             print(data_train.CheckSum[idx], data_train.classification[idx])
-            self.data = np.zeros(
+        self.data = np.zeros(
                 (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
                 dtype="int32",
-            )
+        )
         self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
         self.tokenizer.fit_on_texts(self.texts)
         for i, sentences in enumerate(self.checksums):
@@ -249,7 +251,7 @@ class HierarchicalAttentionNetwork:
         model.compile(
             loss="categorical_crossentropy", optimizer="rmsprop", metrics=["acc"]
         )
-        print("model fitting - Hierachical attention network")
+        print("Training HANN model now..")
         model.fit(
             self.x_train,
             self.y_train,
@@ -260,9 +262,42 @@ class HierarchicalAttentionNetwork:
         model.save(model_filepath)
         self.model = model
 
-    def predict(self, vectors):
-        return
+    def build_matrix_from_features(self, features):
+        checksum = str(features[42])
+        sentences = nltk.tokenize.sent_tokenize(checksum)
+        data = np.zeros(
+                (1, MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
+                dtype="int32",
+        )
+        tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
+        tokenizer.fit_on_texts([checksum])
+        for j, sent in enumerate(sentences):
+            if j < MAX_SENTENCE_COUNT:
+                wordTokens = text_to_word_sequence(sent)
+                k = 0
+            for _, word in enumerate(wordTokens):
+                if (
+                    k < MAX_SENTENCE_LENGTH
+                    and tokenizer.word_index[word] < VOCABULARY_SIZE
+                 ):
+                    data[0, j, k] = tokenizer.word_index[word]
+                    k = k + 1
+        return data
 
+    def predict(self, data):
+        res = self.model.predict(data)
+        if res is None:
+           self.load_model(DEFAULT_MODEL_PATH)
+           res = self.model.predict_classes(data)
+        # print("Predicting=%s, Predicted=%s" % (data, res[0]))
+        probs = str(res[0])
+        probs = probs.replace('[', '')
+        probs = probs.replace(']', '')
+        probs = probs.strip()
+        tokens = probs.split(' ')
+        benign = tokens[0]
+        malicious = tokens[1]
+        return (benign, malicious)
 
 class AttentionLayer(Layer):
     """
@@ -320,6 +355,7 @@ else:
     hann = HierarchicalAttentionNetwork()
     if hann.load_model(DEFAULT_MODEL_PATH):
         hann.GLOVE_DIR = "components/nlp/hann"
+        print("Succesfully loaded HANN model: ", DEFAULT_MODEL_PATH)
     else:
         try:
             hann.read_data("components/nlp/hann/malware-dataset.csv")

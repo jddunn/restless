@@ -15,7 +15,6 @@ from pe_analyzer import PE_Analyzer
 
 pea = PE_Analyzer()
 
-
 class Scanner:
     """
     Extracts and analyzes information from files and classifies it for malware probability using NLP models.
