@@ -191,26 +191,28 @@ class PE_Analyzer:
         return IMAGE_DOS_HEADER_data + FILE_HEADER_data + OPTIONAL_HEADER_data
 
     def send_files_recursive(self, rootdir: str = None):
-        resuts = []
+        results = []
         if not rootdir:
             rootdir = self.rootdir
         for dirpath, dirs, files in os.walk(rootdir):
-            result = ()
             for filename in files:
                 fname = os.path.join(dirpath, filename)
                 with open(fname) as myfile:
                     # print(myfile.read())
                     try:
                         pe = pefile.PE(fname)
-                        result[0] = fname
                     except Exception as e:
-                        print(&#34;Exception while loading file: &#34;, e)
+                        print(&#34;File: &#34;, fname, &#34; cannot be analyzed - &#34;, e)
                         pass
                     else:
                         try:
                             features = self.extract_features(pe)
-                            print(&#34;Writing features for: fname&#34;, features + class_label)
-                            result[1] = features
+                            print(
+                                &#34;File features found for: &#34;,
+                                fname,
+                                features + class_label,
+                            )
+                            result = (fname, features)
                             results.append(result)
                             # writer.writerow(features+class_label)
                         except Exception as e:
@@ -330,26 +332,28 @@ if __name__ == &#34;__main__&#34;:
         return IMAGE_DOS_HEADER_data + FILE_HEADER_data + OPTIONAL_HEADER_data
 
     def send_files_recursive(self, rootdir: str = None):
-        resuts = []
+        results = []
         if not rootdir:
             rootdir = self.rootdir
         for dirpath, dirs, files in os.walk(rootdir):
-            result = ()
             for filename in files:
                 fname = os.path.join(dirpath, filename)
                 with open(fname) as myfile:
                     # print(myfile.read())
                     try:
                         pe = pefile.PE(fname)
-                        result[0] = fname
                     except Exception as e:
-                        print(&#34;Exception while loading file: &#34;, e)
+                        print(&#34;File: &#34;, fname, &#34; cannot be analyzed - &#34;, e)
                         pass
                     else:
                         try:
                             features = self.extract_features(pe)
-                            print(&#34;Writing features for: fname&#34;, features + class_label)
-                            result[1] = features
+                            print(
+                                &#34;File features found for: &#34;,
+                                fname,
+                                features + class_label,
+                            )
+                            result = (fname, features)
                             results.append(result)
                             # writer.writerow(features+class_label)
                         except Exception as e:
@@ -476,26 +480,28 @@ if __name__ == &#34;__main__&#34;:
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def send_files_recursive(self, rootdir: str = None):
-    resuts = []
+    results = []
     if not rootdir:
         rootdir = self.rootdir
     for dirpath, dirs, files in os.walk(rootdir):
-        result = ()
         for filename in files:
             fname = os.path.join(dirpath, filename)
             with open(fname) as myfile:
                 # print(myfile.read())
                 try:
                     pe = pefile.PE(fname)
-                    result[0] = fname
                 except Exception as e:
-                    print(&#34;Exception while loading file: &#34;, e)
+                    print(&#34;File: &#34;, fname, &#34; cannot be analyzed - &#34;, e)
                     pass
                 else:
                     try:
                         features = self.extract_features(pe)
-                        print(&#34;Writing features for: fname&#34;, features + class_label)
-                        result[1] = features
+                        print(
+                            &#34;File features found for: &#34;,
+                            fname,
+                            features + class_label,
+                        )
+                        result = (fname, features)
                         results.append(result)
                         # writer.writerow(features+class_label)
                     except Exception as e:

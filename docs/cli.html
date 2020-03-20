@@ -35,10 +35,14 @@ restless = Restless(run_system_scan=False)
 
 if __name__ == &#34;__main__&#34;:
     parser = argparse.ArgumentParser(
-        description=&#39;CLI for using Restless to scan files for malware. Results of the scan will be printed.&#39;)
-    parser.add_argument(&#34;-i&#34;, &#39;--input&#39;, required=True,
-                        help=&#39;File path to scan or folder path to scan recursively.&#39;
-                        )
+        description=&#34;CLI for using Restless to scan files for malware. Results of the scan will be printed.&#34;
+    )
+    parser.add_argument(
+        &#34;-i&#34;,
+        &#34;--input&#34;,
+        required=True,
+        help=&#34;File path to scan or folder path to scan recursively.&#34;,
+    )
     args = parser.parse_args()
     fp = args.input
     if fp is &#34;*&#34;:
@@ -46,10 +50,12 @@ if __name__ == &#34;__main__&#34;:
         # Run full system scan
     else:
         if os.path.exists(fp):
-            restless.scanner.scan_folder(fp)
+            restless.scan_folder(fp)
         else:
-           print(&#34;Input is not a valid filepath! Please pass the absolute path or relative path if the files are inside the same dir.&#34;)
-           exit()</code></pre>
+            print(
+                &#34;Input is not a valid filepath! Please pass the absolute path or relative path if the files are inside the same dir.&#34;
+            )
+            exit()</code></pre>
 </details>
 </section>
 <section>

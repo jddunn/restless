@@ -181,7 +181,11 @@ class PE_Analyzer:
                     else:
                         try:
                             features = self.extract_features(pe)
-                            print("File features found for: ", fname, features + class_label)
+                            print(
+                                "File features found for: ",
+                                fname,
+                                features + class_label,
+                            )
                             result = (fname, features)
                             results.append(result)
                             # writer.writerow(features+class_label)

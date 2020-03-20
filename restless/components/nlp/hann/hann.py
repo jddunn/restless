@@ -69,7 +69,9 @@ class HierarchicalAttentionNetwork:
     """
 
     def __init__(self, **kwargs):
-        self.model = load_model(DEFAULT_MODEL_PATH, custom_objects={'AttentionLayer': AttentionLayer})
+        self.model = load_model(
+            DEFAULT_MODEL_PATH, custom_objects={"AttentionLayer": AttentionLayer}
+        )
         self.model.load_weights(DEFAULT_MODEL_PATH)
         self.MAX_SENTENCE_LENGTH = MAX_SENTENCE_LENGTH
         self.MAX_SENTENCE_COUNT = MAX_SENTENCE_COUNT
@@ -145,8 +147,7 @@ class HierarchicalAttentionNetwork:
             self.labels.append(data_train.classification[idx])
             print(data_train.CheckSum[idx], data_train.classification[idx])
         self.data = np.zeros(
-                (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
-                dtype="int32",
+            (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32",
         )
         self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
         self.tokenizer.fit_on_texts(self.texts)
@@ -265,10 +266,7 @@ class HierarchicalAttentionNetwork:
     def build_matrix_from_features(self, features):
         checksum = str(features[42])
         sentences = nltk.tokenize.sent_tokenize(checksum)
-        data = np.zeros(
-                (1, MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
-                dtype="int32",
-        )
+        data = np.zeros((1, MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32",)
         tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
         tokenizer.fit_on_texts([checksum])
         for j, sent in enumerate(sentences):
@@ -279,7 +277,7 @@ class HierarchicalAttentionNetwork:
                 if (
                     k < MAX_SENTENCE_LENGTH
                     and tokenizer.word_index[word] < VOCABULARY_SIZE
-                 ):
+                ):
                     data[0, j, k] = tokenizer.word_index[word]
                     k = k + 1
         return data
@@ -287,17 +285,18 @@ class HierarchicalAttentionNetwork:
     def predict(self, data):
         res = self.model.predict(data)
         if res is None:
-           self.load_model(DEFAULT_MODEL_PATH)
-           res = self.model.predict_classes(data)
+            self.load_model(DEFAULT_MODEL_PATH)
+            res = self.model.predict_classes(data)
         # print("Predicting=%s, Predicted=%s" % (data, res[0]))
         probs = str(res[0])
-        probs = probs.replace('[', '')
-        probs = probs.replace(']', '')
+        probs = probs.replace("[", "")
+        probs = probs.replace("]", "")
         probs = probs.strip()
-        tokens = probs.split(' ')
+        tokens = probs.split(" ")
         benign = tokens[0]
         malicious = tokens[1]
         return (benign, malicious)
+
 
 class AttentionLayer(Layer):
     """
