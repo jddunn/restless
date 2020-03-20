@@ -43,7 +43,6 @@ class TextNormalizer:
     &#34;&#34;&#34;
     Tools for text pre-processing.
     &#34;&#34;&#34;
-
     def __init__(self):
         self.wordnet_tags = {
             &#34;J&#34;: wordnet.ADJ,
@@ -52,13 +51,27 @@ class TextNormalizer:
             &#34;R&#34;: wordnet.ADV,
         }
 
-    def tokenize_text(self, text: str):
+    def tokenize_text(self, text: str) -&gt; list:
         &#34;&#34;&#34;
         Tokenizes text.
+
+        Args:
+          text (str): Text to tokenize.
+        Returns:
+          list: List of tokens.
         &#34;&#34;&#34;
         return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
 
-    def lemmatize_text(self, text: str, lemmatizer=default_lemmatizer):
+    def lemmatize_text(self, text: str, lemmatizer: object=default_lemmatizer) -&gt; str:
+        &#34;&#34;&#34;
+        Lemmatizes text.
+
+        Args:
+          text (str): Text to lemmatize.
+          lemmatizer (obj): Lemmatizer (defaults to WordNetLemmatizer).
+        Returns:
+          str: Lemmatized text.
+        &#34;&#34;&#34;
         tokens = self.tokenize_text(text)
         if isinstance(default_lemmatizer, WordNetLemmatizer):
             return &#34; &#34;.join(
@@ -70,21 +83,63 @@ class TextNormalizer:
         else:
             return &#34; &#34;.join([lemmatizer.lemmatize(token) for token in tokens])
 
-    def stem_text(self, text: str, stemmer=default_stemmer):
+    def stem_text(self, text: str, stemmer=default_stemmer) -&gt; str:
+        &#34;&#34;&#34;
+        Stems text.
+
+        Args:
+          text (str): Text to stem.
+          stemmer (obj): Stemmer (defaults to LancasterStemmer).
+        Returns:
+          str: Stemmed text.
+        &#34;&#34;&#34;
         tokens = self.tokenize_text(text)
         return &#34; &#34;.join([stemmer.stem(t) for t in tokens])
 
-    def remove_stopwords(self, text: str, stop_words=default_stopwords):
+    def remove_stopwords(self, text: str, stop_words=default_stopwords) -&gt; str:
+        &#34;&#34;&#34;
+        Removes stopwords from text.
+
+        Args:
+          text (str): Text to remove stopwords from.
+          stop_words (list): List of stopwords (defaults to NLTK)..
+        Returns:
+          str: Text with stopwords removed.
+        &#34;&#34;&#34;
         tokens = [w for w in self.tokenize_text(text) if w not in stop_words]
         return &#34; &#34;.join(tokens)
 
-    def strip_whitepsace(self, text: str):
+    def strip_whitepsace(self, text: str) -&gt; str:
+        &#34;&#34;&#34;
+        Strips whitespace from text.
+
+        Args:
+          text (str): Text to strip whitespace from.
+        Returns:
+          str: Text with whitespace stripped.
+        &#34;&#34;&#34;
         return text.strip()
 
-    def lowercase_text(self, text: str):
+    def lowercase_text(self, text: str) -&gt; str:
+        &#34;&#34;&#34;
+        Converts text to lowercase.
+
+        Args:
+          text (str): Text to make lowercase.
+        Returns:
+          str: Lowercased text.
+        &#34;&#34;&#34;
         return text.lower()
 
-    def strip_punctuation(self, text: str):
+    def strip_punctuation(self, text: str) -&gt; str:
+        &#34;&#34;&#34;
+        Strips punctuation from text.
+
+        Args:
+          text (str): Text to strip punctuation from from.
+        Returns:
+          str: Text with punctuation stripped.
+        &#34;&#34;&#34;
         return text.translate(str.maketrans(&#34;&#34;, &#34;&#34;, string.punctuation))
 
     def _get_wordnet_pos(self, word: str, wordnet_tags: dict = None):
@@ -103,7 +158,21 @@ class TextNormalizer:
         remove_stopwords: bool = False,
         lemmatize_text: bool = False,
         stem_text: bool = False,
-    ):
+    ) -&gt; str:
+        &#34;&#34;&#34;
+        Normalizes text.
+
+        Args:
+          text (str): Text to normalize.
+          lowercase (bool): Lowercase text (Defaults to False).
+          strip_punct (bool): Strip punctuation (Defaults to False).
+          strip_whitespace (bool): Strip whitespace (Defaults to False).
+          remove_stopworsd (bool): Remove stopwords (Defaults to False).
+          lemmatize_text (bool): Lemmatize text (Defaults to False).
+          stem_text (bool): Stem text (Defaults to False).
+        Returns:
+          str: Normalized text.
+        &#34;&#34;&#34;
         normalized_text = text
         if lowercase:
             # we don&#39;t want to lowercase by default, because capitalization means
@@ -145,7 +214,6 @@ class TextNormalizer:
     &#34;&#34;&#34;
     Tools for text pre-processing.
     &#34;&#34;&#34;
-
     def __init__(self):
         self.wordnet_tags = {
             &#34;J&#34;: wordnet.ADJ,
@@ -154,13 +222,27 @@ class TextNormalizer:
             &#34;R&#34;: wordnet.ADV,
         }
 
-    def tokenize_text(self, text: str):
+    def tokenize_text(self, text: str) -&gt; list:
         &#34;&#34;&#34;
         Tokenizes text.
+
+        Args:
+          text (str): Text to tokenize.
+        Returns:
+          list: List of tokens.
         &#34;&#34;&#34;
         return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
 
-    def lemmatize_text(self, text: str, lemmatizer=default_lemmatizer):
+    def lemmatize_text(self, text: str, lemmatizer: object=default_lemmatizer) -&gt; str:
+        &#34;&#34;&#34;
+        Lemmatizes text.
+
+        Args:
+          text (str): Text to lemmatize.
+          lemmatizer (obj): Lemmatizer (defaults to WordNetLemmatizer).
+        Returns:
+          str: Lemmatized text.
+        &#34;&#34;&#34;
         tokens = self.tokenize_text(text)
         if isinstance(default_lemmatizer, WordNetLemmatizer):
             return &#34; &#34;.join(
@@ -172,21 +254,63 @@ class TextNormalizer:
         else:
             return &#34; &#34;.join([lemmatizer.lemmatize(token) for token in tokens])
 
-    def stem_text(self, text: str, stemmer=default_stemmer):
+    def stem_text(self, text: str, stemmer=default_stemmer) -&gt; str:
+        &#34;&#34;&#34;
+        Stems text.
+
+        Args:
+          text (str): Text to stem.
+          stemmer (obj): Stemmer (defaults to LancasterStemmer).
+        Returns:
+          str: Stemmed text.
+        &#34;&#34;&#34;
         tokens = self.tokenize_text(text)
         return &#34; &#34;.join([stemmer.stem(t) for t in tokens])
 
-    def remove_stopwords(self, text: str, stop_words=default_stopwords):
+    def remove_stopwords(self, text: str, stop_words=default_stopwords) -&gt; str:
+        &#34;&#34;&#34;
+        Removes stopwords from text.
+
+        Args:
+          text (str): Text to remove stopwords from.
+          stop_words (list): List of stopwords (defaults to NLTK)..
+        Returns:
+          str: Text with stopwords removed.
+        &#34;&#34;&#34;
         tokens = [w for w in self.tokenize_text(text) if w not in stop_words]
         return &#34; &#34;.join(tokens)
 
-    def strip_whitepsace(self, text: str):
+    def strip_whitepsace(self, text: str) -&gt; str:
+        &#34;&#34;&#34;
+        Strips whitespace from text.
+
+        Args:
+          text (str): Text to strip whitespace from.
+        Returns:
+          str: Text with whitespace stripped.
+        &#34;&#34;&#34;
         return text.strip()
 
-    def lowercase_text(self, text: str):
+    def lowercase_text(self, text: str) -&gt; str:
+        &#34;&#34;&#34;
+        Converts text to lowercase.
+
+        Args:
+          text (str): Text to make lowercase.
+        Returns:
+          str: Lowercased text.
+        &#34;&#34;&#34;
         return text.lower()
 
-    def strip_punctuation(self, text: str):
+    def strip_punctuation(self, text: str) -&gt; str:
+        &#34;&#34;&#34;
+        Strips punctuation from text.
+
+        Args:
+          text (str): Text to strip punctuation from from.
+        Returns:
+          str: Text with punctuation stripped.
+        &#34;&#34;&#34;
         return text.translate(str.maketrans(&#34;&#34;, &#34;&#34;, string.punctuation))
 
     def _get_wordnet_pos(self, word: str, wordnet_tags: dict = None):
@@ -205,7 +329,21 @@ class TextNormalizer:
         remove_stopwords: bool = False,
         lemmatize_text: bool = False,
         stem_text: bool = False,
-    ):
+    ) -&gt; str:
+        &#34;&#34;&#34;
+        Normalizes text.
+
+        Args:
+          text (str): Text to normalize.
+          lowercase (bool): Lowercase text (Defaults to False).
+          strip_punct (bool): Strip punctuation (Defaults to False).
+          strip_whitespace (bool): Strip whitespace (Defaults to False).
+          remove_stopworsd (bool): Remove stopwords (Defaults to False).
+          lemmatize_text (bool): Lemmatize text (Defaults to False).
+          stem_text (bool): Stem text (Defaults to False).
+        Returns:
+          str: Normalized text.
+        &#34;&#34;&#34;
         normalized_text = text
         if lowercase:
             # we don&#39;t want to lowercase by default, because capitalization means
@@ -230,12 +368,33 @@ class TextNormalizer:
 <span>def <span class="ident">lemmatize_text</span></span>(<span>self, text, lemmatizer=&lt;WordNetLemmatizer&gt;)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Lemmatizes text.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
+<dd>Text to lemmatize.</dd>
+<dt><strong><code>lemmatizer</code></strong> :&ensp;<code>obj</code></dt>
+<dd>Lemmatizer (defaults to WordNetLemmatizer).</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>str</code></strong></dt>
+<dd>Lemmatized text.</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def lemmatize_text(self, text: str, lemmatizer=default_lemmatizer):
+<pre><code class="python">def lemmatize_text(self, text: str, lemmatizer: object=default_lemmatizer) -&gt; str:
+    &#34;&#34;&#34;
+    Lemmatizes text.
+
+    Args:
+      text (str): Text to lemmatize.
+      lemmatizer (obj): Lemmatizer (defaults to WordNetLemmatizer).
+    Returns:
+      str: Lemmatized text.
+    &#34;&#34;&#34;
     tokens = self.tokenize_text(text)
     if isinstance(default_lemmatizer, WordNetLemmatizer):
         return &#34; &#34;.join(
@@ -252,12 +411,30 @@ class TextNormalizer:
 <span>def <span class="ident">lowercase_text</span></span>(<span>self, text)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Converts text to lowercase.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
+<dd>Text to make lowercase.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>str</code></strong></dt>
+<dd>Lowercased text.</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def lowercase_text(self, text: str):
+<pre><code class="python">def lowercase_text(self, text: str) -&gt; str:
+    &#34;&#34;&#34;
+    Converts text to lowercase.
+
+    Args:
+      text (str): Text to make lowercase.
+    Returns:
+      str: Lowercased text.
+    &#34;&#34;&#34;
     return text.lower()</code></pre>
 </details>
 </dd>
@@ -265,7 +442,29 @@ class TextNormalizer:
 <span>def <span class="ident">normalize_text</span></span>(<span>self, text, lowercase=False, strip_punct=False, strip_whitespace=True, remove_stopwords=False, lemmatize_text=False, stem_text=False)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Normalizes text.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
+<dd>Text to normalize.</dd>
+<dt><strong><code>lowercase</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Lowercase text (Defaults to False).</dd>
+<dt><strong><code>strip_punct</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Strip punctuation (Defaults to False).</dd>
+<dt><strong><code>strip_whitespace</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Strip whitespace (Defaults to False).</dd>
+<dt><strong><code>remove_stopworsd</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Remove stopwords (Defaults to False).</dd>
+<dt><strong><code>lemmatize_text</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Lemmatize text (Defaults to False).</dd>
+<dt><strong><code>stem_text</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Stem text (Defaults to False).</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>str</code></strong></dt>
+<dd>Normalized text.</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -279,7 +478,21 @@ class TextNormalizer:
     remove_stopwords: bool = False,
     lemmatize_text: bool = False,
     stem_text: bool = False,
-):
+) -&gt; str:
+    &#34;&#34;&#34;
+    Normalizes text.
+
+    Args:
+      text (str): Text to normalize.
+      lowercase (bool): Lowercase text (Defaults to False).
+      strip_punct (bool): Strip punctuation (Defaults to False).
+      strip_whitespace (bool): Strip whitespace (Defaults to False).
+      remove_stopworsd (bool): Remove stopwords (Defaults to False).
+      lemmatize_text (bool): Lemmatize text (Defaults to False).
+      stem_text (bool): Stem text (Defaults to False).
+    Returns:
+      str: Normalized text.
+    &#34;&#34;&#34;
     normalized_text = text
     if lowercase:
         # we don&#39;t want to lowercase by default, because capitalization means
@@ -303,12 +516,33 @@ class TextNormalizer:
 <span>def <span class="ident">remove_stopwords</span></span>(<span>self, text, stop_words=['i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", "you've", "you'll", "you'd", 'your', 'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', "that'll", 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', "don't", 'should', "should've", 'now', 'd', 'll', 'm', 'o', 're', 've', 'y', 'ain', 'aren', "aren't", 'couldn', "couldn't", 'didn', "didn't", 'doesn', "doesn't", 'hadn', "hadn't", 'hasn', "hasn't", 'haven', "haven't", 'isn', "isn't", 'ma', 'mightn', "mightn't", 'mustn', "mustn't", 'needn', "needn't", 'shan', "shan't", 'shouldn', "shouldn't", 'wasn', "wasn't", 'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"])</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Removes stopwords from text.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
+<dd>Text to remove stopwords from.</dd>
+<dt><strong><code>stop_words</code></strong> :&ensp;<code>list</code></dt>
+<dd>List of stopwords (defaults to NLTK)..</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>str</code></strong></dt>
+<dd>Text with stopwords removed.</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def remove_stopwords(self, text: str, stop_words=default_stopwords):
+<pre><code class="python">def remove_stopwords(self, text: str, stop_words=default_stopwords) -&gt; str:
+    &#34;&#34;&#34;
+    Removes stopwords from text.
+
+    Args:
+      text (str): Text to remove stopwords from.
+      stop_words (list): List of stopwords (defaults to NLTK)..
+    Returns:
+      str: Text with stopwords removed.
+    &#34;&#34;&#34;
     tokens = [w for w in self.tokenize_text(text) if w not in stop_words]
     return &#34; &#34;.join(tokens)</code></pre>
 </details>
@@ -317,12 +551,33 @@ class TextNormalizer:
 <span>def <span class="ident">stem_text</span></span>(<span>self, text, stemmer=&lt;LancasterStemmer&gt;)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Stems text.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
+<dd>Text to stem.</dd>
+<dt><strong><code>stemmer</code></strong> :&ensp;<code>obj</code></dt>
+<dd>Stemmer (defaults to LancasterStemmer).</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>str</code></strong></dt>
+<dd>Stemmed text.</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def stem_text(self, text: str, stemmer=default_stemmer):
+<pre><code class="python">def stem_text(self, text: str, stemmer=default_stemmer) -&gt; str:
+    &#34;&#34;&#34;
+    Stems text.
+
+    Args:
+      text (str): Text to stem.
+      stemmer (obj): Stemmer (defaults to LancasterStemmer).
+    Returns:
+      str: Stemmed text.
+    &#34;&#34;&#34;
     tokens = self.tokenize_text(text)
     return &#34; &#34;.join([stemmer.stem(t) for t in tokens])</code></pre>
 </details>
@@ -331,12 +586,30 @@ class TextNormalizer:
 <span>def <span class="ident">strip_punctuation</span></span>(<span>self, text)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Strips punctuation from text.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
+<dd>Text to strip punctuation from from.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>str</code></strong></dt>
+<dd>Text with punctuation stripped.</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def strip_punctuation(self, text: str):
+<pre><code class="python">def strip_punctuation(self, text: str) -&gt; str:
+    &#34;&#34;&#34;
+    Strips punctuation from text.
+
+    Args:
+      text (str): Text to strip punctuation from from.
+    Returns:
+      str: Text with punctuation stripped.
+    &#34;&#34;&#34;
     return text.translate(str.maketrans(&#34;&#34;, &#34;&#34;, string.punctuation))</code></pre>
 </details>
 </dd>
@@ -344,12 +617,30 @@ class TextNormalizer:
 <span>def <span class="ident">strip_whitepsace</span></span>(<span>self, text)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Strips whitespace from text.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
+<dd>Text to strip whitespace from.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>str</code></strong></dt>
+<dd>Text with whitespace stripped.</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def strip_whitepsace(self, text: str):
+<pre><code class="python">def strip_whitepsace(self, text: str) -&gt; str:
+    &#34;&#34;&#34;
+    Strips whitespace from text.
+
+    Args:
+      text (str): Text to strip whitespace from.
+    Returns:
+      str: Text with whitespace stripped.
+    &#34;&#34;&#34;
     return text.strip()</code></pre>
 </details>
 </dd>
@@ -357,14 +648,29 @@ class TextNormalizer:
 <span>def <span class="ident">tokenize_text</span></span>(<span>self, text)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>Tokenizes text.</p></section>
+<section class="desc"><p>Tokenizes text.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
+<dd>Text to tokenize.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>list</code></strong></dt>
+<dd>List of tokens.</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def tokenize_text(self, text: str):
+<pre><code class="python">def tokenize_text(self, text: str) -&gt; list:
     &#34;&#34;&#34;
     Tokenizes text.
+
+    Args:
+      text (str): Text to tokenize.
+    Returns:
+      list: List of tokens.
     &#34;&#34;&#34;
     return [w for s in sent_tokenize(text) for w in word_tokenize(s)]</code></pre>
 </details>

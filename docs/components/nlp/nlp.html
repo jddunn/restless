@@ -25,11 +25,18 @@
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">from .hann import HANN
+from .text_normalizer import TextNormalizer
 
+hann = HANN()
+text_normalizer = TextNormalizer()
 
 class NLP:
-
-    pass</code></pre>
+    &#34;&#34;&#34;
+    Module with all NLP and text processing related features.
+    &#34;&#34;&#34;
+    def __init__(self):
+        self.hann = hann
+        self.text_normalizer = text_normalizer</code></pre>
 </details>
 </section>
 <section>
@@ -45,14 +52,18 @@ class NLP:
 <span>class <span class="ident">NLP</span></span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Module with all NLP and text processing related features.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class NLP:
-
-    pass</code></pre>
+    &#34;&#34;&#34;
+    Module with all NLP and text processing related features.
+    &#34;&#34;&#34;
+    def __init__(self):
+        self.hann = hann
+        self.text_normalizer = text_normalizer</code></pre>
 </details>
 </dd>
 </dl>

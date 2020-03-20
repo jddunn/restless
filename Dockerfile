@@ -1,4 +1,3 @@
-
 FROM python:3.7
 
 RUN apt-get update \
@@ -71,18 +70,16 @@ CMD [$SPARK_HOME + "bin/spark-class", "org.apache.spark.deploy.master.Master"]
 
 # Python deps
 COPY requirements.txt .
-COPY misc_scripts/ ./misc_scripts/
 RUN pip install -r requirements.txt
 
-# RUN ["chmod" "777", "./misc_scripts/nltk_download.py"]
+# Other deps
+COPY docker_scripts/ ./docker_scripts/
 RUN ["python", "./misc_scripts/nltk_download.py"]
 
 # Expose default port for Restless
 EXPOSE 4712 
-# WORKDIR /restless
 
 COPY . ./restless
-
 
 # Run docs auto-generation
 # RUN pdoc --html restless --force; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless; cd ..
@@ -93,5 +90,4 @@ WORKDIR ./restless/restless
 RUN ["chmod", "777", "./server.py"]
 
 CMD ["python", "./server.py"]
-
 
