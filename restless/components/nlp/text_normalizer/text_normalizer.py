@@ -17,6 +17,7 @@ class TextNormalizer:
     """
     Tools for text pre-processing.
     """
+
     def __init__(self):
         self.wordnet_tags = {
             "J": wordnet.ADJ,
@@ -36,7 +37,7 @@ class TextNormalizer:
         """
         return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
 
-    def lemmatize_text(self, text: str, lemmatizer: object=default_lemmatizer) -> str:
+    def lemmatize_text(self, text: str, lemmatizer: object = default_lemmatizer) -> str:
         """
         Lemmatizes text.
 
