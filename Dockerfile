@@ -52,6 +52,8 @@ RUN curl -sL --retry 3 \
  && rm -rf $HADOOP_HOME/share/doc \
  && chown -R root:root $HADOOP_HOME
 
+ENV APP_ENV docker
+
 # SPARK
 ENV SPARK_VERSION 2.4.1
 ENV SPARK_PACKAGE spark-${SPARK_VERSION}-bin-without-hadoop
