@@ -27,7 +27,6 @@
   * [REST API](#rest-api-usage)
   * [Web UI](#web-ui-usage)
 * [Docs](#docs)
-  * [Auto-generating docs](#auto-generating-docs)
   * [API docs (interactive)](#api-docs)
   * [App docs](#app-docs)
 * [Roadmap](#roadmap)
@@ -199,15 +198,15 @@ In-progress
 <!-- DOCS -->
 ## Docs
 
-### API docs (interactive)
+### API docs
 FastAPI will automatically generate interactive API docs according to [OpenAPI Spec](https://swagger.io/docs/specification/about/).
 
 ```sh
 http://localhost:4712/api_docs
 ```
 
-### App / library docs 
-Lib docs (uses `pdoc` for autogeneration); the below command generates docs and creates a reasonable folder structure
+### App docs 
+Lib / app docs (uses `pdoc` for autogeneration); the below command generates docs and creates a reasonable folder structure
 ```sh
 pdoc --html restless --force; rm -rf docs; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless; cd ..
 ```
