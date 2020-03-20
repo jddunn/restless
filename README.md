@@ -168,9 +168,9 @@ docker-compose up
 ```
 
 and the app will be live at:
-'''sh
+```sh
 http://localhost:4712
-'''
+```
 
 ## Usage
 
