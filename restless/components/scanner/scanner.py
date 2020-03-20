@@ -20,7 +20,6 @@ class Scanner:
     """
     Extracts and analyzes information from files and classifies it for malware probability using NLP models.
     """
-
     def __init__(self):
         self.pea = pea
         utils.print_logm(
@@ -29,13 +28,15 @@ class Scanner:
         pass
 
     def scan_full_system(self):
-        results = self.pea.send_files_recursive("/home/ubuntu")
+        results = []
+        # results = self.pea.send_files_recursive("/home/ubuntu")
+        print("This feature is currently being worked on!")
         return results
 
-    def scan_folder(self, folderpath: str):
+    def scan_folder(self, folderpath: str) -> list:
         results = self.pea.send_files_recursive(folderpath)
-        return
+        return results
 
-    def scan_file(self, filepath: str):
-        results = self.pea.send_files_recursive(filepath)
-        return
+    def scan_file(self, filepath: str) -> list:
+        results = self.scan_folder(filepath)
+        return results

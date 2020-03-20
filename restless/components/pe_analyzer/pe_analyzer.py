@@ -165,15 +165,18 @@ class PE_Analyzer:
         return IMAGE_DOS_HEADER_data + FILE_HEADER_data + OPTIONAL_HEADER_data
 
     def send_files_recursive(self, rootdir: str = None):
+        resuts = []
         if not rootdir:
             rootdir = self.rootdir
         for dirpath, dirs, files in os.walk(rootdir):
+            result = ()
             for filename in files:
                 fname = os.path.join(dirpath, filename)
                 with open(fname) as myfile:
                     # print(myfile.read())
                     try:
                         pe = pefile.PE(fname)
+                        result[0] = fname
                     except Exception as e:
                         print("Exception while loading file: ", e)
                         pass
@@ -181,10 +184,12 @@ class PE_Analyzer:
                         try:
                             features = self.extract_features(pe)
                             print("Writing features for: fname", features + class_label)
+                            result[1] = features
+                            results.append(result)
                             # writer.writerow(features+class_label)
                         except Exception as e:
                             print("Error while saving features: ", e)
-
+        return results
 
 if __name__ == "__main__":
     pea = PE_Analyzer()

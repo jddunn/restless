@@ -30,7 +30,7 @@ from keras.layers import (
     Bidirectional,
     TimeDistributed,
 )
-from keras.models import Model
+from keras.models import Model, load_model
 
 from keras import backend as K
 from keras.engine.topology import Layer, InputSpec
@@ -40,6 +40,7 @@ from sklearn.preprocessing import OneHotEncoder
 
 import nltk
 
+# Make imports work for Docker package and when running as a script
 try:
     from restless.components.utils import utils
 except:
@@ -92,6 +93,14 @@ class HierarchicalAttentionNetwork:
         self.GLOVE_DIR = "components/nlp/hann"
         self.MAX_DOCS = MAX_DOCS
         return
+
+    def load_model(self, filepath: str):
+        res = load_model(filepath)
+        if res:
+            self.model = res
+            return self.model
+        else:
+            return None
 
     def read_data(self, filepath: str = None):
         data_train = None
@@ -238,11 +247,14 @@ class HierarchicalAttentionNetwork:
             self.x_train,
             self.y_train,
             validation_data=(self.x_val, self.y_val),
-            nb_epoch=4,
-            batch_size=50,
+            nb_epoch=2,
+            batch_size=25,
         )
         model.save(model_filepath)
         self.model = model
+
+    def predict(self, vectors):
+        return
 
 
 class AttentionLayer(Layer):
@@ -299,13 +311,12 @@ if __name__ == "__main__":
 else:
     utils.print_logm("Initializing HANN.")
     hann = HierarchicalAttentionNetwork()
-    # try:
-    #  hann.read_data("./labeledTrainData.tsv")
-    # hann.GLOVE_DIR = "./"
-    # except:
-    try:
-        hann.read_data("components/nlp/hann/labeledTrainData.tsv")
-        hann.GLOVE_DIR = "components/nlp/hann/"
-    except Exception as e:
-        hann.read_data("restless/components/nlp/hann/labeledTrainData.tsv")
-        hann.GLOVE_DIR = "restless/components/nlp/hann/"
+    if hann.load(model('default.h5'):
+        hann.GLOVE_DIR = "components/nlp/hann"
+    else:
+        try:
+            hann.read_data("components/nlp/hann/malware-dataset.csv")
+            hann.GLOVE_DIR = "components/nlp/hann/"
+        except Exception as e:
+            hann.read_data("restless/components/nlp/hann/malware-dataset.csv")
+            hann.GLOVE_DIR = "restless/components/nlp/hann/"

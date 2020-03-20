@@ -13,7 +13,6 @@ from components.watcher import Watcher
 from components.scanner import Scanner
 from components.nlp import nlp
 
-
 class Restless(object):
     """
     Main Restless module.
@@ -25,10 +24,10 @@ class Restless(object):
             "Restless initializing. Running system-wide scan: "
             + str(self.run_system_scan)
         )
+        self.scanner = Scanner()
         if self.run_system_scan:
-            pass
             # Get last system scan time
+            self.scanner.scan_full_system()
         else:
             self.watcher = Watcher()
-        self.scanner = Scanner()
         return

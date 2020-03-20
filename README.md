@@ -51,6 +51,17 @@ By constantly watching and only scanning new files as verified by timestamps, **
 
 Restless aims to be fast and fully functional offline. The current configuration is for Ubuntu-based machines, but can be modified for other platforms by editing the `Dockerfile` and `docker-compose.yml` (eventually, Docker images will be built for Mac and Windows and linked here for download).
 
+----------------------------------------------------
+Preliminary results from checksum (default) model (I was only able to train two epochs because my current machine's not powerful enough):
+```
+Train on 4168 samples, validate on 1042 samples
+Epoch 1/2
+4168/4168 [==============================] - 217s 52ms/step - loss: 0.5504 - acc: 0.7452 - val_loss: 0.5544 - val_acc: 0.7428
+Epoch 2/2
+4168/4168 [==============================] - 216s 52ms/step - loss: 0.5426 - acc: 0.7490 - val_loss: 0.5515 - val_acc: 0.7457
+```
+---------------------------------------------------
+
 ###  Concepts overview
 
 Signature detection, the traditional method of antiviruses which creates the need to connect to online databases for incesstant updating, cannot keep up with the emergence of new malware, or even of known malware that's able to [change itself](https://nakedsecurity.sophos.com/2012/07/31/server-side-polymorphism-malware/), and while heuirstics-based approaches can combat polym$
