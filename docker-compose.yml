@@ -4,9 +4,9 @@ services:
     build: .
     ports:
       - 4712:4712
-      - 4713:4713
     volumes:
       - ./:/restless
       - type: bind
-        source: /home
+        source: /home/ubuntu/
         target: /home/ubuntu/restless
+

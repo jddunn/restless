@@ -90,4 +90,3 @@ WORKDIR ./restless/restless
 RUN ["chmod", "777", "./server.py"]
 
 CMD ["python", "./server.py"]
-
