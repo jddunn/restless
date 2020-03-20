@@ -74,7 +74,7 @@ RUN pip install -r requirements.txt
 
 # Other deps
 COPY docker_scripts/ ./docker_scripts/
-RUN ["python", "./misc_scripts/nltk_download.py"]
+RUN ["python", "./docker_scripts/nltk_download.py"]
 
 # Expose default port for Restless
 EXPOSE 4712 
