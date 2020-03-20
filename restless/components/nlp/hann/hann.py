@@ -36,8 +36,9 @@ from keras import backend as K
 from keras.engine.topology import Layer, InputSpec
 from keras import initializers
 
-import nltk
+from sklearn.preprocessing import OneHotEncoder
 
+import nltk
 
 try:
     from restless.components.utils import utils
@@ -55,12 +56,12 @@ VALIDATION_SPLIT = 0.2
 
 GLOVE_DIR_PATH = "."
 
+MAX_DOCS = 100000 # Limit number of records to train for speed
 
 class HierarchicalAttentionNetwork:
     """
     Hierarchical Attention Network implementation.
     """
-
     def __init__(self):
         self.model = None
         self.MAX_SENTENCE_LENGTH = MAX_SENTENCE_LENGTH
@@ -76,7 +77,7 @@ class HierarchicalAttentionNetwork:
 
         self.data = None
 
-        self.reviews = []
+        self.checksums = []
         self.labels = []
         self.texts = []
 
@@ -89,15 +90,16 @@ class HierarchicalAttentionNetwork:
         self.embeddings_matrix = None
 
         self.GLOVE_DIR = "components/nlp/hann"
+        self.MAX_DOCS = MAX_DOCS
         return
 
     def read_data(self, filepath: str = None):
         data_train = None
         if filepath:
-            data_train = pd.read_csv(filepath, sep="\t", nrows=100)
+            data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
             print(data_train.shape)
         else:
-            data_train = pd.read_csv("labeledTrainData.tsv", sep="\t", nrows=100)
+            data_train = pd.read_csv("labeledTrainData.tsv", sep="\t", nrows=MAX_DOCS)
             print(data_train.shape)
         samples, labels = self.preprocess_data(data_train)
         self.prepare_training_and_validation_data(samples, labels)
@@ -107,11 +109,12 @@ class HierarchicalAttentionNetwork:
         return
 
     def preprocess_data(self, data_train: object):
-        for idx in range(data_train.review.shape[0]):
+        for idx in range(data_train.CheckSum.shape[0]):
             # text = BeautifulSoup(data_train.review[idx])
             # text = clean_str(text.get_text().encode('ascii', 'ignore'))
+            text = str(data_train.CheckSum[idx])
             text = text_normalizer.normalize_text(
-                data_train.review[idx],
+                text,
                 lowercase=True,
                 strip_punct=True,
                 # remove_stopwords=True,
@@ -121,14 +124,15 @@ class HierarchicalAttentionNetwork:
             print(idx)
             self.texts.append(text)
             sentences = nltk.tokenize.sent_tokenize(text)
-            self.reviews.append(sentences)
-            self.labels.append(data_train.sentiment[idx])
-        self.data = np.zeros(
+            self.checksums.append(sentences)
+            self.labels.append(data_train.classification[idx])
+            print(data_train.CheckSum[idx], data_train.classification[idx])
+            self.data = np.zeros(
             (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32"
         )
         self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
         self.tokenizer.fit_on_texts(self.texts)
-        for i, sentences in enumerate(self.reviews):
+        for i, sentences in enumerate(self.checksums):
             for j, sent in enumerate(sentences):
                 if j < MAX_SENTENCE_COUNT:
                     wordTokens = text_to_word_sequence(sent)
@@ -142,10 +146,9 @@ class HierarchicalAttentionNetwork:
                         k = k + 1
         self.word_index = self.tokenizer.word_index
         print("Total %s unique tokens." % len(self.word_index))
+        print("Shape of data tensor before: ", self.data)
+        print("Shape of labels before: ", self.labels)
         self.labels = to_categorical(np.asarray(self.labels))
-        print("Shape of data tensor:", self.data.shape)
-        print("Shape of label tensor:", self.labels.shape)
-
         indices = np.arange(self.data.shape[0])
         np.random.shuffle(indices)
         self.data = self.data[indices]
@@ -158,7 +161,7 @@ class HierarchicalAttentionNetwork:
         self.y_train = self.labels[:-samples]
         self.x_val = self.data[-samples:]
         self.y_val = labels[-samples:]
-        print("Number of positive and negative reviews in traing and validation set")
+        print("Number of checksums in traing and validation set")
         print(self.y_train.sum(axis=0))
         print(self.y_val.sum(axis=0))
         return
@@ -213,21 +216,20 @@ class HierarchicalAttentionNetwork:
             trainable=True,
             mask_zero=True,
         )
-
         sentence_input = Input(shape=(MAX_SENTENCE_LENGTH,), dtype="int32")
         embedded_sequences = embedding_layer(sentence_input)
         l_lstm = Bidirectional(GRU(100, return_sequences=True))(embedded_sequences)
         l_att = AttentionLayer(100)(l_lstm)
         sentEncoder = Model(sentence_input, l_att)
 
-        review_input = Input(
+        checksum_input = Input(
             shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32"
         )
-        review_encoder = TimeDistributed(sentEncoder)(review_input)
-        l_lstm_sent = Bidirectional(GRU(100, return_sequences=True))(review_encoder)
+        checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
+        l_lstm_sent = Bidirectional(GRU(100, return_sequences=True))(checksum_encoder)
         l_att_sent = AttentionLayer(100)(l_lstm_sent)
         preds = Dense(2, activation="softmax")(l_att_sent)
-        model = Model(review_input, preds)
+        model = Model(checksum_input, preds)
         model.compile(
             loss="categorical_crossentropy", optimizer="rmsprop", metrics=["acc"]
         )
@@ -236,7 +238,7 @@ class HierarchicalAttentionNetwork:
             self.x_train,
             self.y_train,
             validation_data=(self.x_val, self.y_val),
-            nb_epoch=10,
+            nb_epoch=4,
             batch_size=50,
         )
         model.save(model_filepath)
@@ -250,7 +252,7 @@ class AttentionLayer(Layer):
 
     def __init__(self, attention_dim):
         self.init = initializers.get("normal")
-        self.supports_masking = True
+        self.supports_masking = False
         self.attention_dim = attention_dim
         super(AttentionLayer, self).__init__()
 

@@ -35,33 +35,29 @@
 * [Acknowledgements](#acknowledgements)
 
 
-
 <!-- ABOUT THE PROJECT -->
 ## About
 
+**Restless** is (or will be) a suite of security tools with these key features:
 
-**Restless** is (or will be) a suite of platform-agnostic security tools with three key features:
-
-* Analysis of files for malware probabilty based on comparing the extracted metadata and file contents with trained Portable Executable data *(completed)*
+* Analysis of files for malware probabilty based on comparing the extracted metadata and file contents with trained Portable Executable data *(completed model with CheckSum data; eventually model needs to have more features)*
 * Analysis of system logs for abnormal activities / deviations *(not started)*
 * Analysis of web pages during browsing sessions to determine maliciousness *(not started)*
+* Constant, efficient and ongoing analysis of system files / logs *(in-progress)*
 
-All analyses will be constantly ongoing, occur in real-time, and performed through machine learning models (using both supervised and unsupervised training techniques).
-
-[Ray](https://ray.io/) is used for parallel / distributed computing, allowing bypassing of Python's bottleneck with the GIL and for asynchronous functionality.
+All analyses will be constantly ongoing, occur in real-time, and performed through machine learning models (using both supervised and unsupervised training techniques). No database is currently integrated with the code, but Spark clusters will be used along with Ray for distributed processing (eventually).
 
 By constantly watching and only scanning new files as verified by timestamps, **restless** can offer ongoing protection with minimal effort resources. You can also configure **restless** to run full or partial system scans on a schedule.
 
-Restless aims to be fast, lightweight, and fully functional offline. The current configuration is for Ubuntu-based machines, but can be modified for other platforms by editing the `Dockerfile` and `docker-compose.yml` (eventually, Docker images will be built for Mac and Windows and linked here for download).
+Restless aims to be fast and fully functional offline. The current configuration is for Ubuntu-based machines, but can be modified for other platforms by editing the `Dockerfile` and `docker-compose.yml` (eventually, Docker images will be built for Mac and Windows and linked here for download).
 
 ###  Concepts overview
 
-Signature detection, the traditional method of antiviruses which creates the need to connect to online databases for incesstant updating, cannot keep up with the emergence of new malware, or even of known malware that's able to [change itself](https://nakedsecurity.sophos.com/2012/07/31/server-side-polymorphism-malware/), and while heuirstics-based approaches can combat polymorphic viruses while offering further degrees of granularity, they tend to give off so many false positives that they do more harm than good by wasting computing resources and increasing cognitive load.
+Signature detection, the traditional method of antiviruses which creates the need to connect to online databases for incesstant updating, cannot keep up with the emergence of new malware, or even of known malware that's able to [change itself](https://nakedsecurity.sophos.com/2012/07/31/server-side-polymorphism-malware/), and while heuirstics-based approaches can combat polym$
 
-The incorporation of machine learning (usually, natural langauge processing techniques although computer vision algorithms can also be applied) in antivirus software empowers them with a level of pattern recognition that previous approaches do not have. Rather than relying on known vulnerabilities / exploits or commonly re-used patterns of malicious code, **restless** and other ML-powered antiviruses can work well on classifying malware never seen before. This integration of NLP methods with information security has been dubbed [malicious language processing](https://www.elastic.co/blog/nlp-security-malicious-language-processing) by Elastic.
+The incorporation of machine learning (usually, natural langauge processing techniques although computer vision algorithms can also be applied) in antivirus software empowers them with a level of pattern recognition that previous approaches do not have. Rather than relying on known vulnerabilities / exploits or commonly re-used patterns of malicious code, **restless** and oth$
 
 Unless drastic changes in programming paradigms occur for writing malware (which is possible), **restless** should be able to continue classifying new malware written years and years after the original models were trained with at least some amount of effectiveness (given an adequate training corpus).
-
 
 ### Architecture overview
 
@@ -71,18 +67,18 @@ Unless drastic changes in programming paradigms occur for writing malware (which
 
 ### Prerequisites
 
-* [Python 3.7+](Python 3.7+)
+* [Python 3.7 and up](Python 3.7 and up)
 * [Spark](Spark)
 * [TensorFlow](TensorFlow) / [Keras](Keras)
 * [FastAPI](FastAPI)
 * [Uvicorn](Uvicorn)
-* [spacey](spacey)
 * [pdoc3](pdoc3) (fork of pdoc)
-* [recentmost](recentmost) and C compiler
+
 or
+
 * [Docker](Docker) / [Docker-Compose](Docker-Compose)
 
-### Installing with Pip
+### Installation with Pip
 
 (Skip if using Docker)
 
@@ -90,7 +86,18 @@ or
 pip install -r requirements.txt
 ```
 
-### Building with Docker
+then:
+
+Starts ASGI server wth reload (recommended to use a virtualenv with all the dependencies installed):
+
+```sh
+cd restless
+python server.py
+```
+
+Restless's services will be running at port 4712 by default.
+
+### Using Docker
 
 (Skip to Using Docker-Compose if using Docker-Compose)
 
@@ -98,26 +105,6 @@ Build the image
 ```sh
 docker build -t restless .
 ```
-
-<!-- USAGE EXAMPLES -->
-## Usage
-
-It is recommended to run **restless** via Docker, unless say, you don't have enough storage to mount your drive in the container.
-
-Restless's services will be running at port 4712 by default.
-
-### Running restless locally
-
-##### Starts ASGI server wth reload (recommended to use a virtualenv with all the dependencies installed)
-
-```sh
-cd restless
-python server.py
-```
-
-### Running with Docker
-
-##### Running a container from a built image
 
 The example command will mount all the files in a Ubuntu machine into the container, so a full system scan of the host machine can be performed through the dockerized service.
 
@@ -133,7 +120,7 @@ docker run -p 4712:4712 -e APP_ENV=docker --mount source=home,target=/home/ubunt
 $ useful for eventual dynamic analysis of files, when they will need to be tested in an isolated place).
 
 
-##### Using Docker-Compose 
+Using Docker-Compose:
 
 (See the explanation above ^ to see how Docker will be mounting and communicating with your machine drive. If you're not using Ubuntu or a Debian-based Linux distro, then you'll need to edit `docker-compose.yml` to change the `source` and `target` paths under the `volume` key to reflect your OS's filepaths).
 
@@ -144,13 +131,12 @@ Just run
 docker-compose up
 ```
 
+and the app will be live at:
+'''sh
+http://localhost:4712
+'''
+
 ### CLI usage
-
-##### Training your own dataset
-
-##### Testing a dataset
-
-##### Prediction
 
 ### API usage
 
@@ -185,7 +171,6 @@ If you're using Docker, the app docs will be accessible (served statically) here
 http://localhost:4712/app_docs/index.html
 ```
 
-
 <!-- CODE -->
 ## Code
 
@@ -218,10 +203,11 @@ In order of desirability
 
 * [Johnny Dunn](https://github.com/jddunn) - johnnyddunn@gmail.com
 
-
 <!-- ACKNOWLEDGEMENTS -->
 ## Acknowledgements / Other Contributions
 
-* []()
-* []()
+* [Hierarchical Attention Networks for Document Classification](https://www.cs.cmu.edu/~./hovy/papers/16HLT-hierarchical-attention-networks.pdf)
+* [ClaMP (Classification of Malware with PE headers)](https://github.com/urwithajit9/ClaMP)
 * [Detecting Malware Across Operating Systems](https://www.opswat.com/blog/detecting-malware-across-operating-systems)
+
+
