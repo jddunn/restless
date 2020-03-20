@@ -11,9 +11,7 @@ sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 from components.utils import utils
 from components.watcher import Watcher
 from components.scanner import Scanner
-from components.nlp.nlp import NLP
-
-nlp = NLP()
+from components.nlp import nlp
 
 
 class Restless(object):

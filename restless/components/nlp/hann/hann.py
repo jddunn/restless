@@ -1,19 +1,14 @@
 import numpy as np
 import pandas as pd
 from collections import defaultdict
-import re
-
-import sys
-
-sys.path.append("..")
-sys.path.append("../..")
-sys.path.append("../../..")
 
 import sys
 import os
 
-# Following lines are for assigning parent directory dynamically.
+sys.path.append("../")
+sys.path.append("../../")
 
+# Following lines are for assigning parent directory dynamically.
 dir_path = os.path.dirname(os.path.realpath(__file__))
 parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
 sys.path.insert(0, parent_dir_path)
@@ -43,6 +38,11 @@ from keras import initializers
 
 import nltk
 
+
+try:
+    from restless.components.utils import utils
+except:
+    from utils import utils
 from text_normalizer import TextNormalizer
 
 text_normalizer = TextNormalizer()
@@ -52,6 +52,8 @@ MAX_SENTENCE_COUNT = 15
 VOCABULARY_SIZE = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
+
+GLOVE_DIR_PATH = "."
 
 
 class HierarchicalAttentionNetwork:
@@ -159,9 +161,13 @@ class HierarchicalAttentionNetwork:
         print(self.y_val.sum(axis=0))
         return
 
-    def get_glove_embeddings(self, glove_dir: str = "."):
+    def get_glove_embeddings(self, glove_dir: str = GLOVE_DIR_PATH):
         embeddings_index = {}
-        f = open(os.path.join(glove_dir, "glove.6B.100d.txt"))
+        f = None
+        try:
+            f = open(os.path.join(glove_dir, "glove.6B.100d.txt"))
+        except:
+            f = open(os.path.join("./components/nlp/hann", "glove.6B.100d.txt"))
         for line in f:
             values = line.split()
             word = values[0]
@@ -275,4 +281,11 @@ class AttentionLayer(Layer):
 
 if __name__ == "__main__":
     hann = HierarchicalAttentionNetwork()
-    hann.read_data("labeledTrainData.tsv")
+    # hann.read_data("./labeledTrainData.tsv")
+    hann.read_data("./malware-dataset.csv")
+else:
+    utils.print_logm("Initializing HANN.")
+    hann = HierarchicalAttentionNetwork()
+    hann.read_data("./components/nlp/hann/labeledTrainData.tsv")
+    # hann.read_data("./components/nlp/hann/malware-dataset.csv")
+    GLOVE_DIR_PATH = "./components/nlp/hann"
