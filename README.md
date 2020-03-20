@@ -81,7 +81,7 @@ File features found for:  /home/ubuntu/restless/restless/data/malicious/0.exe [2
 ```
 ---------------------------------------------------
 
-Malicious executables obtained from [http://www.tekdefense.com/downloads/malware-samples/](http://www.tekdefense.com/downloads/malware-samples/)
+Malicious executables obtained from [http://www.tekdefense.com/downloads/malware-samples/](http://www.tekdefense.com/downloads/malware-samples/). Training dataset taken from [https://github.com/urwithajit9/ClaMP](https://github.com/urwithajit9/ClaMP).
 
 ###  Concepts overview
 
