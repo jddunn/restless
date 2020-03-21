@@ -74,10 +74,12 @@ OPTIONAL_HEADER = [
     "NumberOfRvaAndSizes",
 ]
 
+
 class PE_Analyzer:
     """
     Contains tools for analyzing and extracting PE file headers and other metadata.
     """
+
     def __init__(self):
         self.class_label = class_label
         self.rootdir = rootdir
@@ -157,6 +159,7 @@ class PE_Analyzer:
             pe.OPTIONAL_HEADER.LoaderFlags,
             pe.OPTIONAL_HEADER.NumberOfRvaAndSizes,
         ]
+
         return IMAGE_DOS_HEADER_data + FILE_HEADER_data + OPTIONAL_HEADER_data
 
     def send_files_recursive(self, rootdir: str = None):
