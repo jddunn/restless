@@ -40,6 +40,9 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
 sys.path.insert(0, parent_dir_path)
 
+import functools
+import operator
+
 from keras.preprocessing.text import Tokenizer, text_to_word_sequence
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils.np_utils import to_categorical
@@ -84,7 +87,11 @@ VALIDATION_SPLIT = 0.2
 
 GLOVE_DIR_PATH = &#34;.&#34;
 
-MAX_DOCS = 100000  # Limit number of records to train for speed
+MAX_DOCS = 10000000  # Limit number of records to train for speed
+
+DEFAULT_TRAINING_DATA_PATH = (
+    &#34;/home/ubuntu/restless/restless/components/nlp/hann/malware-dataset.csv&#34;
+)
 
 DEFAULT_MODEL_PATH = &#34;/home/ubuntu/restless/restless/components/nlp/hann/default.h5&#34;
 
@@ -95,26 +102,61 @@ class HierarchicalAttentionNetwork:
     &#34;&#34;&#34;
 
     def __init__(self, **kwargs):
-        self.model = load_model(
-            DEFAULT_MODEL_PATH, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer}
+        try:
+            self.model = load_model(
+                DEFAULT_MODEL_PATH, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer}
+            )
+            self.model.load_weights(DEFAULT_MODEL_PATH)
+        except:
+            pass
+        self.texts = []
+        self.texts_features = []
+        self.checksums = []
+        self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
+        # self.data_train = self.data_train.drop_duplicates()
+        self.records = self.data_train.to_dict(&#34;records&#34;)
+        self.data = np.zeros(
+            (len(self.records), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
         )
-        self.model.load_weights(DEFAULT_MODEL_PATH)
+        self.labels = []
+        self.labels_matrix = np.zeros(len(self.records), dtype=&#34;int32&#34;)
+        # For now before we integrate the db load corpus from CSV
+        self.feature_keys_dict = [
+            # {&#34;name&#34;: &#34;e_magic&#34;, &#34;index&#34;: 0, &#34;tokenize&#34;: &#34;char&#34;},
+            # {&#34;name&#34;: &#34;e_cblp&#34;, &#34;index&#34;: 1, &#34;tokenize&#34;: &#34;char&#34;},
+            # {&#34;name&#34;: &#34;e_cp&#34;, &#34;index&#34;: 2, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_crlc&#34;, &#34;index&#34;: 3, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_cparhdr&#34;, &#34;index&#34;: 4, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;e_minalloc&#34;, &#34;index&#34;: 5, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;e_maxalloc&#34;, &#34;index&#34;: 6, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_ss&#34;, &#34;index&#34;: 7, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_sp&#34;, &#34;index&#34;: 8, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_csum&#34;, &#34;index&#34;: 9, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;e_ip&#34;, &#34;index&#34;: 10, &#34;tokenize&#34;: &#34;char&#34;},
+            # {&#34;name&#34;: &#34;e_cs&#34;, &#34;index&#34;: 11, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_lfarlc&#34;, &#34;index&#34;: 12, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_ovno&#34;, &#34;index&#34;: 13, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_res&#34;, &#34;index&#34;: 14, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_oemid&#34;, &#34;index&#34;: 15, &#34;tokenize&#34;: &#34;char&#34;},
+            # {&#34;name&#34;: &#34;e_oeminfo&#34;, &#34;index&#34;: 16, &#34;tokenize&#34;: &#34;char&#34;},
+            # {&#34;name&#34;: &#34;e_res2&#34;, &#34;index&#34;: 17, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_lfanew&#34;, &#34;index&#34;: 18, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;Machine&#34;, &#34;index&#34;: 19, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;NumberOfSections&#34;, &#34;index&#34;: 20, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;PointerToSymbolTable&#34;, &#34;index&#34;: 22, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;NumberOfSymbols&#34;, &#34;index&#34;: 23, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;AddressOfEntryPoint&#34;, &#34;index&#34;: 32, &#34;tokenize&#34;: &#34;char&#34;},
+            {&#34;name&#34;: &#34;CheckSum&#34;, &#34;index&#34;: 46, &#34;tokenize&#34;: &#34;char&#34;},
+        ]
         self.MAX_SENTENCE_LENGTH = MAX_SENTENCE_LENGTH
         self.MAX_SENTENCE_COUNT = MAX_SENTENCE_COUNT
         self.VOCABULARY_SIZE = VOCABULARY_SIZE
         self.EMBEDDING_DIM = EMBEDDING_DIM
         self.VALIDATION_SPLIT = VALIDATION_SPLIT
-
         self.word_embedding = None
         self.word_attention_model = None
         self.tokenizer = None
         self.class_count = 2
-
-        self.data = None
-
-        self.checksums = []
-        self.labels = []
-        self.texts = []
 
         self.x_train = None
         self.y_train = None
@@ -122,10 +164,15 @@ class HierarchicalAttentionNetwork:
         self.y_val = None
 
         self.word_index = None
+        self.embeddings_index = None
         self.embeddings_matrix = None
 
         self.GLOVE_DIR = &#34;components/nlp/hann&#34;
         self.MAX_DOCS = MAX_DOCS
+        self.preprocess_data(self.data_train)
+        # self.feature_vecs = self.build_features_vecs_from_data(
+        #    self.data_train, self.feature_keys_dict
+        # )
         return
 
     def load_model(self, filepath: str):
@@ -138,75 +185,30 @@ class HierarchicalAttentionNetwork:
         else:
             return None
 
-    def read_data(self, filepath: str = None):
-        data_train = None
-        if filepath:
-            data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
-            print(data_train.shape)
-        else:
-            data_train = pd.read_csv(&#34;labeledTrainData.tsv&#34;, sep=&#34;\t&#34;, nrows=MAX_DOCS)
-            print(data_train.shape)
-        samples, labels = self.preprocess_data(data_train)
-        self.prepare_training_and_validation_data(samples, labels)
-        embeddings_index = self.get_glove_embeddings()
-        embeddings_matrix = self.make_embeddings_matrix(embeddings_index)
+    def read_data(self, filepath: str):
+        data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
+        # data_train = data_train.drop_duplicates()
+        samples = self.preprocess_data(data_train)
+        self.prepare_training_and_validation_data(samples)
+        self.embeddings_index = self.get_glove_embeddings()
+        embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
         self.build_network_and_train_model(embeddings_matrix)
         return
 
     def preprocess_data(self, data_train: object):
-        for idx in range(data_train.CheckSum.shape[0]):
-            # text = BeautifulSoup(data_train.review[idx])
-            # text = clean_str(text.get_text().encode(&#39;ascii&#39;, &#39;ignore&#39;))
-            text = str(data_train.CheckSum[idx])
-            text = text_normalizer.normalize_text(
-                text,
-                lowercase=True,
-                strip_punct=True,
-                # remove_stopwords=True,
-                lemmatize_text=True,
-                # stem_text=True
-            )
-            print(idx)
-            self.texts.append(text)
-            sentences = nltk.tokenize.sent_tokenize(text)
-            self.checksums.append(sentences)
-            self.labels.append(data_train.classification[idx])
-            print(data_train.CheckSum[idx], data_train.classification[idx])
-        self.data = np.zeros(
-            (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
+        self.feature_vecs = self.build_features_vecs_from_data(
+            data_train, self.feature_keys_dict
         )
-        self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
-        self.tokenizer.fit_on_texts(self.texts)
-        for i, sentences in enumerate(self.checksums):
-            for j, sent in enumerate(sentences):
-                if j &lt; MAX_SENTENCE_COUNT:
-                    wordTokens = text_to_word_sequence(sent)
-                    k = 0
-                for _, word in enumerate(wordTokens):
-                    if (
-                        k &lt; MAX_SENTENCE_LENGTH
-                        and self.tokenizer.word_index[word] &lt; VOCABULARY_SIZE
-                    ):
-                        self.data[i, j, k] = self.tokenizer.word_index[word]
-                        k = k + 1
-        self.word_index = self.tokenizer.word_index
         print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
         print(&#34;Shape of data tensor before: &#34;, self.data)
-        print(&#34;Shape of labels before: &#34;, self.labels)
-        self.labels = to_categorical(np.asarray(self.labels))
-        indices = np.arange(self.data.shape[0])
-        np.random.shuffle(indices)
-        self.data = self.data[indices]
-        self.labels = self.labels[indices]
         samples = int(VALIDATION_SPLIT * self.data.shape[0])
-        return samples, self.labels
+        return samples
 
-    def prepare_training_and_validation_data(self, samples, labels):
+    def prepare_training_and_validation_data(self, samples):
         self.x_train = self.data[:-samples]
-        self.y_train = self.labels[:-samples]
+        self.y_train = self.labels_matrix[:-samples]
         self.x_val = self.data[-samples:]
-        self.y_val = labels[-samples:]
-        print(&#34;Number of checksums in traing and validation set&#34;)
+        self.y_val = self.labels_matrix[-samples:]
         print(self.y_train.sum(axis=0))
         print(self.y_val.sum(axis=0))
         return
@@ -283,44 +285,135 @@ class HierarchicalAttentionNetwork:
             self.x_train,
             self.y_train,
             validation_data=(self.x_val, self.y_val),
-            nb_epoch=2,
+            epochs=5,
             batch_size=25,
         )
         model.save(model_filepath)
         self.model = model
 
-    def build_matrix_from_features(self, features):
-        checksum = str(features[42])
-        sentences = nltk.tokenize.sent_tokenize(checksum)
-        data = np.zeros((1, MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,)
-        tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
-        tokenizer.fit_on_texts([checksum])
-        for j, sent in enumerate(sentences):
-            if j &lt; MAX_SENTENCE_COUNT:
-                wordTokens = text_to_word_sequence(sent)
-                k = 0
-            for _, word in enumerate(wordTokens):
-                if (
-                    k &lt; MAX_SENTENCE_LENGTH
-                    and tokenizer.word_index[word] &lt; VOCABULARY_SIZE
-                ):
-                    data[0, j, k] = tokenizer.word_index[word]
-                    k = k + 1
-        return data
+    def build_features_vecs_from_data(self, data_train, feature_keys_dict=None):
+        results = []
+        if feature_keys_dict is None:
+            feature_keys_dict = self.feature_keys_dict
+        _data_train = data_train.to_dict()
+        self.tokenizer = Tokenizer()
+        self.texts = []
+        self.texts_features = []
+        for idx in range(
+            data_train.CheckSum.shape[0]
+        ):  # doesn&#39;t matter we&#39;re just getting count here
+            sentences = []
+            for dict in feature_keys_dict:
+                key = dict[&#34;name&#34;]
+                sentence = str(_data_train[key][idx])
+                sentence = text_normalizer.normalize_text(
+                    sentence,
+                    lowercase=True,
+                    strip_punct=True,
+                    # remove_stopwords=True,
+                    lemmatize_text=True,
+                    # stem_text=True
+                )
+                if dict[&#34;tokenize&#34;] is &#34;char&#34;:
+                    sentence = [char for char in sentence]
+                sentences.append(sentence)
+            self.texts.extend(sentences)
+            self.texts_features.append(sentences)
+        self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
+        # self.texts = functools.reduce(operator.iconcat, self.texts, [])
+        _texts = []
+        for i, each in enumerate(self.texts):
+            if type(each) is list:
+                each = &#34;&#34;.join(each)
+            _texts.append(str(each))
+        for i in range(len(self.records)):
+            self.labels.append(self.records[i][&#34;classification&#34;])
+        self.texts = _texts
+        self.tokenizer.fit_on_texts(self.texts)
+        self.word_index = self.tokenizer.word_index
+        for i, sentences in enumerate(self.texts_features):
+            for j, sentence in enumerate(sentences):
+                if j &lt; MAX_SENTENCE_COUNT:
+                    k = 0
+                    if type(sentence) is list:
+                        wordTokens = [text_to_word_sequence(seq) for seq in sentence]
+                    else:
+                        wordTokens = text_to_word_sequence(sentence)
+                    for _, word in enumerate(wordTokens):
+                        if type(word) is list:
+                            word = &#34;&#34;.join(word)
+                            # if (
+                            # k &lt; MAX_SENTENCE_LENGTH
+                            # and
+                            # self.tokenizer.word_index[word] &lt; VOCABULARY_SIZE
+                            # ):
+                        self.data[i, k] = self.word_index[word]
+                        k = k + 1
+        self.labels_matrix = to_categorical(np.asarray(self.labels))
+        indices = np.arange(self.data.shape[0])
+        np.random.shuffle(indices)
+        self.data = self.data[indices]
+        self.labels_matrix = self.labels_matrix[indices]
+        return self.data
+
+    def build_features_vecs_from_input(
+        self, input_features, feature_keys_dict: dict = None
+    ):
+        results = []
+        if feature_keys_dict is None:
+            feature_keys_dict = self.feature_keys_dict
+        self.texts_features = []
+        for idx in range(len(input_features)):
+            sentences = []
+            for dict in self.feature_keys_dict:
+                val = dict[&#34;index&#34;]
+                sentence = str(input_features[val])
+                sentence = text_normalizer.normalize_text(
+                    sentence,
+                    lowercase=True,
+                    strip_punct=True,
+                    # remove_stopwords=True,
+                    lemmatize_text=True,
+                    # stem_text=True
+                )
+                if dict[&#34;tokenize&#34;] is &#34;char&#34;:
+                    sentence = [char for char in sentence]
+                sentences.append(sentence)
+            self.texts_features.append(sentences)
+        feature_vector = np.zeros(
+            (len(input_features), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
+            dtype=&#34;int32&#34;,
+        )
+        for i, sentences in enumerate(self.texts_features):
+            for j, sentence in enumerate(sentences):
+                if j &lt; MAX_SENTENCE_COUNT:
+                    k = 0
+                    if type(sentence) is list:
+                        wordTokens = [text_to_word_sequence(seq) for seq in sentence]
+                    else:
+                        wordTokens = text_to_word_sequence(sentence)
+                    for _, word in enumerate(wordTokens):
+                        if type(word) is list:
+                            word = &#34;&#34;.join(word)
+                            # if (
+                            # k &lt; MAX_SENTENCE_LENGTH
+                            # and
+                            # self.tokenizer.word_index[word] &lt; VOCABULARY_SIZE
+                            # ):
+                        feature_vector[i, k] = self.word_index[word]
+                        k = k + 1
+        return feature_vector
 
     def predict(self, data):
         res = self.model.predict(data)
-        if res is None:
-            self.load_model(DEFAULT_MODEL_PATH)
-            res = self.model.predict_classes(data)
-        # print(&#34;Predicting=%s, Predicted=%s&#34; % (data, res[0]))
+        classes = to_categorical(res)
         probs = str(res[0])
         probs = probs.replace(&#34;[&#34;, &#34;&#34;)
         probs = probs.replace(&#34;]&#34;, &#34;&#34;)
         probs = probs.strip()
         tokens = probs.split(&#34; &#34;)
-        benign = tokens[0]
-        malicious = tokens[1]
+        malicious = tokens[0]
+        benign = tokens[1]
         return (benign, malicious)
 
 
@@ -586,26 +679,61 @@ to match that input shape provided.</p>
     &#34;&#34;&#34;
 
     def __init__(self, **kwargs):
-        self.model = load_model(
-            DEFAULT_MODEL_PATH, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer}
+        try:
+            self.model = load_model(
+                DEFAULT_MODEL_PATH, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer}
+            )
+            self.model.load_weights(DEFAULT_MODEL_PATH)
+        except:
+            pass
+        self.texts = []
+        self.texts_features = []
+        self.checksums = []
+        self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
+        # self.data_train = self.data_train.drop_duplicates()
+        self.records = self.data_train.to_dict(&#34;records&#34;)
+        self.data = np.zeros(
+            (len(self.records), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
         )
-        self.model.load_weights(DEFAULT_MODEL_PATH)
+        self.labels = []
+        self.labels_matrix = np.zeros(len(self.records), dtype=&#34;int32&#34;)
+        # For now before we integrate the db load corpus from CSV
+        self.feature_keys_dict = [
+            # {&#34;name&#34;: &#34;e_magic&#34;, &#34;index&#34;: 0, &#34;tokenize&#34;: &#34;char&#34;},
+            # {&#34;name&#34;: &#34;e_cblp&#34;, &#34;index&#34;: 1, &#34;tokenize&#34;: &#34;char&#34;},
+            # {&#34;name&#34;: &#34;e_cp&#34;, &#34;index&#34;: 2, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_crlc&#34;, &#34;index&#34;: 3, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_cparhdr&#34;, &#34;index&#34;: 4, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;e_minalloc&#34;, &#34;index&#34;: 5, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;e_maxalloc&#34;, &#34;index&#34;: 6, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_ss&#34;, &#34;index&#34;: 7, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_sp&#34;, &#34;index&#34;: 8, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_csum&#34;, &#34;index&#34;: 9, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;e_ip&#34;, &#34;index&#34;: 10, &#34;tokenize&#34;: &#34;char&#34;},
+            # {&#34;name&#34;: &#34;e_cs&#34;, &#34;index&#34;: 11, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_lfarlc&#34;, &#34;index&#34;: 12, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_ovno&#34;, &#34;index&#34;: 13, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_res&#34;, &#34;index&#34;: 14, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_oemid&#34;, &#34;index&#34;: 15, &#34;tokenize&#34;: &#34;char&#34;},
+            # {&#34;name&#34;: &#34;e_oeminfo&#34;, &#34;index&#34;: 16, &#34;tokenize&#34;: &#34;char&#34;},
+            # {&#34;name&#34;: &#34;e_res2&#34;, &#34;index&#34;: 17, &#34;tokenize&#34;: &#34;none&#34;},
+            # {&#34;name&#34;: &#34;e_lfanew&#34;, &#34;index&#34;: 18, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;Machine&#34;, &#34;index&#34;: 19, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;NumberOfSections&#34;, &#34;index&#34;: 20, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;PointerToSymbolTable&#34;, &#34;index&#34;: 22, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;NumberOfSymbols&#34;, &#34;index&#34;: 23, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;AddressOfEntryPoint&#34;, &#34;index&#34;: 32, &#34;tokenize&#34;: &#34;char&#34;},
+            {&#34;name&#34;: &#34;CheckSum&#34;, &#34;index&#34;: 46, &#34;tokenize&#34;: &#34;char&#34;},
+        ]
         self.MAX_SENTENCE_LENGTH = MAX_SENTENCE_LENGTH
         self.MAX_SENTENCE_COUNT = MAX_SENTENCE_COUNT
         self.VOCABULARY_SIZE = VOCABULARY_SIZE
         self.EMBEDDING_DIM = EMBEDDING_DIM
         self.VALIDATION_SPLIT = VALIDATION_SPLIT
-
         self.word_embedding = None
         self.word_attention_model = None
         self.tokenizer = None
         self.class_count = 2
-
-        self.data = None
-
-        self.checksums = []
-        self.labels = []
-        self.texts = []
 
         self.x_train = None
         self.y_train = None
@@ -613,10 +741,15 @@ to match that input shape provided.</p>
         self.y_val = None
 
         self.word_index = None
+        self.embeddings_index = None
         self.embeddings_matrix = None
 
         self.GLOVE_DIR = &#34;components/nlp/hann&#34;
         self.MAX_DOCS = MAX_DOCS
+        self.preprocess_data(self.data_train)
+        # self.feature_vecs = self.build_features_vecs_from_data(
+        #    self.data_train, self.feature_keys_dict
+        # )
         return
 
     def load_model(self, filepath: str):
@@ -629,75 +762,30 @@ to match that input shape provided.</p>
         else:
             return None
 
-    def read_data(self, filepath: str = None):
-        data_train = None
-        if filepath:
-            data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
-            print(data_train.shape)
-        else:
-            data_train = pd.read_csv(&#34;labeledTrainData.tsv&#34;, sep=&#34;\t&#34;, nrows=MAX_DOCS)
-            print(data_train.shape)
-        samples, labels = self.preprocess_data(data_train)
-        self.prepare_training_and_validation_data(samples, labels)
-        embeddings_index = self.get_glove_embeddings()
-        embeddings_matrix = self.make_embeddings_matrix(embeddings_index)
+    def read_data(self, filepath: str):
+        data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
+        # data_train = data_train.drop_duplicates()
+        samples = self.preprocess_data(data_train)
+        self.prepare_training_and_validation_data(samples)
+        self.embeddings_index = self.get_glove_embeddings()
+        embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
         self.build_network_and_train_model(embeddings_matrix)
         return
 
     def preprocess_data(self, data_train: object):
-        for idx in range(data_train.CheckSum.shape[0]):
-            # text = BeautifulSoup(data_train.review[idx])
-            # text = clean_str(text.get_text().encode(&#39;ascii&#39;, &#39;ignore&#39;))
-            text = str(data_train.CheckSum[idx])
-            text = text_normalizer.normalize_text(
-                text,
-                lowercase=True,
-                strip_punct=True,
-                # remove_stopwords=True,
-                lemmatize_text=True,
-                # stem_text=True
-            )
-            print(idx)
-            self.texts.append(text)
-            sentences = nltk.tokenize.sent_tokenize(text)
-            self.checksums.append(sentences)
-            self.labels.append(data_train.classification[idx])
-            print(data_train.CheckSum[idx], data_train.classification[idx])
-        self.data = np.zeros(
-            (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
+        self.feature_vecs = self.build_features_vecs_from_data(
+            data_train, self.feature_keys_dict
         )
-        self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
-        self.tokenizer.fit_on_texts(self.texts)
-        for i, sentences in enumerate(self.checksums):
-            for j, sent in enumerate(sentences):
-                if j &lt; MAX_SENTENCE_COUNT:
-                    wordTokens = text_to_word_sequence(sent)
-                    k = 0
-                for _, word in enumerate(wordTokens):
-                    if (
-                        k &lt; MAX_SENTENCE_LENGTH
-                        and self.tokenizer.word_index[word] &lt; VOCABULARY_SIZE
-                    ):
-                        self.data[i, j, k] = self.tokenizer.word_index[word]
-                        k = k + 1
-        self.word_index = self.tokenizer.word_index
         print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
         print(&#34;Shape of data tensor before: &#34;, self.data)
-        print(&#34;Shape of labels before: &#34;, self.labels)
-        self.labels = to_categorical(np.asarray(self.labels))
-        indices = np.arange(self.data.shape[0])
-        np.random.shuffle(indices)
-        self.data = self.data[indices]
-        self.labels = self.labels[indices]
         samples = int(VALIDATION_SPLIT * self.data.shape[0])
-        return samples, self.labels
+        return samples
 
-    def prepare_training_and_validation_data(self, samples, labels):
+    def prepare_training_and_validation_data(self, samples):
         self.x_train = self.data[:-samples]
-        self.y_train = self.labels[:-samples]
+        self.y_train = self.labels_matrix[:-samples]
         self.x_val = self.data[-samples:]
-        self.y_val = labels[-samples:]
-        print(&#34;Number of checksums in traing and validation set&#34;)
+        self.y_val = self.labels_matrix[-samples:]
         print(self.y_train.sum(axis=0))
         print(self.y_val.sum(axis=0))
         return
@@ -774,50 +862,141 @@ to match that input shape provided.</p>
             self.x_train,
             self.y_train,
             validation_data=(self.x_val, self.y_val),
-            nb_epoch=2,
+            epochs=5,
             batch_size=25,
         )
         model.save(model_filepath)
         self.model = model
 
-    def build_matrix_from_features(self, features):
-        checksum = str(features[42])
-        sentences = nltk.tokenize.sent_tokenize(checksum)
-        data = np.zeros((1, MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,)
-        tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
-        tokenizer.fit_on_texts([checksum])
-        for j, sent in enumerate(sentences):
-            if j &lt; MAX_SENTENCE_COUNT:
-                wordTokens = text_to_word_sequence(sent)
-                k = 0
-            for _, word in enumerate(wordTokens):
-                if (
-                    k &lt; MAX_SENTENCE_LENGTH
-                    and tokenizer.word_index[word] &lt; VOCABULARY_SIZE
-                ):
-                    data[0, j, k] = tokenizer.word_index[word]
-                    k = k + 1
-        return data
+    def build_features_vecs_from_data(self, data_train, feature_keys_dict=None):
+        results = []
+        if feature_keys_dict is None:
+            feature_keys_dict = self.feature_keys_dict
+        _data_train = data_train.to_dict()
+        self.tokenizer = Tokenizer()
+        self.texts = []
+        self.texts_features = []
+        for idx in range(
+            data_train.CheckSum.shape[0]
+        ):  # doesn&#39;t matter we&#39;re just getting count here
+            sentences = []
+            for dict in feature_keys_dict:
+                key = dict[&#34;name&#34;]
+                sentence = str(_data_train[key][idx])
+                sentence = text_normalizer.normalize_text(
+                    sentence,
+                    lowercase=True,
+                    strip_punct=True,
+                    # remove_stopwords=True,
+                    lemmatize_text=True,
+                    # stem_text=True
+                )
+                if dict[&#34;tokenize&#34;] is &#34;char&#34;:
+                    sentence = [char for char in sentence]
+                sentences.append(sentence)
+            self.texts.extend(sentences)
+            self.texts_features.append(sentences)
+        self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
+        # self.texts = functools.reduce(operator.iconcat, self.texts, [])
+        _texts = []
+        for i, each in enumerate(self.texts):
+            if type(each) is list:
+                each = &#34;&#34;.join(each)
+            _texts.append(str(each))
+        for i in range(len(self.records)):
+            self.labels.append(self.records[i][&#34;classification&#34;])
+        self.texts = _texts
+        self.tokenizer.fit_on_texts(self.texts)
+        self.word_index = self.tokenizer.word_index
+        for i, sentences in enumerate(self.texts_features):
+            for j, sentence in enumerate(sentences):
+                if j &lt; MAX_SENTENCE_COUNT:
+                    k = 0
+                    if type(sentence) is list:
+                        wordTokens = [text_to_word_sequence(seq) for seq in sentence]
+                    else:
+                        wordTokens = text_to_word_sequence(sentence)
+                    for _, word in enumerate(wordTokens):
+                        if type(word) is list:
+                            word = &#34;&#34;.join(word)
+                            # if (
+                            # k &lt; MAX_SENTENCE_LENGTH
+                            # and
+                            # self.tokenizer.word_index[word] &lt; VOCABULARY_SIZE
+                            # ):
+                        self.data[i, k] = self.word_index[word]
+                        k = k + 1
+        self.labels_matrix = to_categorical(np.asarray(self.labels))
+        indices = np.arange(self.data.shape[0])
+        np.random.shuffle(indices)
+        self.data = self.data[indices]
+        self.labels_matrix = self.labels_matrix[indices]
+        return self.data
+
+    def build_features_vecs_from_input(
+        self, input_features, feature_keys_dict: dict = None
+    ):
+        results = []
+        if feature_keys_dict is None:
+            feature_keys_dict = self.feature_keys_dict
+        self.texts_features = []
+        for idx in range(len(input_features)):
+            sentences = []
+            for dict in self.feature_keys_dict:
+                val = dict[&#34;index&#34;]
+                sentence = str(input_features[val])
+                sentence = text_normalizer.normalize_text(
+                    sentence,
+                    lowercase=True,
+                    strip_punct=True,
+                    # remove_stopwords=True,
+                    lemmatize_text=True,
+                    # stem_text=True
+                )
+                if dict[&#34;tokenize&#34;] is &#34;char&#34;:
+                    sentence = [char for char in sentence]
+                sentences.append(sentence)
+            self.texts_features.append(sentences)
+        feature_vector = np.zeros(
+            (len(input_features), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
+            dtype=&#34;int32&#34;,
+        )
+        for i, sentences in enumerate(self.texts_features):
+            for j, sentence in enumerate(sentences):
+                if j &lt; MAX_SENTENCE_COUNT:
+                    k = 0
+                    if type(sentence) is list:
+                        wordTokens = [text_to_word_sequence(seq) for seq in sentence]
+                    else:
+                        wordTokens = text_to_word_sequence(sentence)
+                    for _, word in enumerate(wordTokens):
+                        if type(word) is list:
+                            word = &#34;&#34;.join(word)
+                            # if (
+                            # k &lt; MAX_SENTENCE_LENGTH
+                            # and
+                            # self.tokenizer.word_index[word] &lt; VOCABULARY_SIZE
+                            # ):
+                        feature_vector[i, k] = self.word_index[word]
+                        k = k + 1
+        return feature_vector
 
     def predict(self, data):
         res = self.model.predict(data)
-        if res is None:
-            self.load_model(DEFAULT_MODEL_PATH)
-            res = self.model.predict_classes(data)
-        # print(&#34;Predicting=%s, Predicted=%s&#34; % (data, res[0]))
+        classes = to_categorical(res)
         probs = str(res[0])
         probs = probs.replace(&#34;[&#34;, &#34;&#34;)
         probs = probs.replace(&#34;]&#34;, &#34;&#34;)
         probs = probs.strip()
         tokens = probs.split(&#34; &#34;)
-        benign = tokens[0]
-        malicious = tokens[1]
+        malicious = tokens[0]
+        benign = tokens[1]
         return (benign, malicious)</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
-<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_matrix_from_features"><code class="name flex">
-<span>def <span class="ident">build_matrix_from_features</span></span>(<span>self, features)</span>
+<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data"><code class="name flex">
+<span>def <span class="ident">build_features_vecs_from_data</span></span>(<span>self, data_train, feature_keys_dict=None)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -825,24 +1004,128 @@ to match that input shape provided.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def build_matrix_from_features(self, features):
-    checksum = str(features[42])
-    sentences = nltk.tokenize.sent_tokenize(checksum)
-    data = np.zeros((1, MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,)
-    tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
-    tokenizer.fit_on_texts([checksum])
-    for j, sent in enumerate(sentences):
-        if j &lt; MAX_SENTENCE_COUNT:
-            wordTokens = text_to_word_sequence(sent)
-            k = 0
-        for _, word in enumerate(wordTokens):
-            if (
-                k &lt; MAX_SENTENCE_LENGTH
-                and tokenizer.word_index[word] &lt; VOCABULARY_SIZE
-            ):
-                data[0, j, k] = tokenizer.word_index[word]
-                k = k + 1
-    return data</code></pre>
+<pre><code class="python">def build_features_vecs_from_data(self, data_train, feature_keys_dict=None):
+    results = []
+    if feature_keys_dict is None:
+        feature_keys_dict = self.feature_keys_dict
+    _data_train = data_train.to_dict()
+    self.tokenizer = Tokenizer()
+    self.texts = []
+    self.texts_features = []
+    for idx in range(
+        data_train.CheckSum.shape[0]
+    ):  # doesn&#39;t matter we&#39;re just getting count here
+        sentences = []
+        for dict in feature_keys_dict:
+            key = dict[&#34;name&#34;]
+            sentence = str(_data_train[key][idx])
+            sentence = text_normalizer.normalize_text(
+                sentence,
+                lowercase=True,
+                strip_punct=True,
+                # remove_stopwords=True,
+                lemmatize_text=True,
+                # stem_text=True
+            )
+            if dict[&#34;tokenize&#34;] is &#34;char&#34;:
+                sentence = [char for char in sentence]
+            sentences.append(sentence)
+        self.texts.extend(sentences)
+        self.texts_features.append(sentences)
+    self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
+    # self.texts = functools.reduce(operator.iconcat, self.texts, [])
+    _texts = []
+    for i, each in enumerate(self.texts):
+        if type(each) is list:
+            each = &#34;&#34;.join(each)
+        _texts.append(str(each))
+    for i in range(len(self.records)):
+        self.labels.append(self.records[i][&#34;classification&#34;])
+    self.texts = _texts
+    self.tokenizer.fit_on_texts(self.texts)
+    self.word_index = self.tokenizer.word_index
+    for i, sentences in enumerate(self.texts_features):
+        for j, sentence in enumerate(sentences):
+            if j &lt; MAX_SENTENCE_COUNT:
+                k = 0
+                if type(sentence) is list:
+                    wordTokens = [text_to_word_sequence(seq) for seq in sentence]
+                else:
+                    wordTokens = text_to_word_sequence(sentence)
+                for _, word in enumerate(wordTokens):
+                    if type(word) is list:
+                        word = &#34;&#34;.join(word)
+                        # if (
+                        # k &lt; MAX_SENTENCE_LENGTH
+                        # and
+                        # self.tokenizer.word_index[word] &lt; VOCABULARY_SIZE
+                        # ):
+                    self.data[i, k] = self.word_index[word]
+                    k = k + 1
+    self.labels_matrix = to_categorical(np.asarray(self.labels))
+    indices = np.arange(self.data.shape[0])
+    np.random.shuffle(indices)
+    self.data = self.data[indices]
+    self.labels_matrix = self.labels_matrix[indices]
+    return self.data</code></pre>
+</details>
+</dd>
+<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_input"><code class="name flex">
+<span>def <span class="ident">build_features_vecs_from_input</span></span>(<span>self, input_features, feature_keys_dict=None)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def build_features_vecs_from_input(
+    self, input_features, feature_keys_dict: dict = None
+):
+    results = []
+    if feature_keys_dict is None:
+        feature_keys_dict = self.feature_keys_dict
+    self.texts_features = []
+    for idx in range(len(input_features)):
+        sentences = []
+        for dict in self.feature_keys_dict:
+            val = dict[&#34;index&#34;]
+            sentence = str(input_features[val])
+            sentence = text_normalizer.normalize_text(
+                sentence,
+                lowercase=True,
+                strip_punct=True,
+                # remove_stopwords=True,
+                lemmatize_text=True,
+                # stem_text=True
+            )
+            if dict[&#34;tokenize&#34;] is &#34;char&#34;:
+                sentence = [char for char in sentence]
+            sentences.append(sentence)
+        self.texts_features.append(sentences)
+    feature_vector = np.zeros(
+        (len(input_features), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
+        dtype=&#34;int32&#34;,
+    )
+    for i, sentences in enumerate(self.texts_features):
+        for j, sentence in enumerate(sentences):
+            if j &lt; MAX_SENTENCE_COUNT:
+                k = 0
+                if type(sentence) is list:
+                    wordTokens = [text_to_word_sequence(seq) for seq in sentence]
+                else:
+                    wordTokens = text_to_word_sequence(sentence)
+                for _, word in enumerate(wordTokens):
+                    if type(word) is list:
+                        word = &#34;&#34;.join(word)
+                        # if (
+                        # k &lt; MAX_SENTENCE_LENGTH
+                        # and
+                        # self.tokenizer.word_index[word] &lt; VOCABULARY_SIZE
+                        # ):
+                    feature_vector[i, k] = self.word_index[word]
+                    k = k + 1
+    return feature_vector</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_network_and_train_model"><code class="name flex">
@@ -889,7 +1172,7 @@ to match that input shape provided.</p>
         self.x_train,
         self.y_train,
         validation_data=(self.x_val, self.y_val),
-        nb_epoch=2,
+        epochs=5,
         batch_size=25,
     )
     model.save(model_filepath)
@@ -984,22 +1267,19 @@ to match that input shape provided.</p>
 </summary>
 <pre><code class="python">def predict(self, data):
     res = self.model.predict(data)
-    if res is None:
-        self.load_model(DEFAULT_MODEL_PATH)
-        res = self.model.predict_classes(data)
-    # print(&#34;Predicting=%s, Predicted=%s&#34; % (data, res[0]))
+    classes = to_categorical(res)
     probs = str(res[0])
     probs = probs.replace(&#34;[&#34;, &#34;&#34;)
     probs = probs.replace(&#34;]&#34;, &#34;&#34;)
     probs = probs.strip()
     tokens = probs.split(&#34; &#34;)
-    benign = tokens[0]
-    malicious = tokens[1]
+    malicious = tokens[0]
+    benign = tokens[1]
     return (benign, malicious)</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.prepare_training_and_validation_data"><code class="name flex">
-<span>def <span class="ident">prepare_training_and_validation_data</span></span>(<span>self, samples, labels)</span>
+<span>def <span class="ident">prepare_training_and_validation_data</span></span>(<span>self, samples)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -1007,12 +1287,11 @@ to match that input shape provided.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def prepare_training_and_validation_data(self, samples, labels):
+<pre><code class="python">def prepare_training_and_validation_data(self, samples):
     self.x_train = self.data[:-samples]
-    self.y_train = self.labels[:-samples]
+    self.y_train = self.labels_matrix[:-samples]
     self.x_val = self.data[-samples:]
-    self.y_val = labels[-samples:]
-    print(&#34;Number of checksums in traing and validation set&#34;)
+    self.y_val = self.labels_matrix[-samples:]
     print(self.y_train.sum(axis=0))
     print(self.y_val.sum(axis=0))
     return</code></pre>
@@ -1028,56 +1307,17 @@ to match that input shape provided.</p>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def preprocess_data(self, data_train: object):
-    for idx in range(data_train.CheckSum.shape[0]):
-        # text = BeautifulSoup(data_train.review[idx])
-        # text = clean_str(text.get_text().encode(&#39;ascii&#39;, &#39;ignore&#39;))
-        text = str(data_train.CheckSum[idx])
-        text = text_normalizer.normalize_text(
-            text,
-            lowercase=True,
-            strip_punct=True,
-            # remove_stopwords=True,
-            lemmatize_text=True,
-            # stem_text=True
-        )
-        print(idx)
-        self.texts.append(text)
-        sentences = nltk.tokenize.sent_tokenize(text)
-        self.checksums.append(sentences)
-        self.labels.append(data_train.classification[idx])
-        print(data_train.CheckSum[idx], data_train.classification[idx])
-    self.data = np.zeros(
-        (len(self.texts), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
+    self.feature_vecs = self.build_features_vecs_from_data(
+        data_train, self.feature_keys_dict
     )
-    self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
-    self.tokenizer.fit_on_texts(self.texts)
-    for i, sentences in enumerate(self.checksums):
-        for j, sent in enumerate(sentences):
-            if j &lt; MAX_SENTENCE_COUNT:
-                wordTokens = text_to_word_sequence(sent)
-                k = 0
-            for _, word in enumerate(wordTokens):
-                if (
-                    k &lt; MAX_SENTENCE_LENGTH
-                    and self.tokenizer.word_index[word] &lt; VOCABULARY_SIZE
-                ):
-                    self.data[i, j, k] = self.tokenizer.word_index[word]
-                    k = k + 1
-    self.word_index = self.tokenizer.word_index
     print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
     print(&#34;Shape of data tensor before: &#34;, self.data)
-    print(&#34;Shape of labels before: &#34;, self.labels)
-    self.labels = to_categorical(np.asarray(self.labels))
-    indices = np.arange(self.data.shape[0])
-    np.random.shuffle(indices)
-    self.data = self.data[indices]
-    self.labels = self.labels[indices]
     samples = int(VALIDATION_SPLIT * self.data.shape[0])
-    return samples, self.labels</code></pre>
+    return samples</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.read_data"><code class="name flex">
-<span>def <span class="ident">read_data</span></span>(<span>self, filepath=None)</span>
+<span>def <span class="ident">read_data</span></span>(<span>self, filepath)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -1085,18 +1325,13 @@ to match that input shape provided.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def read_data(self, filepath: str = None):
-    data_train = None
-    if filepath:
-        data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
-        print(data_train.shape)
-    else:
-        data_train = pd.read_csv(&#34;labeledTrainData.tsv&#34;, sep=&#34;\t&#34;, nrows=MAX_DOCS)
-        print(data_train.shape)
-    samples, labels = self.preprocess_data(data_train)
-    self.prepare_training_and_validation_data(samples, labels)
-    embeddings_index = self.get_glove_embeddings()
-    embeddings_matrix = self.make_embeddings_matrix(embeddings_index)
+<pre><code class="python">def read_data(self, filepath: str):
+    data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
+    # data_train = data_train.drop_duplicates()
+    samples = self.preprocess_data(data_train)
+    self.prepare_training_and_validation_data(samples)
+    self.embeddings_index = self.get_glove_embeddings()
+    embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
     self.build_network_and_train_model(embeddings_matrix)
     return</code></pre>
 </details>
@@ -1131,7 +1366,8 @@ to match that input shape provided.</p>
 <li>
 <h4><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork">HierarchicalAttentionNetwork</a></code></h4>
 <ul class="">
-<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_matrix_from_features" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_matrix_from_features">build_matrix_from_features</a></code></li>
+<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data">build_features_vecs_from_data</a></code></li>
+<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_input" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_input">build_features_vecs_from_input</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_network_and_train_model" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_network_and_train_model">build_network_and_train_model</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_glove_embeddings" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_glove_embeddings">get_glove_embeddings</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.load_model" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.load_model">load_model</a></code></li>

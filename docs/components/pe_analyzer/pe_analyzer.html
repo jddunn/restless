@@ -30,8 +30,7 @@ import os
 import pefile
 import csv
 
-rootdir = &#34;/home/ubuntu/restless/restless/components/pe_analyzer/files/malicious&#34;
-output = &#34;./raw_features.csv&#34;
+rootdir = &#34;/home/ubuntu/restless/restless/data&#34;
 
 # Change this based on the PE file we&#39;re analyzing -
 # [0] for benign and [1] for malicious, or leave empty if we do$
@@ -110,37 +109,33 @@ class PE_Analyzer:
     def __init__(self):
         self.class_label = class_label
         self.rootdir = rootdir
-        self.output = output
 
     def file_creation_year(self, seconds):
         return 1970 + ((int(seconds) / 86400) / 365)
 
     def extract_dos_header(self, pe):
         IMAGE_DOS_HEADER_data = [0 for i in range(19)]
-        try:
-            IMAGE_DOS_HEADER_data = [
-                pe.DOS_HEADER.e_magic,
-                pe.DOS_HEADER.e_cblp,
-                pe.DOS_HEADER.e_cp,
-                pe.DOS_HEADER.e_crlc,
-                pe.DOS_HEADER.e_cparhdr,
-                pe.DOS_HEADER.e_minalloc,
-                pe.DOS_HEADER.e_maxalloc,
-                pe.DOS_HEADER.e_ss,
-                pe.DOS_HEADER.e_sp,
-                pe.DOS_HEADER.e_csum,
-                pe.DOS_HEADER.e_ip,
-                pe.DOS_HEADER.e_cs,
-                pe.DOS_HEADER.e_lfarlc,
-                pe.DOS_HEADER.e_ovno,
-                pe.DOS_HEADER.e_res,
-                pe.DOS_HEADER.e_oemid,
-                pe.DOS_HEADER.e_oeminfo,
-                pe.DOS_HEADER.e_res2,
-                pe.DOS_HEADER.e_lfanew,
-            ]
-        except Exception as e:
-            print(e)
+        IMAGE_DOS_HEADER_data = [
+            pe.DOS_HEADER.e_magic,
+            pe.DOS_HEADER.e_cblp,
+            pe.DOS_HEADER.e_cp,
+            pe.DOS_HEADER.e_crlc,
+            pe.DOS_HEADER.e_cparhdr,
+            pe.DOS_HEADER.e_minalloc,
+            pe.DOS_HEADER.e_maxalloc,
+            pe.DOS_HEADER.e_ss,
+            pe.DOS_HEADER.e_sp,
+            pe.DOS_HEADER.e_csum,
+            pe.DOS_HEADER.e_ip,
+            pe.DOS_HEADER.e_cs,
+            pe.DOS_HEADER.e_lfarlc,
+            pe.DOS_HEADER.e_ovno,
+            pe.DOS_HEADER.e_res,
+            pe.DOS_HEADER.e_oemid,
+            pe.DOS_HEADER.e_oeminfo,
+            pe.DOS_HEADER.e_res2,
+            pe.DOS_HEADER.e_lfanew,
+        ]
         return IMAGE_DOS_HEADER_data
 
     def extract_features(self, pe):
@@ -187,36 +182,33 @@ class PE_Analyzer:
             pe.OPTIONAL_HEADER.LoaderFlags,
             pe.OPTIONAL_HEADER.NumberOfRvaAndSizes,
         ]
-
         return IMAGE_DOS_HEADER_data + FILE_HEADER_data + OPTIONAL_HEADER_data
 
     def send_files_recursive(self, rootdir: str = None):
         results = []
         if not rootdir:
             rootdir = self.rootdir
+        print(&#34;PEAnalyzer scanning: &#34;, rootdir)
         for dirpath, dirs, files in os.walk(rootdir):
+            # print(dirpath, dirs, files)
             for filename in files:
                 fname = os.path.join(dirpath, filename)
                 with open(fname) as myfile:
                     # print(myfile.read())
                     try:
                         pe = pefile.PE(fname)
+                        # print(&#34;PE: &#34;, fname, pe)
                     except Exception as e:
                         print(&#34;File: &#34;, fname, &#34; cannot be analyzed - &#34;, e)
                         pass
                     else:
                         try:
                             features = self.extract_features(pe)
-                            print(
-                                &#34;File features found for: &#34;,
-                                fname,
-                                features + class_label,
-                            )
                             result = (fname, features)
                             results.append(result)
-                            # writer.writerow(features+class_label)
                         except Exception as e:
                             print(&#34;Error while saving features: &#34;, e)
+                            pass
         return results
 
 
@@ -251,37 +243,33 @@ if __name__ == &#34;__main__&#34;:
     def __init__(self):
         self.class_label = class_label
         self.rootdir = rootdir
-        self.output = output
 
     def file_creation_year(self, seconds):
         return 1970 + ((int(seconds) / 86400) / 365)
 
     def extract_dos_header(self, pe):
         IMAGE_DOS_HEADER_data = [0 for i in range(19)]
-        try:
-            IMAGE_DOS_HEADER_data = [
-                pe.DOS_HEADER.e_magic,
-                pe.DOS_HEADER.e_cblp,
-                pe.DOS_HEADER.e_cp,
-                pe.DOS_HEADER.e_crlc,
-                pe.DOS_HEADER.e_cparhdr,
-                pe.DOS_HEADER.e_minalloc,
-                pe.DOS_HEADER.e_maxalloc,
-                pe.DOS_HEADER.e_ss,
-                pe.DOS_HEADER.e_sp,
-                pe.DOS_HEADER.e_csum,
-                pe.DOS_HEADER.e_ip,
-                pe.DOS_HEADER.e_cs,
-                pe.DOS_HEADER.e_lfarlc,
-                pe.DOS_HEADER.e_ovno,
-                pe.DOS_HEADER.e_res,
-                pe.DOS_HEADER.e_oemid,
-                pe.DOS_HEADER.e_oeminfo,
-                pe.DOS_HEADER.e_res2,
-                pe.DOS_HEADER.e_lfanew,
-            ]
-        except Exception as e:
-            print(e)
+        IMAGE_DOS_HEADER_data = [
+            pe.DOS_HEADER.e_magic,
+            pe.DOS_HEADER.e_cblp,
+            pe.DOS_HEADER.e_cp,
+            pe.DOS_HEADER.e_crlc,
+            pe.DOS_HEADER.e_cparhdr,
+            pe.DOS_HEADER.e_minalloc,
+            pe.DOS_HEADER.e_maxalloc,
+            pe.DOS_HEADER.e_ss,
+            pe.DOS_HEADER.e_sp,
+            pe.DOS_HEADER.e_csum,
+            pe.DOS_HEADER.e_ip,
+            pe.DOS_HEADER.e_cs,
+            pe.DOS_HEADER.e_lfarlc,
+            pe.DOS_HEADER.e_ovno,
+            pe.DOS_HEADER.e_res,
+            pe.DOS_HEADER.e_oemid,
+            pe.DOS_HEADER.e_oeminfo,
+            pe.DOS_HEADER.e_res2,
+            pe.DOS_HEADER.e_lfanew,
+        ]
         return IMAGE_DOS_HEADER_data
 
     def extract_features(self, pe):
@@ -328,36 +316,33 @@ if __name__ == &#34;__main__&#34;:
             pe.OPTIONAL_HEADER.LoaderFlags,
             pe.OPTIONAL_HEADER.NumberOfRvaAndSizes,
         ]
-
         return IMAGE_DOS_HEADER_data + FILE_HEADER_data + OPTIONAL_HEADER_data
 
     def send_files_recursive(self, rootdir: str = None):
         results = []
         if not rootdir:
             rootdir = self.rootdir
+        print(&#34;PEAnalyzer scanning: &#34;, rootdir)
         for dirpath, dirs, files in os.walk(rootdir):
+            # print(dirpath, dirs, files)
             for filename in files:
                 fname = os.path.join(dirpath, filename)
                 with open(fname) as myfile:
                     # print(myfile.read())
                     try:
                         pe = pefile.PE(fname)
+                        # print(&#34;PE: &#34;, fname, pe)
                     except Exception as e:
                         print(&#34;File: &#34;, fname, &#34; cannot be analyzed - &#34;, e)
                         pass
                     else:
                         try:
                             features = self.extract_features(pe)
-                            print(
-                                &#34;File features found for: &#34;,
-                                fname,
-                                features + class_label,
-                            )
                             result = (fname, features)
                             results.append(result)
-                            # writer.writerow(features+class_label)
                         except Exception as e:
                             print(&#34;Error while saving features: &#34;, e)
+                            pass
         return results</code></pre>
 </details>
 <h3>Methods</h3>
@@ -373,30 +358,27 @@ if __name__ == &#34;__main__&#34;:
 </summary>
 <pre><code class="python">def extract_dos_header(self, pe):
     IMAGE_DOS_HEADER_data = [0 for i in range(19)]
-    try:
-        IMAGE_DOS_HEADER_data = [
-            pe.DOS_HEADER.e_magic,
-            pe.DOS_HEADER.e_cblp,
-            pe.DOS_HEADER.e_cp,
-            pe.DOS_HEADER.e_crlc,
-            pe.DOS_HEADER.e_cparhdr,
-            pe.DOS_HEADER.e_minalloc,
-            pe.DOS_HEADER.e_maxalloc,
-            pe.DOS_HEADER.e_ss,
-            pe.DOS_HEADER.e_sp,
-            pe.DOS_HEADER.e_csum,
-            pe.DOS_HEADER.e_ip,
-            pe.DOS_HEADER.e_cs,
-            pe.DOS_HEADER.e_lfarlc,
-            pe.DOS_HEADER.e_ovno,
-            pe.DOS_HEADER.e_res,
-            pe.DOS_HEADER.e_oemid,
-            pe.DOS_HEADER.e_oeminfo,
-            pe.DOS_HEADER.e_res2,
-            pe.DOS_HEADER.e_lfanew,
-        ]
-    except Exception as e:
-        print(e)
+    IMAGE_DOS_HEADER_data = [
+        pe.DOS_HEADER.e_magic,
+        pe.DOS_HEADER.e_cblp,
+        pe.DOS_HEADER.e_cp,
+        pe.DOS_HEADER.e_crlc,
+        pe.DOS_HEADER.e_cparhdr,
+        pe.DOS_HEADER.e_minalloc,
+        pe.DOS_HEADER.e_maxalloc,
+        pe.DOS_HEADER.e_ss,
+        pe.DOS_HEADER.e_sp,
+        pe.DOS_HEADER.e_csum,
+        pe.DOS_HEADER.e_ip,
+        pe.DOS_HEADER.e_cs,
+        pe.DOS_HEADER.e_lfarlc,
+        pe.DOS_HEADER.e_ovno,
+        pe.DOS_HEADER.e_res,
+        pe.DOS_HEADER.e_oemid,
+        pe.DOS_HEADER.e_oeminfo,
+        pe.DOS_HEADER.e_res2,
+        pe.DOS_HEADER.e_lfanew,
+    ]
     return IMAGE_DOS_HEADER_data</code></pre>
 </details>
 </dd>
@@ -453,7 +435,6 @@ if __name__ == &#34;__main__&#34;:
         pe.OPTIONAL_HEADER.LoaderFlags,
         pe.OPTIONAL_HEADER.NumberOfRvaAndSizes,
     ]
-
     return IMAGE_DOS_HEADER_data + FILE_HEADER_data + OPTIONAL_HEADER_data</code></pre>
 </details>
 </dd>
@@ -483,29 +464,27 @@ if __name__ == &#34;__main__&#34;:
     results = []
     if not rootdir:
         rootdir = self.rootdir
+    print(&#34;PEAnalyzer scanning: &#34;, rootdir)
     for dirpath, dirs, files in os.walk(rootdir):
+        # print(dirpath, dirs, files)
         for filename in files:
             fname = os.path.join(dirpath, filename)
             with open(fname) as myfile:
                 # print(myfile.read())
                 try:
                     pe = pefile.PE(fname)
+                    # print(&#34;PE: &#34;, fname, pe)
                 except Exception as e:
                     print(&#34;File: &#34;, fname, &#34; cannot be analyzed - &#34;, e)
                     pass
                 else:
                     try:
                         features = self.extract_features(pe)
-                        print(
-                            &#34;File features found for: &#34;,
-                            fname,
-                            features + class_label,
-                        )
                         result = (fname, features)
                         results.append(result)
-                        # writer.writerow(features+class_label)
                     except Exception as e:
                         print(&#34;Error while saving features: &#34;, e)
+                        pass
     return results</code></pre>
 </details>
 </dd>
