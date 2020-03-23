@@ -54,9 +54,9 @@ Currently, there is no REST API functionality besides serving the documentation;
 ----------------------------------------------------
 Preliminary results of training the HAN (Hierarchical Attention Network)  model with extracted PE features (CheckSum, AddressOfEntryPoint, e_minalloc, e_maxalloc, etc.):
 
-cd restless/components/nlp/hann
-python hann.py 
 ```
+cd restless/components/nlp/hann
+python hann.py
 Training HANN model now..
 Train on 4148 samples, validate on 1036 samples
 Epoch 1/5
