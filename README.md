@@ -52,7 +52,10 @@ Restless aims to be fast and fully functional offline. The current configuration
 Currently, there is no REST API functionality besides serving the documentation; only the CLI and library is functional.
 
 ----------------------------------------------------
-Preliminary results from HANN model for EXEs:
+Preliminary results of training the HAN (Hierarchical Attention Network)  model with extracted PE features (CheckSum, AddressOfEntryPoint, e_minalloc, e_maxalloc, etc.):
+
+cd restless/components/nlp/hann
+python hann.py 
 ```
 Training HANN model now..
 Train on 4148 samples, validate on 1036 samples
@@ -64,7 +67,7 @@ Epoch 1/5
 3725/4148 [=========================>....] - ETA: 22s - loss: 0.5980 - acc: 0.7034
 ```
 ---------------------------------------------------
-After just one epoch, we have an accuracy of 70%, maxing out at 75% around 3-4 epochs. Given that this is just a preliminary model with just a basic amount of feature engineering done, these results are really promising. 
+After just one epoch, we have an accuracy of 70%, maxing out at 75% around 3-4 epochs. Given that this is just a preliminary model with just a basic amount of feature engineering done, these results are really promising. The default dataset the HANN script looks for is `./malware-dataset.csv`.
 
 ---------------------------------------------------
 Example program usage (CLI):
