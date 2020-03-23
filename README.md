@@ -38,7 +38,7 @@
 
 **Restless** is (or will be) a suite of security tools with these key features:
 
-* Analysis of files for malware probabilty based on comparing the extracted metadata and file contents with trained Portable Executable data *(completed model with CheckSum data; eventually model needs to have more features)*
+* Analysis of files for malware probabilty based on comparing the extracted metadata and file contents with trained Portable Executable data *(completed model with almost a dozen extracted PE header features)*
 * Analysis of system logs for abnormal activities / deviations *(not started)*
 * Analysis of web pages during browsing sessions to determine maliciousness *(not started)*
 * Constant, efficient and ongoing analysis of system files / logs *(in-progress)*
@@ -52,16 +52,19 @@ Restless aims to be fast and fully functional offline. The current configuration
 Currently, there is no REST API functionality besides serving the documentation; only the CLI and library is functional.
 
 ----------------------------------------------------
-Preliminary results from checksum (default) model (I was only able to train two epochs because my current machine's not powerful enough):
+Preliminary results from HANN model for EXEs:
 ```
-Train on 4168 samples, validate on 1042 samples
-Epoch 1/2
-4168/4168 [==============================] - 217s 52ms/step - loss: 0.5504 - acc: 0.7452 - val_loss: 0.5544 - val_acc: 0.7428
-Epoch 2/2
-4168/4168 [==============================] - 216s 52ms/step - loss: 0.5426 - acc: 0.7490 - val_loss: 0.5515 - val_acc: 0.7457
+Training HANN model now..
+Train on 4148 samples, validate on 1036 samples
+Epoch 1/5
+150/4148 [>.............................] - ETA: 4:23 - loss: 0.8208 - acc: 0.5200
+700/4148 [====>.........................] - ETA: 3:12 - loss: 0.6838 - acc: 0.6071
+1525/4148 [==========>...................] - ETA: 2:20 - loss: 0.6341 - acc: 0.6689
+2650/4148 [==================>...........] - ETA: 1:19 - loss: 0.6043 - acc: 0.6985
+3725/4148 [=========================>....] - ETA: 22s - loss: 0.5980 - acc: 0.7034
 ```
 ---------------------------------------------------
-
+After just one epoch, we have an accuracy of 70%, maxing out at 75% around 3-4 epochs. Given that this is just a preliminary model with just a basic amount of feature engineering done, these results are really promising. 
 
 ---------------------------------------------------
 Example program usage (CLI):
@@ -69,15 +72,24 @@ Example program usage (CLI):
 -i = folder to scan (containing a single known malware executable at the time of scanning)
 ```
 cd restless
-python cli.py -i /home/ubuntu/restless/restless/data
+python cli.py -i data/
+Using TensorFlow backend.
+Succesfully loaded HANN model:  /home/ubuntu/restless/restless/components/nlp/hann/default.h5
+Total 6766 unique tokens.
 ..
-2020-03-20 19:16:00 INFO Restless initializing. Running system-wide scan: False
-2020-03-20 19:16:00 INFO Initializing Restless.Scanner with PE Analyzer: <pe_analyzer.pe_analyzer.PE_Analyzer object at 0x7efc0a7775d0>
-2020-03-20 19:16:00 INFO Restless.Watcher is now watching over system and scanning new incoming files.
-File:  /home/ubuntu/restless/restless/data/malicious/0.exe.zip  cannot be analyzed -  'DOS Header magic not found.'
-File features found for:  /home/ubuntu/restless/restless/data/malicious/0.exe [23117, 144, 3, 0, 4, 0, 65535, 0, 184, 0, 0, 0, 64, 0, b'\x00\x00\x00\x00\x00\x00\x00\x00', 0, 0, b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', 216, 332, 2, 2011.2483564814816, 0, 0, 224, 271, 267, 6, 0, 0, 71680, 0, 5538, 4096, 4096, 4194304, 4096, 512, 4, 0, 0, 0, 4, 0, 77824, 1024, 100669, 2, 0, 1048576, 4096, 1048576, 4096, 0, 16]
+2020-03-23 21:15:06 INFO Restless initializing. Running system-wide scan: False
+2020-03-23 21:15:06 INFO Initializing Restless.Scanner with PE Analyzer: <pe_analyzer.pe_analyzer.PE_Analyzer object at 0x7f7b7392e610>
+2020-03-23 21:15:06 INFO Restless.Watcher is now watching over system and scanning new incoming files.
+PEAnalyzer scanning:  data
 ..
-2020-03-20 19:16:01 INFO Scanned /home/ubuntu/restless/restless/data/malicious/0.exe - predicted: 0.11168818 benign and 0.8883118 malicious
+File:  data/benign/audacity-win-2.3.3.exe  cannot be analyzed -  'DOS Header magic not found.'
+File:  data/malicious/eh.exe  cannot be analyzed -  'The file is empty'
+2020-03-23 21:15:08 INFO Scanned data/benign/7z1900-x64.exe - predicted: 0.79037845 benign and 0.20962158 malicious
+2020-03-23 21:15:09 INFO Scanned data/malicious/bx89.exe - predicted: 0.8926386 benign and 0.10736139 malicious
+2020-03-23 21:15:09 INFO Scanned data/malicious/microsoft office 2007 service pack 2.exe - predicted: 0.7755149 benign and 0.22448513 malicious
+2020-03-23 21:15:10 INFO Scanned data/malicious/0.exe - predicted:  benign and 0.6572292 malicious
+2020-03-23 21:15:11 INFO Scanned data/malicious/tekdefense.dll - predicted: 0.293381 benign and 0.706619 malicious
+..
 ```
 ---------------------------------------------------
 
@@ -179,7 +191,7 @@ You can use the CLI like this to scan folders / files for malware probability:
 python cli.py -i /home/ubuntu/restless/restless/data
 ```
 
-`restless/data/malicious` contains a zipped up known malicious executable you can use for testing (unzip it first, as the scanner only works for EXE files at the moment).
+`restless/data/malicious` contains a zipped up known malicious executable you can use for testing (unzip it first, as the scanner only works for EXE files at the moment). The password to unzip infected zips is `infected`.
 
 ### API usage
 

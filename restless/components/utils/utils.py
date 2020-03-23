@@ -2,10 +2,11 @@ import os
 import subprocess
 
 from .logger import Logger
-from .db_caller import DB_Caller
+
+# from .db_caller import DB_Caller
 
 logger = Logger()
-db = DB_Caller()
+# db = DB_Caller()
 
 DEFAULT_LOG_DIR = "./logs"
 
@@ -17,8 +18,8 @@ class Utils:
 
     def __init__(self):
         self.logger = logger
-        self.db = db
-        self.print_logm("Initializing db: " + str(self.db.context))
+        # self.db = db
+        # self.print_logm("Initializing db: " + str(self.db.context))
         pass
 
     def print_logm(self, message: str):

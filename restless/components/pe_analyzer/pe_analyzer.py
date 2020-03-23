@@ -4,7 +4,7 @@ import os
 import pefile
 import csv
 
-rootdir = "/home/ubuntu/restless/restless/components/pe_analyzer/files/malicious"
+rootdir = "/home/ubuntu/restless/restless/data"
 
 # Change this based on the PE file we're analyzing -
 # [0] for benign and [1] for malicious, or leave empty if we do$
@@ -74,10 +74,12 @@ OPTIONAL_HEADER = [
     "NumberOfRvaAndSizes",
 ]
 
+
 class PE_Analyzer:
     """
     Contains tools for analyzing and extracting PE file headers and other metadata.
     """
+
     def __init__(self):
         self.class_label = class_label
         self.rootdir = rootdir
@@ -87,30 +89,27 @@ class PE_Analyzer:
 
     def extract_dos_header(self, pe):
         IMAGE_DOS_HEADER_data = [0 for i in range(19)]
-        try:
-            IMAGE_DOS_HEADER_data = [
-                pe.DOS_HEADER.e_magic,
-                pe.DOS_HEADER.e_cblp,
-                pe.DOS_HEADER.e_cp,
-                pe.DOS_HEADER.e_crlc,
-                pe.DOS_HEADER.e_cparhdr,
-                pe.DOS_HEADER.e_minalloc,
-                pe.DOS_HEADER.e_maxalloc,
-                pe.DOS_HEADER.e_ss,
-                pe.DOS_HEADER.e_sp,
-                pe.DOS_HEADER.e_csum,
-                pe.DOS_HEADER.e_ip,
-                pe.DOS_HEADER.e_cs,
-                pe.DOS_HEADER.e_lfarlc,
-                pe.DOS_HEADER.e_ovno,
-                pe.DOS_HEADER.e_res,
-                pe.DOS_HEADER.e_oemid,
-                pe.DOS_HEADER.e_oeminfo,
-                pe.DOS_HEADER.e_res2,
-                pe.DOS_HEADER.e_lfanew,
-            ]
-        except Exception as e:
-            print(e)
+        IMAGE_DOS_HEADER_data = [
+            pe.DOS_HEADER.e_magic,
+            pe.DOS_HEADER.e_cblp,
+            pe.DOS_HEADER.e_cp,
+            pe.DOS_HEADER.e_crlc,
+            pe.DOS_HEADER.e_cparhdr,
+            pe.DOS_HEADER.e_minalloc,
+            pe.DOS_HEADER.e_maxalloc,
+            pe.DOS_HEADER.e_ss,
+            pe.DOS_HEADER.e_sp,
+            pe.DOS_HEADER.e_csum,
+            pe.DOS_HEADER.e_ip,
+            pe.DOS_HEADER.e_cs,
+            pe.DOS_HEADER.e_lfarlc,
+            pe.DOS_HEADER.e_ovno,
+            pe.DOS_HEADER.e_res,
+            pe.DOS_HEADER.e_oemid,
+            pe.DOS_HEADER.e_oeminfo,
+            pe.DOS_HEADER.e_res2,
+            pe.DOS_HEADER.e_lfanew,
+        ]
         return IMAGE_DOS_HEADER_data
 
     def extract_features(self, pe):
@@ -163,28 +162,27 @@ class PE_Analyzer:
         results = []
         if not rootdir:
             rootdir = self.rootdir
+        print("PEAnalyzer scanning: ", rootdir)
         for dirpath, dirs, files in os.walk(rootdir):
+            # print(dirpath, dirs, files)
             for filename in files:
                 fname = os.path.join(dirpath, filename)
                 with open(fname) as myfile:
                     # print(myfile.read())
                     try:
                         pe = pefile.PE(fname)
+                        # print("PE: ", fname, pe)
                     except Exception as e:
                         print("File: ", fname, " cannot be analyzed - ", e)
                         pass
                     else:
                         try:
                             features = self.extract_features(pe)
-                            print(
-                                "File features found for: ",
-                                fname,
-                                features + class_label,
-                            )
                             result = (fname, features)
                             results.append(result)
                         except Exception as e:
                             print("Error while saving features: ", e)
+                            pass
         return results
 
 

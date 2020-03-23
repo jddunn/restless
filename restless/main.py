@@ -21,6 +21,7 @@ class Restless(object):
 
     def __init__(self, run_system_scan=False):
         self.run_system_scan = run_system_scan
+        # keys of features from pe_analyzer
         utils.print_logm(
             "Restless initializing. Running system-wide scan: "
             + str(self.run_system_scan)
@@ -44,7 +45,8 @@ class Restless(object):
         for file_result in file_results:
             fname = file_result[0]
             features = file_result[1]
-            matrix_results = self.nlp.hann.build_matrix_from_features(features)
+            matrix_results = self.nlp.hann.build_features_vecs_from_input(features)
+            # print("Predicting: ", fname)
             res = (fname, self.nlp.hann.predict(matrix_results))
             results.append(res)
             utils.print_logm(
