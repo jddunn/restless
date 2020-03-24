@@ -6,16 +6,11 @@ import sys
 import os
 import string
 
-sys.path.append("../")
-sys.path.append("../../")
-
-# Following lines are for assigning parent directory dynamically.
-dir_path = os.path.dirname(os.path.realpath(__file__))
-parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
-sys.path.insert(0, parent_dir_path)
-
-import functools
-import operator
+sys.path.append("..")
+sys.path.append("../..")
+DEFAULT_DATA_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "data")
+)
 
 from keras.preprocessing.text import Tokenizer, text_to_word_sequence
 from keras.preprocessing.sequence import pad_sequences
@@ -49,7 +44,10 @@ try:
     from restless.components.utils import utils
 except:
     from utils import utils
-from text_normalizer import TextNormalizer
+try:
+    from restless.components.nlp.text_normalizer import TextNormalizer
+except:
+    from text_normalizer import TextNormalizer
 
 text_normalizer = TextNormalizer()
 
@@ -59,15 +57,17 @@ VOCABULARY_SIZE = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
 
-GLOVE_DIR_PATH = "."
-
 MAX_DOCS = 10000000  # Limit number of records to train for speed
 
-DEFAULT_TRAINING_DATA_PATH = (
-    "/home/ubuntu/restless/restless/components/nlp/hann/malware-dataset.csv"
+GLOVE_DIR_PATH = os.path.abspath(
+    os.path.join(DEFAULT_DATA_PATH, "glove", "glove.6B.300d.txt")
 )
-
-DEFAULT_MODEL_PATH = "/home/ubuntu/restless/restless/components/nlp/hann/default.h5"
+DEFAULT_TRAINING_DATA_PATH = os.path.abspath(
+    os.path.join(DEFAULT_DATA_PATH, "training", "malware-dataset.csv")
+)
+DEFAULT_MODEL_PATH = os.path.abspath(
+    os.path.join(DEFAULT_DATA_PATH, "models", "default.h5")
+)
 
 
 class HierarchicalAttentionNetwork:
@@ -95,6 +95,7 @@ class HierarchicalAttentionNetwork:
         self.labels = []
         self.labels_matrix = np.zeros(len(self.records), dtype="int32")
         # For now before we integrate the db load corpus from CSV
+        # We should play around with combinations of features to detect malware
         self.feature_keys_dict = [
             # {"name": "e_magic", "index": 0, "tokenize": "char"},
             # {"name": "e_cblp", "index": 1, "tokenize": "char"},
@@ -122,11 +123,7 @@ class HierarchicalAttentionNetwork:
             {"name": "AddressOfEntryPoint", "index": 32, "tokenize": "char"},
             {"name": "CheckSum", "index": 46, "tokenize": "char"},
         ]
-        self.MAX_SENTENCE_LENGTH = MAX_SENTENCE_LENGTH
-        self.MAX_SENTENCE_COUNT = MAX_SENTENCE_COUNT
-        self.VOCABULARY_SIZE = VOCABULARY_SIZE
-        self.EMBEDDING_DIM = EMBEDDING_DIM
-        self.VALIDATION_SPLIT = VALIDATION_SPLIT
+
         self.word_embedding = None
         self.word_attention_model = None
         self.tokenizer = None
@@ -141,12 +138,7 @@ class HierarchicalAttentionNetwork:
         self.embeddings_index = None
         self.embeddings_matrix = None
 
-        self.GLOVE_DIR = "components/nlp/hann"
-        self.MAX_DOCS = MAX_DOCS
         self.preprocess_data(self.data_train)
-        # self.feature_vecs = self.build_features_vecs_from_data(
-        #    self.data_train, self.feature_keys_dict
-        # )
         return
 
     def load_model(self, filepath: str):
@@ -191,18 +183,8 @@ class HierarchicalAttentionNetwork:
         embeddings_index = {}
         f = None
         if not glove_dir:
-            glove_dir = self.GLOVE_DIR
-        try:
-            f = open(os.path.abspath(os.path.join(glove_dir, "glove.6B.100d.txt")))
-        except:
-            f = open(
-                os.path.abspath(
-                    os.path.join(
-                        "/home/ubuntu/restless/restless/components/nlp/hann",
-                        "glove.6B.100d.txt",
-                    )
-                )
-            )
+            glove_dir = GLOVE_DIR_PATH
+        f = open(GLOVE_DATA_PATH)
         for line in f:
             values = line.split()
             word = values[0]
@@ -213,9 +195,7 @@ class HierarchicalAttentionNetwork:
         return embeddings_index
 
     def make_embeddings_matrix(self, embeddings_index):
-        embeddings_matrix = np.random.random(
-            (len(self.word_index) + 1, self.EMBEDDING_DIM)
-        )
+        embeddings_matrix = np.random.random((len(self.word_index) + 1, EMBEDDING_DIM))
         for word, i in self.word_index.items():
             embedding_vector = embeddings_index.get(word)
             if embedding_vector is not None:
@@ -231,9 +211,9 @@ class HierarchicalAttentionNetwork:
             model_filepath = DEFAULT_MODEL_PATH
         embedding_layer = Embedding(
             len(self.word_index) + 1,
-            self.EMBEDDING_DIM,
+            EMBEDDING_DIM,
             weights=[self.embeddings_matrix],
-            input_length=self.MAX_SENTENCE_LENGTH,
+            input_length=MAX_SENTENCE_LENGTH,
             trainable=True,
             mask_zero=True,
         )
@@ -259,7 +239,7 @@ class HierarchicalAttentionNetwork:
             self.x_train,
             self.y_train,
             validation_data=(self.x_val, self.y_val),
-            epochs=5,
+            epochs=10,
             batch_size=25,
         )
         model.save(model_filepath)
@@ -293,7 +273,7 @@ class HierarchicalAttentionNetwork:
                 sentences.append(sentence)
             self.texts.extend(sentences)
             self.texts_features.append(sentences)
-        self.tokenizer = Tokenizer(nb_words=self.VOCABULARY_SIZE)
+        self.tokenizer = Tokenizer(nb_words=VOCABULARY_SIZE)
         # self.texts = functools.reduce(operator.iconcat, self.texts, [])
         _texts = []
         for i, each in enumerate(self.texts):
@@ -440,18 +420,11 @@ class AttentionLayer(Layer):
 
 if __name__ == "__main__":
     hann = HierarchicalAttentionNetwork()
-    # hann.read_data("./labeledTrainData.tsv")
-    hann.read_data("./malware-dataset.csv")
+    hann.read_data(DEFAULT_TRAINING_DATA_PATH)
 else:
     utils.print_logm("Initializing HANN.")
     hann = HierarchicalAttentionNetwork()
     if hann.load_model(DEFAULT_MODEL_PATH):
-        hann.GLOVE_DIR = "components/nlp/hann"
         print("Succesfully loaded HANN model: ", DEFAULT_MODEL_PATH)
     else:
-        try:
-            hann.read_data("components/nlp/hann/malware-dataset.csv")
-            hann.GLOVE_DIR = "components/nlp/hann/"
-        except Exception as e:
-            hann.read_data("restless/components/nlp/hann/malware-dataset.csv")
-            hann.GLOVE_DIR = "restless/components/nlp/hann/"
+        hann.read_data(DEFAULT_TRAINING_DATA_PATH)
