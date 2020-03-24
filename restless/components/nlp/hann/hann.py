@@ -43,21 +43,19 @@ try:
 except:
     from utils import utils
 try:
-    from restless.components.nlp.text_normalizer import TextNormalizer
+    from restless.components.nlp.text_normalizer import text_normalizer
 except:
-    from text_normalizer import TextNormalizer
-
-text_normalizer = TextNormalizer()
+    from text_normalizer import text_normalizer
 
 MAX_SENTENCE_LENGTH = 100
 MAX_SENTENCE_COUNT = 15
 VOCABULARY_SIZE = 20000
-EMBEDDING_DIM = 100
+EMBEDDING_DIM = 300
 VALIDATION_SPLIT = 0.2
 
 MAX_DOCS = 10000000  # Limit number of records to train for speed
 
-GLOVE_DIR_PATH = os.path.abspath(
+GLOVE_DATA_PATH = os.path.abspath(
     os.path.join(DEFAULT_DATA_PATH, "glove", "glove.6B.300d.txt")
 )
 DEFAULT_TRAINING_DATA_PATH = os.path.abspath(
@@ -140,6 +138,7 @@ class HierarchicalAttentionNetwork:
         return
 
     def load_model(self, filepath: str):
+        """Loads a model with a custom AttentionLayer property."""
         res = load_model(
             filepath, custom_objects={"AttentionLayer": AttentionLayer(Layer)}
         )
@@ -149,7 +148,8 @@ class HierarchicalAttentionNetwork:
         else:
             return None
 
-    def read_data(self, filepath: str):
+    def read_and_train_data(self, filepath: str):
+        """Reads a CSV file into training data and trains network."""
         data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
         # data_train = data_train.drop_duplicates()
         samples = self.preprocess_data(data_train)
@@ -160,6 +160,7 @@ class HierarchicalAttentionNetwork:
         return
 
     def preprocess_data(self, data_train: object):
+        """Preprocesses data given a df object."""
         self.feature_vecs = self.build_features_vecs_from_data(
             data_train, self.feature_keys_dict
         )
@@ -177,11 +178,11 @@ class HierarchicalAttentionNetwork:
         print(self.y_val.sum(axis=0))
         return
 
-    def get_glove_embeddings(self, glove_dir: str = None):
+    def get_glove_embeddings(self, glove_data_path: str = None):
         embeddings_index = {}
         f = None
-        if not glove_dir:
-            glove_dir = GLOVE_DIR_PATH
+        if not glove_data_path:
+            glove_data_path = GLOVE_DATA_PATH
         f = open(GLOVE_DATA_PATH)
         for line in f:
             values = line.split()
@@ -205,6 +206,8 @@ class HierarchicalAttentionNetwork:
     def build_network_and_train_model(
         self, embeddings_matrix, model_filepath: str = None
     ):
+        """Trains a model and saves to a given filepath (will default
+           to a filename)."""
         if model_filepath is None:
             model_filepath = DEFAULT_MODEL_PATH
         embedding_layer = Embedding(
@@ -217,16 +220,16 @@ class HierarchicalAttentionNetwork:
         )
         sentence_input = Input(shape=(MAX_SENTENCE_LENGTH,), dtype="int32")
         embedded_sequences = embedding_layer(sentence_input)
-        l_lstm = Bidirectional(GRU(100, return_sequences=True))(embedded_sequences)
-        l_att = AttentionLayer(100)(l_lstm)
+        l_lstm = Bidirectional(GRU(300, return_sequences=True))(embedded_sequences)
+        l_att = AttentionLayer(300)(l_lstm)
         sentEncoder = Model(sentence_input, l_att)
 
         checksum_input = Input(
             shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32"
         )
         checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
-        l_lstm_sent = Bidirectional(GRU(100, return_sequences=True))(checksum_encoder)
-        l_att_sent = AttentionLayer(100)(l_lstm_sent)
+        l_lstm_sent = Bidirectional(GRU(300, return_sequences=True))(checksum_encoder)
+        l_att_sent = AttentionLayer(300)(l_lstm_sent)
         preds = Dense(2, activation="softmax")(l_att_sent)
         model = Model(checksum_input, preds)
         model.compile(
@@ -237,13 +240,37 @@ class HierarchicalAttentionNetwork:
             self.x_train,
             self.y_train,
             validation_data=(self.x_val, self.y_val),
-            epochs=10,
-            batch_size=25,
+            epochs=5,
+            batch_size=50,
         )
         model.save(model_filepath)
         self.model = model
+        return model_filepath
 
-    def build_features_vecs_from_data(self, data_train, feature_keys_dict=None):
+    def _fill_feature_vec(self, texts_features: list, feature_vector):
+        """Helper function to build feature vector for HANN to classify."""
+        for i, sentences in enumerate(texts_features):
+            for j, sentence in enumerate(sentences):
+                if j < MAX_SENTENCE_COUNT:
+                    k = 0
+                    if type(sentence) is list:
+                        wordTokens = [text_to_word_sequence(seq) for seq in sentence]
+                    else:
+                        wordTokens = text_to_word_sequence(sentence)
+                    for _, word in enumerate(wordTokens):
+                        if type(word) is list:
+                            word = "".join(word)
+                            # if (
+                            # k < MAX_SENTENCE_LENGTH
+                            # and
+                            # self.tokenizer.word_index[word] < VOCABULARY_SIZE
+                            # ):
+                        feature_vector[i, k] = self.word_index[word]
+                        k = k + 1
+        return feature_vector
+
+    def build_features_vecs_from_data(self, data_train, feature_keys_dict: dict = None):
+        """Vectorizes the training dataset for HANN."""
         results = []
         if feature_keys_dict is None:
             feature_keys_dict = self.feature_keys_dict
@@ -283,24 +310,7 @@ class HierarchicalAttentionNetwork:
         self.texts = _texts
         self.tokenizer.fit_on_texts(self.texts)
         self.word_index = self.tokenizer.word_index
-        for i, sentences in enumerate(self.texts_features):
-            for j, sentence in enumerate(sentences):
-                if j < MAX_SENTENCE_COUNT:
-                    k = 0
-                    if type(sentence) is list:
-                        wordTokens = [text_to_word_sequence(seq) for seq in sentence]
-                    else:
-                        wordTokens = text_to_word_sequence(sentence)
-                    for _, word in enumerate(wordTokens):
-                        if type(word) is list:
-                            word = "".join(word)
-                            # if (
-                            # k < MAX_SENTENCE_LENGTH
-                            # and
-                            # self.tokenizer.word_index[word] < VOCABULARY_SIZE
-                            # ):
-                        self.data[i, k] = self.word_index[word]
-                        k = k + 1
+        self.data = self._fill_feature_vec(self.texts_features, self.data)
         self.labels_matrix = to_categorical(np.asarray(self.labels))
         indices = np.arange(self.data.shape[0])
         np.random.shuffle(indices)
@@ -311,6 +321,7 @@ class HierarchicalAttentionNetwork:
     def build_features_vecs_from_input(
         self, input_features, feature_keys_dict: dict = None
     ):
+        """Vectorizes a feature matrix from extracted PE data for HANN classification."""
         results = []
         if feature_keys_dict is None:
             feature_keys_dict = self.feature_keys_dict
@@ -336,27 +347,11 @@ class HierarchicalAttentionNetwork:
             (len(input_features), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
             dtype="int32",
         )
-        for i, sentences in enumerate(self.texts_features):
-            for j, sentence in enumerate(sentences):
-                if j < MAX_SENTENCE_COUNT:
-                    k = 0
-                    if type(sentence) is list:
-                        wordTokens = [text_to_word_sequence(seq) for seq in sentence]
-                    else:
-                        wordTokens = text_to_word_sequence(sentence)
-                    for _, word in enumerate(wordTokens):
-                        if type(word) is list:
-                            word = "".join(word)
-                            # if (
-                            # k < MAX_SENTENCE_LENGTH
-                            # and
-                            # self.tokenizer.word_index[word] < VOCABULARY_SIZE
-                            # ):
-                        feature_vector[i, k] = self.word_index[word]
-                        k = k + 1
+        feature_vector = self._fill_feature_vec(self.texts_features, feature_vector)
         return feature_vector
 
     def predict(self, data):
+        """Predicts binary classification of classes with probabilities given a feature matrix."""
         res = self.model.predict(data)
         classes = to_categorical(res)
         probs = str(res[0])
@@ -418,11 +413,11 @@ class AttentionLayer(Layer):
 
 if __name__ == "__main__":
     hann = HierarchicalAttentionNetwork()
-    hann.read_data(DEFAULT_TRAINING_DATA_PATH)
+    hann.read_and_train_data(DEFAULT_TRAINING_DATA_PATH)
 else:
     utils.print_logm("Initializing HANN.")
     hann = HierarchicalAttentionNetwork()
     if hann.load_model(DEFAULT_MODEL_PATH):
         print("Succesfully loaded HANN model: ", DEFAULT_MODEL_PATH)
     else:
-        hann.read_data(DEFAULT_TRAINING_DATA_PATH)
+        hann.read_and_train_data(DEFAULT_TRAINING_DATA_PATH)
