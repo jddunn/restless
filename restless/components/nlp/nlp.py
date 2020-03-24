@@ -1,9 +1,7 @@
 from .hann import HierarchicalAttentionNetwork
-from .text_normalizer import TextNormalizer
+from .text_normalizer import text_normalizer
 
 hann = HierarchicalAttentionNetwork()
-text_normalizer = TextNormalizer()
-
 
 class NLP:
     """

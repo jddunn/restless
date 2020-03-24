@@ -72,7 +72,7 @@ After just one epoch, we have an accuracy of 70%, maxing out at 75% around 3-4 e
 ---------------------------------------------------
 ### Example program usage (CLI):
 
--i = folder to scan (containing a single known malware executable at the time of scanning)
+-i = folder to scan
 ```
 cd restless
 python cli.py -i data/
@@ -191,10 +191,10 @@ http://localhost:4712
 
 You can use the CLI like this to scan folders / files for malware probability:
 ```sh
-python cli.py -i /home/ubuntu/restless/restless/data
+python cli.py -i /home/ubuntu/restless/restless/data/test_exes
 ```
 
-`restless/data/malicious` contains a zipped up known malicious executable you can use for testing (unzip it first, as the scanner only works for EXE files at the moment). The password to unzip infected zips is `infected`.
+`/test_exes/malicious` contains zipped up malicious executables you can use for testing (unzip archive first, as the scanner only works for EXE files at the moment). The password to unzip malicious files is `infected`.
 
 ### API usage
 
