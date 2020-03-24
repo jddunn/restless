@@ -8,6 +8,8 @@ import string
 
 sys.path.append("..")
 sys.path.append("../..")
+sys.path.append("../../../..")
+
 DEFAULT_DATA_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "..", "data")
 )
@@ -45,7 +47,7 @@ except:
 try:
     from restless.components.nlp.text_normalizer import text_normalizer
 except:
-    from text_normalizer import text_normalizer
+    from ..text_normalizer import text_normalizer
 
 MAX_SENTENCE_LENGTH = 100
 MAX_SENTENCE_COUNT = 15
