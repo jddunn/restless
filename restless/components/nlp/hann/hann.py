@@ -35,8 +35,6 @@ from keras import backend as K
 from keras.engine.topology import Layer, InputSpec
 from keras import initializers
 
-from sklearn.preprocessing import OneHotEncoder
-
 import nltk
 
 # Make imports work for Docker package and when running as a script
