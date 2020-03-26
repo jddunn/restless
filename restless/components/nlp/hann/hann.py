@@ -243,8 +243,8 @@ class HierarchicalAttentionNetwork:
             self.x_train,
             self.y_train,
             validation_data=(self.x_val, self.y_val),
-            epochs=4,
-            batch_size=4,
+            epochs=10,
+            batch_size=32,
         )
         model.save(model_filepath)
         self.model = model
@@ -268,7 +268,7 @@ class HierarchicalAttentionNetwork:
                             # and
                             # self.tokenizer.word_index[word] < VOCABULARY_SIZE
                             # ):
-                        feature_vector[i, k] = self.word_index[word]
+                        feature_vector[i, j, k] = self.word_index[word]
                         k = k + 1
         return feature_vector
 
@@ -357,13 +357,9 @@ class HierarchicalAttentionNetwork:
         """Predicts binary classification of classes with probabilities given a feature matrix."""
         res = self.model.predict(data)
         classes = to_categorical(res)
-        probs = str(res[0])
-        probs = probs.replace("[", "")
-        probs = probs.replace("]", "")
-        probs = probs.strip()
-        tokens = probs.split(" ")
-        malicious = tokens[0]
-        benign = tokens[1]
+        probs = res[0]
+        malicious = probs[1]
+        benign = probs[0]
         return (benign, malicious)
 
 

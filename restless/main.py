@@ -53,9 +53,9 @@ class Restless(object):
                 "Scanned "
                 + str(res[0])
                 + " - predicted: "
-                + str(res[1][0])
-                + " benign and "
-                + str(res[1][1])
-                + " malicious"
+                + str(float(res[1][0]) * 100)
+                + "% benign and "
+                + str(float(res[1][1]) * 100)
+                + "% malicious"
             )
         return results

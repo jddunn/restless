@@ -173,7 +173,7 @@ class PE_Analyzer:
                         pe = pefile.PE(fname)
                         # print("PE: ", fname, pe)
                     except Exception as e:
-                        print("File: ", fname, " cannot be analyzed - ", e)
+                        # print("File: ", fname, " cannot be analyzed - ", e)
                         pass
                     else:
                         try:
