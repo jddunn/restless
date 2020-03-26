@@ -52,13 +52,13 @@ except:
 MAX_SENTENCE_LENGTH = 100
 MAX_SENTENCE_COUNT = 15
 VOCABULARY_SIZE = 20000
-EMBEDDING_DIM = 300
+EMBEDDING_DIM = 50
+GLOVE_DIMENSION_SIZE = EMBEDDING_DIM # needs same dimension
 VALIDATION_SPLIT = 0.2
-
-MAX_DOCS = 10000000  # Limit number of records to train for speed
+MAX_DOCS = 10000000  # Limit number of records to train for speed if needed
 
 GLOVE_DATA_PATH = os.path.abspath(
-    os.path.join(DEFAULT_DATA_PATH, "glove", "glove.6B.300d.txt")
+    os.path.join(DEFAULT_DATA_PATH, "glove", "glove.6B." + str(GLOVE_DIMENSION_SIZE) + "d.txt")
 )
 DEFAULT_TRAINING_DATA_PATH = os.path.abspath(
     os.path.join(DEFAULT_DATA_PATH, "training", "malware-dataset.csv")
@@ -66,7 +66,6 @@ DEFAULT_TRAINING_DATA_PATH = os.path.abspath(
 DEFAULT_MODEL_PATH = os.path.abspath(
     os.path.join(DEFAULT_DATA_PATH, "models", "default.h5")
 )
-
 
 class HierarchicalAttentionNetwork:
     """
