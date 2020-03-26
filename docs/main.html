@@ -79,10 +79,10 @@ class Restless(object):
                 &#34;Scanned &#34;
                 + str(res[0])
                 + &#34; - predicted: &#34;
-                + str(res[1][0])
-                + &#34; benign and &#34;
-                + str(res[1][1])
-                + &#34; malicious&#34;
+                + str(float(res[1][0]) * 100)
+                + &#34;% benign and &#34;
+                + str(float(res[1][1]) * 100)
+                + &#34;% malicious&#34;
             )
         return results</code></pre>
 </details>
@@ -145,10 +145,10 @@ class Restless(object):
                 &#34;Scanned &#34;
                 + str(res[0])
                 + &#34; - predicted: &#34;
-                + str(res[1][0])
-                + &#34; benign and &#34;
-                + str(res[1][1])
-                + &#34; malicious&#34;
+                + str(float(res[1][0]) * 100)
+                + &#34;% benign and &#34;
+                + str(float(res[1][1]) * 100)
+                + &#34;% malicious&#34;
             )
         return results</code></pre>
 </details>
@@ -177,10 +177,10 @@ class Restless(object):
             &#34;Scanned &#34;
             + str(res[0])
             + &#34; - predicted: &#34;
-            + str(res[1][0])
-            + &#34; benign and &#34;
-            + str(res[1][1])
-            + &#34; malicious&#34;
+            + str(float(res[1][0]) * 100)
+            + &#34;% benign and &#34;
+            + str(float(res[1][1]) * 100)
+            + &#34;% malicious&#34;
         )
     return results</code></pre>
 </details>

@@ -209,10 +209,8 @@ http://localhost:4712
 
 You can use the CLI like this to scan folders / files for malware probability:
 ```sh
-python cli.py -i /home/ubuntu/restless/restless/data/test_exes
+python cli.py -i /home/ubuntu/
 ```
-
-`/test_exes/malicious` contains zipped up malicious executables you can use for testing (unzip archive first, as the scanner only works for EXE files at the moment). The password to unzip malicious files is `infected`.
 
 ### API usage
 

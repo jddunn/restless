@@ -53,12 +53,14 @@ MAX_SENTENCE_LENGTH = 100
 MAX_SENTENCE_COUNT = 15
 VOCABULARY_SIZE = 20000
 EMBEDDING_DIM = 50
-GLOVE_DIMENSION_SIZE = EMBEDDING_DIM # needs same dimension
+GLOVE_DIMENSION_SIZE = EMBEDDING_DIM  # needs same dimension
 VALIDATION_SPLIT = 0.2
 MAX_DOCS = 10000000  # Limit number of records to train for speed if needed
 
 GLOVE_DATA_PATH = os.path.abspath(
-    os.path.join(DEFAULT_DATA_PATH, "glove", "glove.6B." + str(GLOVE_DIMENSION_SIZE) + "d.txt")
+    os.path.join(
+        DEFAULT_DATA_PATH, "glove", "glove.6B." + str(GLOVE_DIMENSION_SIZE) + "d.txt"
+    )
 )
 DEFAULT_TRAINING_DATA_PATH = os.path.abspath(
     os.path.join(DEFAULT_DATA_PATH, "training", "malware-dataset.csv")
@@ -66,6 +68,7 @@ DEFAULT_TRAINING_DATA_PATH = os.path.abspath(
 DEFAULT_MODEL_PATH = os.path.abspath(
     os.path.join(DEFAULT_DATA_PATH, "models", "default.h5")
 )
+
 
 class HierarchicalAttentionNetwork:
     """
@@ -202,7 +205,9 @@ class HierarchicalAttentionNetwork:
                 embeddings_matrix[i] = embedding_vector
             else:
                 # Randomly initialize vector
-                embeddings_matrix[i] = np.random.normal(scale=0.6, size=(EMBEDDING_DIM,))
+                embeddings_matrix[i] = np.random.normal(
+                    scale=0.6, size=(EMBEDDING_DIM,)
+                )
         self.embeddings_matrix = embeddings_matrix
         return embeddings_matrix
 
@@ -223,7 +228,9 @@ class HierarchicalAttentionNetwork:
         )
         sentence_input = Input(shape=(MAX_SENTENCE_LENGTH,), dtype="int32")
         embedded_sequences = embedding_layer(sentence_input)
-        l_lstm = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(embedded_sequences)
+        l_lstm = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(
+            embedded_sequences
+        )
         l_att = AttentionLayer(EMBEDDING_DIM)(l_lstm)
         sentEncoder = Model(sentence_input, l_att)
 
@@ -231,13 +238,13 @@ class HierarchicalAttentionNetwork:
             shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32"
         )
         checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
-        l_lstm_sent = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(checksum_encoder)
+        l_lstm_sent = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(
+            checksum_encoder
+        )
         l_att_sent = AttentionLayer(EMBEDDING_DIM)(l_lstm_sent)
         preds = Dense(2, activation="softmax")(l_att_sent)
         model = Model(checksum_input, preds)
-        model.compile(
-            loss="binary_crossentropy", optimizer="rmsprop", metrics=["acc"]
-        )
+        model.compile(loss="binary_crossentropy", optimizer="rmsprop", metrics=["acc"])
         print("Training HANN model now..")
         model.fit(
             self.x_train,

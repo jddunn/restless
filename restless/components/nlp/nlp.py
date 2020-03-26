@@ -3,6 +3,7 @@ from .text_normalizer import text_normalizer
 
 hann = HierarchicalAttentionNetwork()
 
+
 class NLP:
     """
     Module with all NLP and text processing related features.

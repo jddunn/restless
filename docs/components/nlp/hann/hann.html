@@ -78,13 +78,15 @@ except:
 MAX_SENTENCE_LENGTH = 100
 MAX_SENTENCE_COUNT = 15
 VOCABULARY_SIZE = 20000
-EMBEDDING_DIM = 300
+EMBEDDING_DIM = 50
+GLOVE_DIMENSION_SIZE = EMBEDDING_DIM  # needs same dimension
 VALIDATION_SPLIT = 0.2
-
-MAX_DOCS = 10000000  # Limit number of records to train for speed
+MAX_DOCS = 10000000  # Limit number of records to train for speed if needed
 
 GLOVE_DATA_PATH = os.path.abspath(
-    os.path.join(DEFAULT_DATA_PATH, &#34;glove&#34;, &#34;glove.6B.300d.txt&#34;)
+    os.path.join(
+        DEFAULT_DATA_PATH, &#34;glove&#34;, &#34;glove.6B.&#34; + str(GLOVE_DIMENSION_SIZE) + &#34;d.txt&#34;
+    )
 )
 DEFAULT_TRAINING_DATA_PATH = os.path.abspath(
     os.path.join(DEFAULT_DATA_PATH, &#34;training&#34;, &#34;malware-dataset.csv&#34;)
@@ -226,8 +228,12 @@ class HierarchicalAttentionNetwork:
         for word, i in self.word_index.items():
             embedding_vector = embeddings_index.get(word)
             if embedding_vector is not None:
-                # words not found in embedding index will be all-zeros.
                 embeddings_matrix[i] = embedding_vector
+            else:
+                # Randomly initialize vector
+                embeddings_matrix[i] = np.random.normal(
+                    scale=0.6, size=(EMBEDDING_DIM,)
+                )
         self.embeddings_matrix = embeddings_matrix
         return embeddings_matrix
 
@@ -248,28 +254,30 @@ class HierarchicalAttentionNetwork:
         )
         sentence_input = Input(shape=(MAX_SENTENCE_LENGTH,), dtype=&#34;int32&#34;)
         embedded_sequences = embedding_layer(sentence_input)
-        l_lstm = Bidirectional(GRU(300, return_sequences=True))(embedded_sequences)
-        l_att = AttentionLayer(300)(l_lstm)
+        l_lstm = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(
+            embedded_sequences
+        )
+        l_att = AttentionLayer(EMBEDDING_DIM)(l_lstm)
         sentEncoder = Model(sentence_input, l_att)
 
         checksum_input = Input(
             shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;
         )
         checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
-        l_lstm_sent = Bidirectional(GRU(300, return_sequences=True))(checksum_encoder)
-        l_att_sent = AttentionLayer(300)(l_lstm_sent)
+        l_lstm_sent = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(
+            checksum_encoder
+        )
+        l_att_sent = AttentionLayer(EMBEDDING_DIM)(l_lstm_sent)
         preds = Dense(2, activation=&#34;softmax&#34;)(l_att_sent)
         model = Model(checksum_input, preds)
-        model.compile(
-            loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=[&#34;acc&#34;]
-        )
+        model.compile(loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=[&#34;acc&#34;])
         print(&#34;Training HANN model now..&#34;)
         model.fit(
             self.x_train,
             self.y_train,
             validation_data=(self.x_val, self.y_val),
-            epochs=5,
-            batch_size=50,
+            epochs=10,
+            batch_size=32,
         )
         model.save(model_filepath)
         self.model = model
@@ -293,7 +301,7 @@ class HierarchicalAttentionNetwork:
                             # and
                             # self.tokenizer.word_index[word] &lt; VOCABULARY_SIZE
                             # ):
-                        feature_vector[i, k] = self.word_index[word]
+                        feature_vector[i, j, k] = self.word_index[word]
                         k = k + 1
         return feature_vector
 
@@ -382,13 +390,9 @@ class HierarchicalAttentionNetwork:
         &#34;&#34;&#34;Predicts binary classification of classes with probabilities given a feature matrix.&#34;&#34;&#34;
         res = self.model.predict(data)
         classes = to_categorical(res)
-        probs = str(res[0])
-        probs = probs.replace(&#34;[&#34;, &#34;&#34;)
-        probs = probs.replace(&#34;]&#34;, &#34;&#34;)
-        probs = probs.strip()
-        tokens = probs.split(&#34; &#34;)
-        malicious = tokens[0]
-        benign = tokens[1]
+        probs = res[0]
+        malicious = probs[1]
+        benign = probs[0]
         return (benign, malicious)
 
 
@@ -397,7 +401,7 @@ class AttentionLayer(Layer):
     Attention layer for Hierarchical Attention Network.
     &#34;&#34;&#34;
 
-    def __init__(self, attention_dim=100, **kwargs):
+    def __init__(self, attention_dim=EMBEDDING_DIM, **kwargs):
         self.init = initializers.get(&#34;normal&#34;)
         self.supports_masking = False
         self.attention_dim = attention_dim
@@ -462,7 +466,7 @@ else:
 <dl>
 <dt id="restless.components.nlp.hann.hann.AttentionLayer"><code class="flex name class">
 <span>class <span class="ident">AttentionLayer</span></span>
-<span>(</span><span>attention_dim=100, **kwargs)</span>
+<span>(</span><span>attention_dim=50, **kwargs)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Attention layer for Hierarchical Attention Network.</p></section>
@@ -475,7 +479,7 @@ else:
     Attention layer for Hierarchical Attention Network.
     &#34;&#34;&#34;
 
-    def __init__(self, attention_dim=100, **kwargs):
+    def __init__(self, attention_dim=EMBEDDING_DIM, **kwargs):
         self.init = initializers.get(&#34;normal&#34;)
         self.supports_masking = False
         self.attention_dim = attention_dim
@@ -773,8 +777,12 @@ to match that input shape provided.</p>
         for word, i in self.word_index.items():
             embedding_vector = embeddings_index.get(word)
             if embedding_vector is not None:
-                # words not found in embedding index will be all-zeros.
                 embeddings_matrix[i] = embedding_vector
+            else:
+                # Randomly initialize vector
+                embeddings_matrix[i] = np.random.normal(
+                    scale=0.6, size=(EMBEDDING_DIM,)
+                )
         self.embeddings_matrix = embeddings_matrix
         return embeddings_matrix
 
@@ -795,28 +803,30 @@ to match that input shape provided.</p>
         )
         sentence_input = Input(shape=(MAX_SENTENCE_LENGTH,), dtype=&#34;int32&#34;)
         embedded_sequences = embedding_layer(sentence_input)
-        l_lstm = Bidirectional(GRU(300, return_sequences=True))(embedded_sequences)
-        l_att = AttentionLayer(300)(l_lstm)
+        l_lstm = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(
+            embedded_sequences
+        )
+        l_att = AttentionLayer(EMBEDDING_DIM)(l_lstm)
         sentEncoder = Model(sentence_input, l_att)
 
         checksum_input = Input(
             shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;
         )
         checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
-        l_lstm_sent = Bidirectional(GRU(300, return_sequences=True))(checksum_encoder)
-        l_att_sent = AttentionLayer(300)(l_lstm_sent)
+        l_lstm_sent = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(
+            checksum_encoder
+        )
+        l_att_sent = AttentionLayer(EMBEDDING_DIM)(l_lstm_sent)
         preds = Dense(2, activation=&#34;softmax&#34;)(l_att_sent)
         model = Model(checksum_input, preds)
-        model.compile(
-            loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=[&#34;acc&#34;]
-        )
+        model.compile(loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=[&#34;acc&#34;])
         print(&#34;Training HANN model now..&#34;)
         model.fit(
             self.x_train,
             self.y_train,
             validation_data=(self.x_val, self.y_val),
-            epochs=5,
-            batch_size=50,
+            epochs=10,
+            batch_size=32,
         )
         model.save(model_filepath)
         self.model = model
@@ -840,7 +850,7 @@ to match that input shape provided.</p>
                             # and
                             # self.tokenizer.word_index[word] &lt; VOCABULARY_SIZE
                             # ):
-                        feature_vector[i, k] = self.word_index[word]
+                        feature_vector[i, j, k] = self.word_index[word]
                         k = k + 1
         return feature_vector
 
@@ -929,13 +939,9 @@ to match that input shape provided.</p>
         &#34;&#34;&#34;Predicts binary classification of classes with probabilities given a feature matrix.&#34;&#34;&#34;
         res = self.model.predict(data)
         classes = to_categorical(res)
-        probs = str(res[0])
-        probs = probs.replace(&#34;[&#34;, &#34;&#34;)
-        probs = probs.replace(&#34;]&#34;, &#34;&#34;)
-        probs = probs.strip()
-        tokens = probs.split(&#34; &#34;)
-        malicious = tokens[0]
-        benign = tokens[1]
+        probs = res[0]
+        malicious = probs[1]
+        benign = probs[0]
         return (benign, malicious)</code></pre>
 </details>
 <h3>Methods</h3>
@@ -1068,28 +1074,30 @@ to a filename).</p></section>
     )
     sentence_input = Input(shape=(MAX_SENTENCE_LENGTH,), dtype=&#34;int32&#34;)
     embedded_sequences = embedding_layer(sentence_input)
-    l_lstm = Bidirectional(GRU(300, return_sequences=True))(embedded_sequences)
-    l_att = AttentionLayer(300)(l_lstm)
+    l_lstm = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(
+        embedded_sequences
+    )
+    l_att = AttentionLayer(EMBEDDING_DIM)(l_lstm)
     sentEncoder = Model(sentence_input, l_att)
 
     checksum_input = Input(
         shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;
     )
     checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
-    l_lstm_sent = Bidirectional(GRU(300, return_sequences=True))(checksum_encoder)
-    l_att_sent = AttentionLayer(300)(l_lstm_sent)
+    l_lstm_sent = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(
+        checksum_encoder
+    )
+    l_att_sent = AttentionLayer(EMBEDDING_DIM)(l_lstm_sent)
     preds = Dense(2, activation=&#34;softmax&#34;)(l_att_sent)
     model = Model(checksum_input, preds)
-    model.compile(
-        loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=[&#34;acc&#34;]
-    )
+    model.compile(loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=[&#34;acc&#34;])
     print(&#34;Training HANN model now..&#34;)
     model.fit(
         self.x_train,
         self.y_train,
         validation_data=(self.x_val, self.y_val),
-        epochs=5,
-        batch_size=50,
+        epochs=10,
+        batch_size=32,
     )
     model.save(model_filepath)
     self.model = model
@@ -1156,8 +1164,12 @@ to a filename).</p></section>
     for word, i in self.word_index.items():
         embedding_vector = embeddings_index.get(word)
         if embedding_vector is not None:
-            # words not found in embedding index will be all-zeros.
             embeddings_matrix[i] = embedding_vector
+        else:
+            # Randomly initialize vector
+            embeddings_matrix[i] = np.random.normal(
+                scale=0.6, size=(EMBEDDING_DIM,)
+            )
     self.embeddings_matrix = embeddings_matrix
     return embeddings_matrix</code></pre>
 </details>
@@ -1175,13 +1187,9 @@ to a filename).</p></section>
     &#34;&#34;&#34;Predicts binary classification of classes with probabilities given a feature matrix.&#34;&#34;&#34;
     res = self.model.predict(data)
     classes = to_categorical(res)
-    probs = str(res[0])
-    probs = probs.replace(&#34;[&#34;, &#34;&#34;)
-    probs = probs.replace(&#34;]&#34;, &#34;&#34;)
-    probs = probs.strip()
-    tokens = probs.split(&#34; &#34;)
-    malicious = tokens[0]
-    benign = tokens[1]
+    probs = res[0]
+    malicious = probs[1]
+    benign = probs[0]
     return (benign, malicious)</code></pre>
 </details>
 </dd>
