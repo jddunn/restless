@@ -18,10 +18,12 @@ from keras.preprocessing.text import Tokenizer, text_to_word_sequence
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils.np_utils import to_categorical
 
-from keras.layers import Embedding
-from keras.layers import Dense, Input, InputLayer, Flatten
 from keras.layers import (
     Conv1D,
+    Dense,
+    Input,
+    InputLayer,
+    Flatten,
     MaxPooling1D,
     Embedding,
     merge,
@@ -52,8 +54,8 @@ except:
 MAX_SENTENCE_LENGTH = 100
 MAX_SENTENCE_COUNT = 15
 VOCABULARY_SIZE = 20000
-EMBEDDING_DIM = 50
-GLOVE_DIMENSION_SIZE = EMBEDDING_DIM  # needs same dimension
+ATTENTION_DIM = 50
+GLOVE_DIMENSION_SIZE = ATTENTION_DIM  # needs same dimension
 VALIDATION_SPLIT = 0.2
 MAX_DOCS = 10000000  # Limit number of records to train for speed if needed
 
@@ -198,7 +200,7 @@ class HierarchicalAttentionNetwork:
         return embeddings_index
 
     def make_embeddings_matrix(self, embeddings_index):
-        embeddings_matrix = np.random.random((len(self.word_index) + 1, EMBEDDING_DIM))
+        embeddings_matrix = np.random.random((len(self.word_index) + 1, ATTENTION_DIM))
         for word, i in self.word_index.items():
             embedding_vector = embeddings_index.get(word)
             if embedding_vector is not None:
@@ -206,7 +208,7 @@ class HierarchicalAttentionNetwork:
             else:
                 # Randomly initialize vector
                 embeddings_matrix[i] = np.random.normal(
-                    scale=0.6, size=(EMBEDDING_DIM,)
+                    scale=0.6, size=(ATTENTION_DIM,)
                 )
         self.embeddings_matrix = embeddings_matrix
         return embeddings_matrix
@@ -220,7 +222,7 @@ class HierarchicalAttentionNetwork:
             model_filepath = DEFAULT_MODEL_PATH
         embedding_layer = Embedding(
             len(self.word_index) + 1,
-            EMBEDDING_DIM,
+            ATTENTION_DIM,
             weights=[self.embeddings_matrix],
             input_length=MAX_SENTENCE_LENGTH,
             trainable=True,
@@ -228,20 +230,20 @@ class HierarchicalAttentionNetwork:
         )
         sentence_input = Input(shape=(MAX_SENTENCE_LENGTH,), dtype="int32")
         embedded_sequences = embedding_layer(sentence_input)
-        l_lstm = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(
+        l_lstm = Bidirectional(GRU(ATTENTION_DIM, return_sequences=True))(
             embedded_sequences
         )
-        l_att = AttentionLayer(EMBEDDING_DIM)(l_lstm)
+        l_att = AttentionLayer(ATTENTION_DIM)(l_lstm)
         sentEncoder = Model(sentence_input, l_att)
 
         checksum_input = Input(
             shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32"
         )
         checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
-        l_lstm_sent = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(
+        l_lstm_sent = Bidirectional(GRU(ATTENTION_DIM, return_sequences=True))(
             checksum_encoder
         )
-        l_att_sent = AttentionLayer(EMBEDDING_DIM)(l_lstm_sent)
+        l_att_sent = AttentionLayer(ATTENTION_DIM)(l_lstm_sent)
         preds = Dense(2, activation="softmax")(l_att_sent)
         model = Model(checksum_input, preds)
         model.compile(loss="binary_crossentropy", optimizer="rmsprop", metrics=["acc"])
@@ -375,7 +377,7 @@ class AttentionLayer(Layer):
     Attention layer for Hierarchical Attention Network.
     """
 
-    def __init__(self, attention_dim=EMBEDDING_DIM, **kwargs):
+    def __init__(self, attention_dim=ATTENTION_DIM, **kwargs):
         self.init = initializers.get("normal")
         self.supports_masking = False
         self.attention_dim = attention_dim
