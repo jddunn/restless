@@ -200,8 +200,10 @@ class HierarchicalAttentionNetwork:
         for word, i in self.word_index.items():
             embedding_vector = embeddings_index.get(word)
             if embedding_vector is not None:
-                # words not found in embedding index will be all-zeros.
                 embeddings_matrix[i] = embedding_vector
+            else:
+                # Randomly initialize vector
+                embeddings_matrix[i] = np.random.normal(scale=0.6, size=(EMBEDDING_DIM,))
         self.embeddings_matrix = embeddings_matrix
         return embeddings_matrix
 
@@ -222,28 +224,28 @@ class HierarchicalAttentionNetwork:
         )
         sentence_input = Input(shape=(MAX_SENTENCE_LENGTH,), dtype="int32")
         embedded_sequences = embedding_layer(sentence_input)
-        l_lstm = Bidirectional(GRU(300, return_sequences=True))(embedded_sequences)
-        l_att = AttentionLayer(300)(l_lstm)
+        l_lstm = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(embedded_sequences)
+        l_att = AttentionLayer(EMBEDDING_DIM)(l_lstm)
         sentEncoder = Model(sentence_input, l_att)
 
         checksum_input = Input(
             shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32"
         )
         checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
-        l_lstm_sent = Bidirectional(GRU(300, return_sequences=True))(checksum_encoder)
-        l_att_sent = AttentionLayer(300)(l_lstm_sent)
+        l_lstm_sent = Bidirectional(GRU(EMBEDDING_DIM, return_sequences=True))(checksum_encoder)
+        l_att_sent = AttentionLayer(EMBEDDING_DIM)(l_lstm_sent)
         preds = Dense(2, activation="softmax")(l_att_sent)
         model = Model(checksum_input, preds)
         model.compile(
-            loss="categorical_crossentropy", optimizer="rmsprop", metrics=["acc"]
+            loss="binary_crossentropy", optimizer="rmsprop", metrics=["acc"]
         )
         print("Training HANN model now..")
         model.fit(
             self.x_train,
             self.y_train,
             validation_data=(self.x_val, self.y_val),
-            epochs=5,
-            batch_size=50,
+            epochs=4,
+            batch_size=4,
         )
         model.save(model_filepath)
         self.model = model
