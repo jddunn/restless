@@ -38,7 +38,7 @@
 
 **Restless** is (or will be) a suite of security tools with these key features:
 
-* Analysis of files for malware probabilty based on comparing the extracted metadata and file contents with trained Portable Executable data *(completed model with almost a dozen extracted PE header features with **~85% accuracy**)*
+* Analysis of files for malware probabilty based on comparing the extracted metadata and file contents with trained Portable Executable data *(completed model with almost a dozen extracted PE header features with **~83% accuracy**)*
 * Analysis of system logs for abnormal activities / deviations *(not started)*
 * Analysis of web pages during browsing sessions to determine maliciousness *(not started)*
 * Constant, efficient and ongoing analysis of system files / logs *(in-progress)*
