@@ -373,7 +373,7 @@ class AttentionLayer(Layer):
     Attention layer for Hierarchical Attention Network.
     """
 
-    def __init__(self, attention_dim=100, **kwargs):
+    def __init__(self, attention_dim=EMBEDDING_DIM, **kwargs):
         self.init = initializers.get("normal")
         self.supports_masking = False
         self.attention_dim = attention_dim
