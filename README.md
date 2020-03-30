@@ -1,9 +1,8 @@
 <!-- PROJECT LOGO -->
 <p align="center">
-  <!-- <a href="https://github.com/github_username/repo">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
-  </a> -->
-  <h3 align="center">restless</h3>
+  <a href="https://jddunn.github.io/restless/">
+    <img src="./screenshots/Transparent.png" alt="Logo" width="205" height="48">
+  </a>
   <p align="center">
     Always-on anti-malware software using malicious language processing (nlp-inspired) techniques.
         <br>
