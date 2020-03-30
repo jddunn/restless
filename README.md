@@ -130,6 +130,14 @@ The incorporation of machine learning (usually, natural langauge processing tech
 * K-means clustering for learning unsupervised patterns of abnormal / deviant logs (planned)
 ..
 
+Restless's current classifications are implemented through a <a href="https://www.cs.cmu.edu/~./hovy/papers/16HLT-hierarchical-atten$ hierarchical attention network</a>, a type of recurrent neural network with an attention layer that can find the most important words and sentences to represent a document, as it is able to read the data in a bidirectional way to learn context.
+
+We can analyze files for malware the same way we analyze text documents for topics, key ideas, etc. And the HAN model is suitable as it keeps some sense of structure, which will be important when learning malicious patterns in strings and code data. But what about file metadata–is structure still important then?
+
+Well, typically a document would be tokenized into sentences and then into words to fit the format the HAN model needs, but we can construct a representation of a document that corresponds to the metadata of our file. By extracting PE features like CheckSum, AddressOfEntryPoint, e_minalloc, and more, and considering each feature as a sentence, we can create a HAN classifier that reads executable files and their metadata like documents, and make use of the attention layer so it understands which features have more contextual importance than others.
+
+Originally, Restless's classifier was going to extract strings (including obfuscated strings) from file contents of known malicious and benign files, and then build document representations from that dataset using the hierarchical attention neural network. However, collecting a dataset of executables (from trustworthy sources) is proving to be very time-consuming, so the current focus will focus on the file metadata representation construction.
+
 <!-- GETTING STARTED -->
 ## Getting started
 
