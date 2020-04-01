@@ -198,6 +198,7 @@ class HierarchicalAttentionNetwork:
         return self.data.shape[0]
 
     def get_glove_embeddings(self, glove_data_path: str = None):
+        """Use pre-trained GloVe embeddings so we don't have to make our own word embeddings."""
         embeddings_index = {}
         f = None
         if not glove_data_path:
@@ -213,6 +214,7 @@ class HierarchicalAttentionNetwork:
         return embeddings_index
 
     def make_embeddings_matrix(self, embeddings_index):
+        """Get our word vectors for our embeddings indices."""
         embeddings_matrix = np.random.random((len(self.word_index) + 1, ATTENTION_DIM))
         for word, i in self.word_index.items():
             embedding_vector = embeddings_index.get(word)
@@ -227,6 +229,9 @@ class HierarchicalAttentionNetwork:
         return embeddings_matrix
 
     def create_model_base(self, embeddings_matrix):
+        """Creates the base hierarchical attention network with multiclass or binary tuning.
+           If doing non-binary classification, set self.num_classes to number of classes.
+        """
         embedding_layer = Embedding(
             len(self.word_index) + 1,
             ATTENTION_DIM,
