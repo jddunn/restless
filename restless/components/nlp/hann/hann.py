@@ -1,8 +1,15 @@
-# Sequential NN and attention layer code adapted from
-# https://github.com/richliao/textClassifier/blob/master/textClassifierHATT.py
+# Hierarchical attention model code adapted from
+# https://github.com/richliao/textClassifier/blob/master/textClassifierHATT.py,
+# which implemented this https://www.cs.cmu.edu/~hovy/papers/16HLT-hierarchical-attention-networks.pdf.
+
+# The architecture from the paper has been modified in this model
+# to accept a vector (array) as well as scalars for both the words / sentences
+# that comprise a document's vocabulary. This allows us to represent any arbitrary set
+# of features as a document that the HAN model can learn from, as GloVe will have
+# have weights for words as well as numbers.
+
 import numpy as np
 import pandas as pd
-from collections import defaultdict
 
 import sys
 import os
@@ -52,8 +59,6 @@ from sklearn.metrics import recall_score
 from sklearn.metrics import f1_score
 from sklearn.metrics import cohen_kappa_score
 from sklearn.metrics import roc_auc_score
-
-from sklearn.utils.multiclass import type_of_target
 
 import nltk
 
@@ -126,15 +131,14 @@ class HierarchicalAttentionNetwork:
         # We should play around with combinations of features to detect malware
         self.feature_keys = []  # Mappings of feature indices from dataset
 
+        self.word_index = None
+        self.embeddings_index = None
         self.word_embedding = None
         self.word_attention_model = None
         self.tokenizer = None
 
         self.X = None
         self.Y = None
-
-        self.word_index = None
-        self.embeddings_index = None
 
         self.num_classes = 2
         return
@@ -170,7 +174,7 @@ class HierarchicalAttentionNetwork:
         return self.data
 
     def get_glove_embeddings(self, glove_data_path: str = None):
-        """Use pre-trained GloVe embeddings so we don't have to make our own word embeddings."""
+        """Use pre-trained GloVe embeddings so we don't have to start with random weights."""
         embeddings_index = {}
         f = None
         if not glove_data_path:

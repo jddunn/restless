@@ -124,16 +124,18 @@ The incorporation of machine learning (usually, natural langauge processing tech
 
 ### Architecture overview
 
-* Hierarchical attention network (LSTM) for binary classification (benign vs malicious) of EXE files via extracting PE data / other metadata (like CheckSum, which is currently completed). The HANN model is perfect as it retains some element of document structure, which is important when analyzing file contents and looking for potentially destructive patterns in code.
+* Hierarchical attention network (LSTM) for binary classification (benign vs malicious) of EXE files via extracting PE metadata and strings from file contents (including obfuscated strings). The HANN model is perfect as it retains some element of document structure, which is important when analyzing file contents and looking for potentially destructive patterns in code.
 * HANN trained for system API calls for benign vs malicious binary classification of logs (planned)
 * K-means clustering for learning unsupervised patterns of abnormal / deviant logs (planned)
 ..
 
-Restless's current classifications are implemented through a <a href="https://www.cs.cmu.edu/~./hovy/papers/16HLT-hierarchical-atten$ hierarchical attention network</a>, a type of recurrent neural network with an attention layer that can find the most important words and sentences to represent a document, as it is able to read the data in a bidirectional way to learn context.
+Restless's current classifications are implemented through a [hierarchical attention network](https://www.cs.cmu.edu/~./hovy/papers/16HLT-hierarchical-atten$), a type of recurrent neural network with an attention layer that can find the most important words and sentences to represent a document, as it is able to read the data in a bidirectional way to learn context.
 
-We can analyze files for malware the same way we analyze text documents for topics, key ideas, etc. And the HAN model is suitable as it keeps some sense of structure, which will be important when learning malicious patterns in strings and code data. But what about file metadata–is structure still important then?
+The architecture from the paper has been modified in Restless's implenetation of HAN, in that a vector (array of features) is now acceptable (as well as scalars) for both "sentences" and "words" that build up the vocabulary.  
 
-Well, typically a document would be tokenized into sentences and then into words to fit the format the HAN model needs, but we can construct a representation of a document that corresponds to the metadata of our file. By extracting PE features like CheckSum, AddressOfEntryPoint, e_minalloc, and more, and considering each feature as a sentence, we can create a HAN classifier that reads executable files and their metadata like documents, and make use of the attention layer so it understands which features have more contextual importance than others.
+This allows us to represent any arbitrary set of features as a document that the HAN model can learn from, as GloVe (the pre-trained word embeddings) has weights for words as well as numbers. For example, in a word embeddings model like GloVe that considers numbers, a number like 8069 will have contextual meaning (as 8069 would be referenced a lot in computing-related documents).
+
+Typically a document would be tokenized into sentences and then into words to fit the format the HAN model needs, but we can construct a representation of a document that corresponds to the metadata of our file. By extracting PE features like CheckSum, AddressOfEntryPoint, e_minalloc, and more, and considering each feature as a sentence, we can create a HAN classifier that reads executable files and their metadata like documents, and make use of the attention layer so it understands which features have more contextual importance than others.
 
 Originally, Restless's classifier was going to extract strings (including obfuscated strings) from file contents of known malicious and benign files, and then build document representations from that dataset using the hierarchical attention neural network. However, collecting a dataset of executables (from trustworthy sources) is proving to be very time-consuming, so the current focus will focus on the file metadata representation construction.
 

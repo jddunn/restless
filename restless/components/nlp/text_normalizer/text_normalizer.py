@@ -127,7 +127,12 @@ class TextNormalizer:
     def normalize_text_defaults(self, text: str) -> str:
         """
         Does simple normalization on text (lowercasing, stripping puncuation
-        and whitespace).
+        and trailing whitespaces).
+
+        Args:
+           text (str): Text to normalize.
+        Returns:
+           str: Lowercased text with no punctuation and trailing whitespaces.
         """
         normalized_text = self.normalize_text(
             text,
@@ -156,7 +161,7 @@ class TextNormalizer:
           text (str): Text to normalize.
           lowercase (bool): Lowercase text (Defaults to False).
           strip_punct (bool): Strip punctuation (Defaults to False).
-          strip_whitespace (bool): Strip whitespace (Defaults to False).
+          strip_whitespace (bool): Strips trailing whitespaces (Defaults to False).
           remove_stopworsd (bool): Remove stopwords (Defaults to False).
           lemmatize_text (bool): Lemmatize text (Defaults to False).
           stem_text (bool): Stem text (Defaults to False).
