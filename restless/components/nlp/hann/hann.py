@@ -267,7 +267,7 @@ class HierarchicalAttentionNetwork:
         """Trains a model and saves to a given filepath (will default
            to a filename)."""
         model = self.create_model_base(embeddings_matrix)
-        k_ct = 1
+        k_ct = 1 # Which k-index are we on in kfold val
         # Metrics
         losses = []
         accs = []
@@ -306,26 +306,20 @@ class HierarchicalAttentionNetwork:
             # Calculate metrics
             cm = confusion_matrix(_y_val, _y_pred, [0, 1])
             print("Confusion matrix:\n", cm)
-            # accuracy: (tp + tn) / (p + n)
             accuracy = accuracy_score(_y_pred, _y_val)
             print('Accuracy: {}'.format(str(accuracy)))
-            # precision tp / (tp + fp)
             precision = precision_score(_y_pred, _y_val)
             print('Precision: {}'.format(str(precision)))
             precisions.append(precision)
-            # recall: tp / (tp + fn)
             recall = recall_score(_y_pred, _y_val)
             print('Recall: {}'.format(str(recall)))
             recalls.append(recall)
-            # f1: 2 tp / (2 tp + fp + fn)
             f1 = f1_score(_y_pred, _y_val)
             print('F1 score: {}'.format(str(f1)))
             f1s.append(f1)
-            # kappa
             kappa = cohen_kappa_score(_y_pred, _y_val)
             print('Cohens kappa: {}'.format(str(kappa)))
             kappas.append(kappa)
-            # ROC AUC
             auc = roc_auc_score(_y_pred, _y_val)
             print('ROC AUC: {}'.format(str(auc)))
             aucs.append(auc)
@@ -476,6 +470,7 @@ class AttentionLayer(Layer):
 
     def compute_mask(self, inputs, mask=None):
         # return mask
+        # Masking layers is no longer supported in newer version of keras
         return None
 
     def call(self, x, mask=None):
