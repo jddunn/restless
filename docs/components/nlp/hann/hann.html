@@ -33,6 +33,7 @@ import os
 import string
 import math
 
+# make dep imports work when running as lib / in high-levels scripts
 sys.path.append(&#34;..&#34;)
 sys.path.append(&#34;../..&#34;)
 sys.path.append(&#34;../../../..&#34;)
@@ -100,8 +101,7 @@ MAX_DOCS = 1000000  # Limit number of records to train for speed if needed
 BATCH_SIZE = 32
 EPOCH_NUM = 10
 
-K_NUM = 5 # KFold num
-VALIDATION_SPLIT = 0.20
+K_NUM = 5 # Number of KFold validation groups
 
 GLOVE_DATA_PATH = os.path.abspath(
     os.path.join(
@@ -146,33 +146,7 @@ class HierarchicalAttentionNetwork:
         self.labels_matrix = np.zeros(len(self.records), dtype=&#34;int32&#34;)
         # For now before we integrate the db load corpus from CSV
         # We should play around with combinations of features to detect malware
-        self.feature_keys_dict = [
-            # {&#34;name&#34;: &#34;e_magic&#34;, &#34;index&#34;: 0, &#34;tokenize&#34;: &#34;char&#34;},
-            # {&#34;name&#34;: &#34;e_cblp&#34;, &#34;index&#34;: 1, &#34;tokenize&#34;: &#34;char&#34;},
-            # {&#34;name&#34;: &#34;e_cp&#34;, &#34;index&#34;: 2, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_crlc&#34;, &#34;index&#34;: 3, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_cparhdr&#34;, &#34;index&#34;: 4, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;e_minalloc&#34;, &#34;index&#34;: 5, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;e_maxalloc&#34;, &#34;index&#34;: 6, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_ss&#34;, &#34;index&#34;: 7, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_sp&#34;, &#34;index&#34;: 8, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_csum&#34;, &#34;index&#34;: 9, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;e_ip&#34;, &#34;index&#34;: 10, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_cs&#34;, &#34;index&#34;: 11, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_lfarlc&#34;, &#34;index&#34;: 12, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_ovno&#34;, &#34;index&#34;: 13, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_res&#34;, &#34;index&#34;: 14, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_oemid&#34;, &#34;index&#34;: 15, &#34;tokenize&#34;: &#34;char&#34;},
-            # {&#34;name&#34;: &#34;e_oeminfo&#34;, &#34;index&#34;: 16, &#34;tokenize&#34;: &#34;char&#34;},
-            # {&#34;name&#34;: &#34;e_res2&#34;, &#34;index&#34;: 17, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_lfanew&#34;, &#34;index&#34;: 18, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;Machine&#34;, &#34;index&#34;: 19, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;NumberOfSections&#34;, &#34;index&#34;: 20, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;PointerToSymbolTable&#34;, &#34;index&#34;: 22, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;NumberOfSymbols&#34;, &#34;index&#34;: 23, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;AddressOfEntryPoint&#34;, &#34;index&#34;: 32, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;CheckSum&#34;, &#34;index&#34;: 46, &#34;tokenize&#34;: &#34;none&#34;},
-        ]
+        self.feature_keys = [] # Mappings of feature indices from dataset
 
         self.word_embedding = None
         self.word_attention_model = None
@@ -183,11 +157,8 @@ class HierarchicalAttentionNetwork:
 
         self.word_index = None
         self.embeddings_index = None
-        self.embeddings_matrix = None
-
 
         self.num_classes = 2
-        self.preprocess_data(self.data_train)
         return
 
     def load_model(self, filepath: str):
@@ -208,20 +179,19 @@ class HierarchicalAttentionNetwork:
         self.preprocess_data(data_train)
         self.embeddings_index = self.get_glove_embeddings()
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
-        self.build_network_and_train_model(embeddings_matrix)
-        return
+        model = self.build_network_and_train_model(embeddings_matrix)
+        return model
 
-    def preprocess_data(self, data_train: object):
+    def preprocess_data(self, data_train: object, feature_keys: dict = None):
         &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
-        # self.embeddings_index = self.get_glove_embeddings()
+        if feature_keys is None:
+            feature_keys = self.feature_keys
         self.feature_vecs = self.build_features_vecs_from_data(
-            data_train, self.feature_keys_dict
+            data_train, feature_keys
         )
         print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
         print(&#34;Shape of data tensor before: &#34;, self.data)
-        # We&#39;ll do kfold val
-        # n_samples = int(VALIDATION_SPLIT * self.data.shape[0])
-        return self.data.shape[0]
+        return self.data
 
     def get_glove_embeddings(self, glove_data_path: str = None):
         &#34;&#34;&#34;Use pre-trained GloVe embeddings so we don&#39;t have to make our own word embeddings.&#34;&#34;&#34;
@@ -251,7 +221,6 @@ class HierarchicalAttentionNetwork:
                 embeddings_matrix[i] = np.random.normal(
                     scale=0.6, size=(ATTENTION_DIM,)
                 )
-        self.embeddings_matrix = embeddings_matrix
         return embeddings_matrix
 
     def create_model_base(self, embeddings_matrix):
@@ -325,10 +294,9 @@ class HierarchicalAttentionNetwork:
             )
             k_ct += 1
             loss, acc = model.evaluate(x_val, y_val)
+            print(&#34;Model evaluation: loss - {}\t acc - {}&#34;.format(str(loss), str(acc)))
             losses.append(loss)
             accs.append(acc)
-            print(&#34;Model evaluation: {} loss and {} accuracy&#34;.format(loss,
-                  acc))
             y_pred = model.predict(x_val)
             # Reverse one-hot encoding
             _y_val = np.argmax(y_val, axis=1)
@@ -336,7 +304,8 @@ class HierarchicalAttentionNetwork:
             _y_pred = np.argmax(y_pred, axis=1)
             # Calculate metrics
             cm = confusion_matrix(_y_val, _y_pred, [0, 1])
-            print(&#34;Confusion matrix:\n&#34;, cm)
+            print(&#34;Confusion matrix:&#34;)
+            self._p_print_cm(cm, [&#39;benign&#39;, &#39;malicious&#39;])
             accuracy = accuracy_score(_y_pred, _y_val)
             print(&#39;Accuracy: {}&#39;.format(str(accuracy)))
             precision = precision_score(_y_pred, _y_val)
@@ -356,9 +325,10 @@ class HierarchicalAttentionNetwork:
             aucs.append(auc)
         print(&#34;Average loss in {}kfold: {}&#34;.format(K_NUM, str(sum(losses) / len(losses))))
         print(&#34;Average accuracy in {}kfold: {}&#34;.format(K_NUM, str(sum(accs) / len(accs))))
-        model.save(model_filepath)
+        # model.save(model_filepath)
         self.model = model
-        return model_filepath
+        # return model_filepath
+        return model
 
     def _fill_feature_vec(self, texts_features: list, feature_vector):
         &#34;&#34;&#34;Helper function to build feature vector for HANN to classify.&#34;&#34;&#34;
@@ -387,20 +357,18 @@ class HierarchicalAttentionNetwork:
                             break
         return feature_vector
 
-    def build_features_vecs_from_data(self, data_train, feature_keys_dict: dict = None):
+    def build_features_vecs_from_data(self, data_train, feature_keys: dict):
         &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
         results = []
-        if feature_keys_dict is None:
-            feature_keys_dict = self.feature_keys_dict
         _data_train = data_train.to_dict()
         self.tokenizer = Tokenizer()
         self.texts = []
         self.texts_features = []
         for idx in range(
-            data_train.CheckSum.shape[0]
+            data_train.shape[0]
         ):  # doesn&#39;t matter we&#39;re just getting count here
             sentences = []
-            for dict in feature_keys_dict:
+            for dict in feature_keys:
                 key = dict[&#34;name&#34;]
                 sentence = str(_data_train[key][idx])
                 sentence = text_normalizer.normalize_text(
@@ -440,16 +408,14 @@ class HierarchicalAttentionNetwork:
         return self.data
 
     def build_features_vecs_from_input(
-        self, input_features, feature_keys_dict: dict = None
+        self, input_features, feature_keys
     ):
         &#34;&#34;&#34;Vectorizes a feature matrix from extracted PE data for HANN classification.&#34;&#34;&#34;
         results = []
-        if feature_keys_dict is None:
-            feature_keys_dict = self.feature_keys_dict
         self.texts_features = []
         for idx in range(len(input_features)):
             sentences = []
-            for dict in self.feature_keys_dict:
+            for dict in self.feature_keys:
                 val = dict[&#34;index&#34;]
                 sentence = str(input_features[val])
                 sentence = text_normalizer.normalize_text(
@@ -480,6 +446,30 @@ class HierarchicalAttentionNetwork:
         benign = probs[0]
         return (benign, malicious)
 
+    def _p_print_cm(self, cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None):
+        &#34;&#34;&#34;pretty print for confusion matrixes
+           https://gist.github.com/zachguo/10296432
+        &#34;&#34;&#34;
+        columnwidth = max([len(x) for x in labels] + [5])  # 5 is value length
+        empty_cell = &#34; &#34; * columnwidth
+        # Print header
+        print(&#34;    &#34; + empty_cell, end=&#34; &#34;)
+        for label in labels:
+            print(&#34;%{0}s&#34;.format(columnwidth) % label, end=&#34; &#34;)
+        print()
+        # Print rows
+        for i, label1 in enumerate(labels):
+            print(&#34;    %{0}s&#34;.format(columnwidth) % label1, end=&#34; &#34;)
+            for j in range(len(labels)):
+                cell = &#34;%{0}.1f&#34;.format(columnwidth) % cm[i, j]
+                if hide_zeroes:
+                    cell = cell if float(cm[i, j]) != 0 else empty_cell
+                if hide_diagonal:
+                    cell = cell if i != j else empty_cell
+                if hide_threshold:
+                    cell = cell if cm[i, j] &gt; hide_threshold else empty_cell
+                print(cell, end=&#34; &#34;)
+            print()
 
 class AttentionLayer(Layer):
     &#34;&#34;&#34;
@@ -529,8 +519,7 @@ class AttentionLayer(Layer):
 
 
 if __name__ == &#34;__main__&#34;:
-    hann = HierarchicalAttentionNetwork()
-    hann.read_and_train_data(DEFAULT_TRAINING_DATA_PATH)
+    print(&#34;Use train_hann.py to train the HANN network, or import as a module.&#34;)
 else:
     utils.print_logm(&#34;Initializing HANN.&#34;)
     hann = HierarchicalAttentionNetwork()
@@ -770,33 +759,7 @@ to match that input shape provided.</p>
         self.labels_matrix = np.zeros(len(self.records), dtype=&#34;int32&#34;)
         # For now before we integrate the db load corpus from CSV
         # We should play around with combinations of features to detect malware
-        self.feature_keys_dict = [
-            # {&#34;name&#34;: &#34;e_magic&#34;, &#34;index&#34;: 0, &#34;tokenize&#34;: &#34;char&#34;},
-            # {&#34;name&#34;: &#34;e_cblp&#34;, &#34;index&#34;: 1, &#34;tokenize&#34;: &#34;char&#34;},
-            # {&#34;name&#34;: &#34;e_cp&#34;, &#34;index&#34;: 2, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_crlc&#34;, &#34;index&#34;: 3, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_cparhdr&#34;, &#34;index&#34;: 4, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;e_minalloc&#34;, &#34;index&#34;: 5, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;e_maxalloc&#34;, &#34;index&#34;: 6, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_ss&#34;, &#34;index&#34;: 7, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_sp&#34;, &#34;index&#34;: 8, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_csum&#34;, &#34;index&#34;: 9, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;e_ip&#34;, &#34;index&#34;: 10, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_cs&#34;, &#34;index&#34;: 11, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_lfarlc&#34;, &#34;index&#34;: 12, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_ovno&#34;, &#34;index&#34;: 13, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_res&#34;, &#34;index&#34;: 14, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_oemid&#34;, &#34;index&#34;: 15, &#34;tokenize&#34;: &#34;char&#34;},
-            # {&#34;name&#34;: &#34;e_oeminfo&#34;, &#34;index&#34;: 16, &#34;tokenize&#34;: &#34;char&#34;},
-            # {&#34;name&#34;: &#34;e_res2&#34;, &#34;index&#34;: 17, &#34;tokenize&#34;: &#34;none&#34;},
-            # {&#34;name&#34;: &#34;e_lfanew&#34;, &#34;index&#34;: 18, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;Machine&#34;, &#34;index&#34;: 19, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;NumberOfSections&#34;, &#34;index&#34;: 20, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;PointerToSymbolTable&#34;, &#34;index&#34;: 22, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;NumberOfSymbols&#34;, &#34;index&#34;: 23, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;AddressOfEntryPoint&#34;, &#34;index&#34;: 32, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;CheckSum&#34;, &#34;index&#34;: 46, &#34;tokenize&#34;: &#34;none&#34;},
-        ]
+        self.feature_keys = [] # Mappings of feature indices from dataset
 
         self.word_embedding = None
         self.word_attention_model = None
@@ -807,11 +770,8 @@ to match that input shape provided.</p>
 
         self.word_index = None
         self.embeddings_index = None
-        self.embeddings_matrix = None
-
 
         self.num_classes = 2
-        self.preprocess_data(self.data_train)
         return
 
     def load_model(self, filepath: str):
@@ -832,20 +792,19 @@ to match that input shape provided.</p>
         self.preprocess_data(data_train)
         self.embeddings_index = self.get_glove_embeddings()
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
-        self.build_network_and_train_model(embeddings_matrix)
-        return
+        model = self.build_network_and_train_model(embeddings_matrix)
+        return model
 
-    def preprocess_data(self, data_train: object):
+    def preprocess_data(self, data_train: object, feature_keys: dict = None):
         &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
-        # self.embeddings_index = self.get_glove_embeddings()
+        if feature_keys is None:
+            feature_keys = self.feature_keys
         self.feature_vecs = self.build_features_vecs_from_data(
-            data_train, self.feature_keys_dict
+            data_train, feature_keys
         )
         print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
         print(&#34;Shape of data tensor before: &#34;, self.data)
-        # We&#39;ll do kfold val
-        # n_samples = int(VALIDATION_SPLIT * self.data.shape[0])
-        return self.data.shape[0]
+        return self.data
 
     def get_glove_embeddings(self, glove_data_path: str = None):
         &#34;&#34;&#34;Use pre-trained GloVe embeddings so we don&#39;t have to make our own word embeddings.&#34;&#34;&#34;
@@ -875,7 +834,6 @@ to match that input shape provided.</p>
                 embeddings_matrix[i] = np.random.normal(
                     scale=0.6, size=(ATTENTION_DIM,)
                 )
-        self.embeddings_matrix = embeddings_matrix
         return embeddings_matrix
 
     def create_model_base(self, embeddings_matrix):
@@ -949,10 +907,9 @@ to match that input shape provided.</p>
             )
             k_ct += 1
             loss, acc = model.evaluate(x_val, y_val)
+            print(&#34;Model evaluation: loss - {}\t acc - {}&#34;.format(str(loss), str(acc)))
             losses.append(loss)
             accs.append(acc)
-            print(&#34;Model evaluation: {} loss and {} accuracy&#34;.format(loss,
-                  acc))
             y_pred = model.predict(x_val)
             # Reverse one-hot encoding
             _y_val = np.argmax(y_val, axis=1)
@@ -960,7 +917,8 @@ to match that input shape provided.</p>
             _y_pred = np.argmax(y_pred, axis=1)
             # Calculate metrics
             cm = confusion_matrix(_y_val, _y_pred, [0, 1])
-            print(&#34;Confusion matrix:\n&#34;, cm)
+            print(&#34;Confusion matrix:&#34;)
+            self._p_print_cm(cm, [&#39;benign&#39;, &#39;malicious&#39;])
             accuracy = accuracy_score(_y_pred, _y_val)
             print(&#39;Accuracy: {}&#39;.format(str(accuracy)))
             precision = precision_score(_y_pred, _y_val)
@@ -980,9 +938,10 @@ to match that input shape provided.</p>
             aucs.append(auc)
         print(&#34;Average loss in {}kfold: {}&#34;.format(K_NUM, str(sum(losses) / len(losses))))
         print(&#34;Average accuracy in {}kfold: {}&#34;.format(K_NUM, str(sum(accs) / len(accs))))
-        model.save(model_filepath)
+        # model.save(model_filepath)
         self.model = model
-        return model_filepath
+        # return model_filepath
+        return model
 
     def _fill_feature_vec(self, texts_features: list, feature_vector):
         &#34;&#34;&#34;Helper function to build feature vector for HANN to classify.&#34;&#34;&#34;
@@ -1011,20 +970,18 @@ to match that input shape provided.</p>
                             break
         return feature_vector
 
-    def build_features_vecs_from_data(self, data_train, feature_keys_dict: dict = None):
+    def build_features_vecs_from_data(self, data_train, feature_keys: dict):
         &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
         results = []
-        if feature_keys_dict is None:
-            feature_keys_dict = self.feature_keys_dict
         _data_train = data_train.to_dict()
         self.tokenizer = Tokenizer()
         self.texts = []
         self.texts_features = []
         for idx in range(
-            data_train.CheckSum.shape[0]
+            data_train.shape[0]
         ):  # doesn&#39;t matter we&#39;re just getting count here
             sentences = []
-            for dict in feature_keys_dict:
+            for dict in feature_keys:
                 key = dict[&#34;name&#34;]
                 sentence = str(_data_train[key][idx])
                 sentence = text_normalizer.normalize_text(
@@ -1064,16 +1021,14 @@ to match that input shape provided.</p>
         return self.data
 
     def build_features_vecs_from_input(
-        self, input_features, feature_keys_dict: dict = None
+        self, input_features, feature_keys
     ):
         &#34;&#34;&#34;Vectorizes a feature matrix from extracted PE data for HANN classification.&#34;&#34;&#34;
         results = []
-        if feature_keys_dict is None:
-            feature_keys_dict = self.feature_keys_dict
         self.texts_features = []
         for idx in range(len(input_features)):
             sentences = []
-            for dict in self.feature_keys_dict:
+            for dict in self.feature_keys:
                 val = dict[&#34;index&#34;]
                 sentence = str(input_features[val])
                 sentence = text_normalizer.normalize_text(
@@ -1102,12 +1057,37 @@ to match that input shape provided.</p>
         probs = res[0]
         malicious = probs[1]
         benign = probs[0]
-        return (benign, malicious)</code></pre>
+        return (benign, malicious)
+
+    def _p_print_cm(self, cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None):
+        &#34;&#34;&#34;pretty print for confusion matrixes
+           https://gist.github.com/zachguo/10296432
+        &#34;&#34;&#34;
+        columnwidth = max([len(x) for x in labels] + [5])  # 5 is value length
+        empty_cell = &#34; &#34; * columnwidth
+        # Print header
+        print(&#34;    &#34; + empty_cell, end=&#34; &#34;)
+        for label in labels:
+            print(&#34;%{0}s&#34;.format(columnwidth) % label, end=&#34; &#34;)
+        print()
+        # Print rows
+        for i, label1 in enumerate(labels):
+            print(&#34;    %{0}s&#34;.format(columnwidth) % label1, end=&#34; &#34;)
+            for j in range(len(labels)):
+                cell = &#34;%{0}.1f&#34;.format(columnwidth) % cm[i, j]
+                if hide_zeroes:
+                    cell = cell if float(cm[i, j]) != 0 else empty_cell
+                if hide_diagonal:
+                    cell = cell if i != j else empty_cell
+                if hide_threshold:
+                    cell = cell if cm[i, j] &gt; hide_threshold else empty_cell
+                print(cell, end=&#34; &#34;)
+            print()</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data"><code class="name flex">
-<span>def <span class="ident">build_features_vecs_from_data</span></span>(<span>self, data_train, feature_keys_dict=None)</span>
+<span>def <span class="ident">build_features_vecs_from_data</span></span>(<span>self, data_train, feature_keys)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Vectorizes the training dataset for HANN.</p></section>
@@ -1115,20 +1095,18 @@ to match that input shape provided.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def build_features_vecs_from_data(self, data_train, feature_keys_dict: dict = None):
+<pre><code class="python">def build_features_vecs_from_data(self, data_train, feature_keys: dict):
     &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
     results = []
-    if feature_keys_dict is None:
-        feature_keys_dict = self.feature_keys_dict
     _data_train = data_train.to_dict()
     self.tokenizer = Tokenizer()
     self.texts = []
     self.texts_features = []
     for idx in range(
-        data_train.CheckSum.shape[0]
+        data_train.shape[0]
     ):  # doesn&#39;t matter we&#39;re just getting count here
         sentences = []
-        for dict in feature_keys_dict:
+        for dict in feature_keys:
             key = dict[&#34;name&#34;]
             sentence = str(_data_train[key][idx])
             sentence = text_normalizer.normalize_text(
@@ -1169,7 +1147,7 @@ to match that input shape provided.</p>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_input"><code class="name flex">
-<span>def <span class="ident">build_features_vecs_from_input</span></span>(<span>self, input_features, feature_keys_dict=None)</span>
+<span>def <span class="ident">build_features_vecs_from_input</span></span>(<span>self, input_features, feature_keys)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Vectorizes a feature matrix from extracted PE data for HANN classification.</p></section>
@@ -1178,16 +1156,14 @@ to match that input shape provided.</p>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def build_features_vecs_from_input(
-    self, input_features, feature_keys_dict: dict = None
+    self, input_features, feature_keys
 ):
     &#34;&#34;&#34;Vectorizes a feature matrix from extracted PE data for HANN classification.&#34;&#34;&#34;
     results = []
-    if feature_keys_dict is None:
-        feature_keys_dict = self.feature_keys_dict
     self.texts_features = []
     for idx in range(len(input_features)):
         sentences = []
-        for dict in self.feature_keys_dict:
+        for dict in self.feature_keys:
             val = dict[&#34;index&#34;]
             sentence = str(input_features[val])
             sentence = text_normalizer.normalize_text(
@@ -1253,10 +1229,9 @@ to a filename).</p></section>
         )
         k_ct += 1
         loss, acc = model.evaluate(x_val, y_val)
+        print(&#34;Model evaluation: loss - {}\t acc - {}&#34;.format(str(loss), str(acc)))
         losses.append(loss)
         accs.append(acc)
-        print(&#34;Model evaluation: {} loss and {} accuracy&#34;.format(loss,
-              acc))
         y_pred = model.predict(x_val)
         # Reverse one-hot encoding
         _y_val = np.argmax(y_val, axis=1)
@@ -1264,7 +1239,8 @@ to a filename).</p></section>
         _y_pred = np.argmax(y_pred, axis=1)
         # Calculate metrics
         cm = confusion_matrix(_y_val, _y_pred, [0, 1])
-        print(&#34;Confusion matrix:\n&#34;, cm)
+        print(&#34;Confusion matrix:&#34;)
+        self._p_print_cm(cm, [&#39;benign&#39;, &#39;malicious&#39;])
         accuracy = accuracy_score(_y_pred, _y_val)
         print(&#39;Accuracy: {}&#39;.format(str(accuracy)))
         precision = precision_score(_y_pred, _y_val)
@@ -1284,9 +1260,10 @@ to a filename).</p></section>
         aucs.append(auc)
     print(&#34;Average loss in {}kfold: {}&#34;.format(K_NUM, str(sum(losses) / len(losses))))
     print(&#34;Average accuracy in {}kfold: {}&#34;.format(K_NUM, str(sum(accs) / len(accs))))
-    model.save(model_filepath)
+    # model.save(model_filepath)
     self.model = model
-    return model_filepath</code></pre>
+    # return model_filepath
+    return model</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.create_model_base"><code class="name flex">
@@ -1406,7 +1383,6 @@ If doing non-binary classification, set self.num_classes to number of classes.</
             embeddings_matrix[i] = np.random.normal(
                 scale=0.6, size=(ATTENTION_DIM,)
             )
-    self.embeddings_matrix = embeddings_matrix
     return embeddings_matrix</code></pre>
 </details>
 </dd>
@@ -1430,7 +1406,7 @@ If doing non-binary classification, set self.num_classes to number of classes.</
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.preprocess_data"><code class="name flex">
-<span>def <span class="ident">preprocess_data</span></span>(<span>self, data_train)</span>
+<span>def <span class="ident">preprocess_data</span></span>(<span>self, data_train, feature_keys=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Preprocesses data given a df object.</p></section>
@@ -1438,17 +1414,16 @@ If doing non-binary classification, set self.num_classes to number of classes.</
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def preprocess_data(self, data_train: object):
+<pre><code class="python">def preprocess_data(self, data_train: object, feature_keys: dict = None):
     &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
-    # self.embeddings_index = self.get_glove_embeddings()
+    if feature_keys is None:
+        feature_keys = self.feature_keys
     self.feature_vecs = self.build_features_vecs_from_data(
-        data_train, self.feature_keys_dict
+        data_train, feature_keys
     )
     print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
     print(&#34;Shape of data tensor before: &#34;, self.data)
-    # We&#39;ll do kfold val
-    # n_samples = int(VALIDATION_SPLIT * self.data.shape[0])
-    return self.data.shape[0]</code></pre>
+    return self.data</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.read_and_train_data"><code class="name flex">
@@ -1467,8 +1442,8 @@ If doing non-binary classification, set self.num_classes to number of classes.</
     self.preprocess_data(data_train)
     self.embeddings_index = self.get_glove_embeddings()
     embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
-    self.build_network_and_train_model(embeddings_matrix)
-    return</code></pre>
+    model = self.build_network_and_train_model(embeddings_matrix)
+    return model</code></pre>
 </details>
 </dd>
 </dl>
