@@ -5,9 +5,8 @@ import argparse
 
 import os
 
-restless = Restless(run_system_scan=False)
-
 if __name__ == "__main__":
+    restless = Restless(run_system_scan=False)
     parser = argparse.ArgumentParser(
         description="CLI for using Restless to scan files for malware. Results of the scan will be printed."
     )
