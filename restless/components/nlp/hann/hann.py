@@ -1,3 +1,5 @@
+# Sequential NN and attention layer code adapted from
+# https://github.com/richliao/textClassifier/blob/master/textClassifierHATT.py
 import numpy as np
 import pandas as pd
 from collections import defaultdict
