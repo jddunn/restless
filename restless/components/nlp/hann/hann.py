@@ -110,7 +110,6 @@ class HierarchicalAttentionNetwork:
             pass
         self.texts = []
         self.texts_features = []
-        self.checksums = []
         self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
         # self.data_train = self.data_train.drop_duplicates()
         self.records = self.data_train.to_dict("records")
@@ -227,17 +226,11 @@ class HierarchicalAttentionNetwork:
         self.embeddings_matrix = embeddings_matrix
         return embeddings_matrix
 
-    def build_network_and_train_model(
-        self, embeddings_matrix, model_filepath: str = None
-    ):
-        """Trains a model and saves to a given filepath (will default
-           to a filename)."""
-        if model_filepath is None:
-            model_filepath = DEFAULT_MODEL_PATH
+    def create_model_base(self, embeddings_matrix):
         embedding_layer = Embedding(
             len(self.word_index) + 1,
             ATTENTION_DIM,
-            weights=[self.embeddings_matrix],
+            weights=[embeddings_matrix],
             input_length=MAX_SENTENCE_LENGTH,
             trainable=True,
             mask_zero=True,
@@ -255,7 +248,7 @@ class HierarchicalAttentionNetwork:
         )
         layer_encoder = TimeDistributed(sentEncoder)(input_layer)
         l_lstm_sent = Bidirectional(GRU(ATTENTION_DIM, return_sequences=True))(
-            checksum_encoder
+            layer_encoder
         )
         l_att_sent = AttentionLayer(ATTENTION_DIM)(l_lstm_sent)
         if self.num_classes > 2:
@@ -266,6 +259,14 @@ class HierarchicalAttentionNetwork:
             preds = Dense(2, activation="sigmoid")(l_att_sent)
             model = Model(input_layer, preds)
             model.compile(loss="binary_crossentropy", optimizer="rmsprop", metrics=metrics)
+        return model
+
+    def build_network_and_train_model(
+        self, embeddings_matrix, model_filepath: str = None
+    ):
+        """Trains a model and saves to a given filepath (will default
+           to a filename)."""
+        model = self.create_model_base(embeddings_matrix)
         k_ct = 1
         # Metrics
         losses = []
@@ -406,10 +407,11 @@ class HierarchicalAttentionNetwork:
         self.labels_matrix = to_categorical(self.labels)
         self.Y = self.labels_matrix
         self.X = self.data
-        # indices = np.arange(self.data.shape[0])
-        # np.random.shuffle(indices)
-        # self.data = self.data[indices]
-        # self.labels_matrix = self.labels_matrix[indices]
+        # Shuffle data
+        indices = np.arange(self.data.shape[0])
+        np.random.shuffle(indices)
+        self.data = self.data[indices]
+        self.labels_matrix = self.labels_matrix[indices]
         return self.data
 
     def build_features_vecs_from_input(
