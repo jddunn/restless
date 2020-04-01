@@ -124,6 +124,21 @@ class TextNormalizer:
         tag = nltk.pos_tag([word])[0][1][0].upper()
         return wordnet_tags.get(tag, wordnet.NOUN)  # noun by default
 
+    def normalize_text_defaults(self, text: str) -> str:
+        """
+        Does simple normalization on text (lowercasing, stripping puncuation
+        and whitespace).
+        """
+        normalized_text = self.normalize_text(
+            text,
+            lowercase=True,
+            strip_punct=True,
+            # remove_stopwords=True,
+            lemmatize_text=True,
+            # stem_text=True
+        )
+        return normalized_text
+
     def normalize_text(
         self,
         text: str,
