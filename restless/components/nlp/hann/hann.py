@@ -507,8 +507,8 @@ if __name__ == "__main__":
     hann.read_and_train_data(DEFAULT_TRAINING_DATA_PATH)
 else:
     utils.print_logm("Initializing HANN.")
-    # hann = HierarchicalAttentionNetwork()
-    # if hann.load_model(DEFAULT_MODEL_PATH):
-      #  print("Succesfully loaded HANN model: ", DEFAULT_MODEL_PATH)
-    # else:
-    #   hann.read_and_train_data(DEFAULT_TRAINING_DATA_PATH)
+    hann = HierarchicalAttentionNetwork()
+    if hann.load_model(DEFAULT_MODEL_PATH):
+        print("Succesfully loaded HANN model: ", DEFAULT_MODEL_PATH)
+    else:
+        hann.read_and_train_data(DEFAULT_TRAINING_DATA_PATH)
