@@ -31,6 +31,7 @@ from collections import defaultdict
 import sys
 import os
 import string
+import math
 
 sys.path.append(&#34;..&#34;)
 sys.path.append(&#34;../..&#34;)
@@ -65,6 +66,18 @@ from keras import backend as K
 from keras.engine.topology import Layer, InputSpec
 from keras import initializers
 
+from sklearn.model_selection import KFold
+
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import f1_score
+from sklearn.metrics import cohen_kappa_score
+from sklearn.metrics import roc_auc_score
+
+from sklearn.utils.multiclass import type_of_target
+
 import nltk
 
 # Make imports work for Docker package and when running as a script
@@ -77,13 +90,18 @@ try:
 except:
     from ..text_normalizer import text_normalizer
 
+# Hyperparams
 MAX_SENTENCE_LENGTH = 100
-MAX_SENTENCE_COUNT = 15
-VOCABULARY_SIZE = 20000
+MAX_SENTENCE_COUNT = 32
+VOCABULARY_SIZE = 100
 ATTENTION_DIM = 50
 GLOVE_DIMENSION_SIZE = ATTENTION_DIM  # needs same dimension
-VALIDATION_SPLIT = 0.2
-MAX_DOCS = 10000000  # Limit number of records to train for speed if needed
+MAX_DOCS = 1000000  # Limit number of records to train for speed if needed
+BATCH_SIZE = 32
+EPOCH_NUM = 10
+
+K_NUM = 5 # KFold num
+VALIDATION_SPLIT = 0.20
 
 GLOVE_DATA_PATH = os.path.abspath(
     os.path.join(
@@ -97,12 +115,17 @@ DEFAULT_MODEL_PATH = os.path.abspath(
     os.path.join(DEFAULT_DATA_PATH, &#34;models&#34;, &#34;default.h5&#34;)
 )
 
+compute_steps_per_epoch = lambda x: int(math.ceil(1. * x / BATCH_SIZE))
+
+kf = KFold(n_splits=K_NUM, random_state=None, shuffle=False)
+
+# metrics = [&#39;mse&#39;, &#39;mae&#39;, &#39;mape&#39;, &#39;cosine&#39;, &#39;accuracy&#39;]
+metrics = [&#39;accuracy&#39;]
 
 class HierarchicalAttentionNetwork:
     &#34;&#34;&#34;
     Hierarchical Attention Network implementation.
     &#34;&#34;&#34;
-
     def __init__(self, **kwargs):
         try:
             self.model = load_model(
@@ -113,7 +136,6 @@ class HierarchicalAttentionNetwork:
             pass
         self.texts = []
         self.texts_features = []
-        self.checksums = []
         self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
         # self.data_train = self.data_train.drop_duplicates()
         self.records = self.data_train.to_dict(&#34;records&#34;)
@@ -135,7 +157,7 @@ class HierarchicalAttentionNetwork:
             # {&#34;name&#34;: &#34;e_ss&#34;, &#34;index&#34;: 7, &#34;tokenize&#34;: &#34;none&#34;},
             # {&#34;name&#34;: &#34;e_sp&#34;, &#34;index&#34;: 8, &#34;tokenize&#34;: &#34;none&#34;},
             # {&#34;name&#34;: &#34;e_csum&#34;, &#34;index&#34;: 9, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;e_ip&#34;, &#34;index&#34;: 10, &#34;tokenize&#34;: &#34;char&#34;},
+            {&#34;name&#34;: &#34;e_ip&#34;, &#34;index&#34;: 10, &#34;tokenize&#34;: &#34;none&#34;},
             # {&#34;name&#34;: &#34;e_cs&#34;, &#34;index&#34;: 11, &#34;tokenize&#34;: &#34;none&#34;},
             # {&#34;name&#34;: &#34;e_lfarlc&#34;, &#34;index&#34;: 12, &#34;tokenize&#34;: &#34;none&#34;},
             # {&#34;name&#34;: &#34;e_ovno&#34;, &#34;index&#34;: 13, &#34;tokenize&#34;: &#34;none&#34;},
@@ -148,35 +170,34 @@ class HierarchicalAttentionNetwork:
             {&#34;name&#34;: &#34;NumberOfSections&#34;, &#34;index&#34;: 20, &#34;tokenize&#34;: &#34;none&#34;},
             {&#34;name&#34;: &#34;PointerToSymbolTable&#34;, &#34;index&#34;: 22, &#34;tokenize&#34;: &#34;none&#34;},
             {&#34;name&#34;: &#34;NumberOfSymbols&#34;, &#34;index&#34;: 23, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;AddressOfEntryPoint&#34;, &#34;index&#34;: 32, &#34;tokenize&#34;: &#34;char&#34;},
-            {&#34;name&#34;: &#34;CheckSum&#34;, &#34;index&#34;: 46, &#34;tokenize&#34;: &#34;char&#34;},
+            {&#34;name&#34;: &#34;AddressOfEntryPoint&#34;, &#34;index&#34;: 32, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;CheckSum&#34;, &#34;index&#34;: 46, &#34;tokenize&#34;: &#34;none&#34;},
         ]
 
         self.word_embedding = None
         self.word_attention_model = None
         self.tokenizer = None
-        self.class_count = 2
 
-        self.x_train = None
-        self.y_train = None
-        self.x_val = None
-        self.y_val = None
+        self.X = None
+        self.Y = None
 
         self.word_index = None
         self.embeddings_index = None
         self.embeddings_matrix = None
 
+
+        self.num_classes = 2
         self.preprocess_data(self.data_train)
         return
 
     def load_model(self, filepath: str):
         &#34;&#34;&#34;Loads a model with a custom AttentionLayer property.&#34;&#34;&#34;
-        res = load_model(
+        model = load_model(
             filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
         )
-        if res:
-            self.model = res
-            return True
+        if model:
+            self.model = model
+            return model
         else:
             return None
 
@@ -184,8 +205,7 @@ class HierarchicalAttentionNetwork:
         &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
         data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
         # data_train = data_train.drop_duplicates()
-        samples = self.preprocess_data(data_train)
-        self.prepare_training_and_validation_data(samples)
+        self.preprocess_data(data_train)
         self.embeddings_index = self.get_glove_embeddings()
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
         self.build_network_and_train_model(embeddings_matrix)
@@ -193,24 +213,18 @@ class HierarchicalAttentionNetwork:
 
     def preprocess_data(self, data_train: object):
         &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
+        # self.embeddings_index = self.get_glove_embeddings()
         self.feature_vecs = self.build_features_vecs_from_data(
             data_train, self.feature_keys_dict
         )
         print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
         print(&#34;Shape of data tensor before: &#34;, self.data)
-        samples = int(VALIDATION_SPLIT * self.data.shape[0])
-        return samples
-
-    def prepare_training_and_validation_data(self, samples):
-        self.x_train = self.data[:-samples]
-        self.y_train = self.labels_matrix[:-samples]
-        self.x_val = self.data[-samples:]
-        self.y_val = self.labels_matrix[-samples:]
-        print(self.y_train.sum(axis=0))
-        print(self.y_val.sum(axis=0))
-        return
+        # We&#39;ll do kfold val
+        # n_samples = int(VALIDATION_SPLIT * self.data.shape[0])
+        return self.data.shape[0]
 
     def get_glove_embeddings(self, glove_data_path: str = None):
+        &#34;&#34;&#34;Use pre-trained GloVe embeddings so we don&#39;t have to make our own word embeddings.&#34;&#34;&#34;
         embeddings_index = {}
         f = None
         if not glove_data_path:
@@ -226,6 +240,7 @@ class HierarchicalAttentionNetwork:
         return embeddings_index
 
     def make_embeddings_matrix(self, embeddings_index):
+        &#34;&#34;&#34;Get our word vectors for our embeddings indices.&#34;&#34;&#34;
         embeddings_matrix = np.random.random((len(self.word_index) + 1, ATTENTION_DIM))
         for word, i in self.word_index.items():
             embedding_vector = embeddings_index.get(word)
@@ -239,17 +254,14 @@ class HierarchicalAttentionNetwork:
         self.embeddings_matrix = embeddings_matrix
         return embeddings_matrix
 
-    def build_network_and_train_model(
-        self, embeddings_matrix, model_filepath: str = None
-    ):
-        &#34;&#34;&#34;Trains a model and saves to a given filepath (will default
-           to a filename).&#34;&#34;&#34;
-        if model_filepath is None:
-            model_filepath = DEFAULT_MODEL_PATH
+    def create_model_base(self, embeddings_matrix):
+        &#34;&#34;&#34;Creates the base hierarchical attention network with multiclass or binary tuning.
+           If doing non-binary classification, set self.num_classes to number of classes.
+        &#34;&#34;&#34;
         embedding_layer = Embedding(
             len(self.word_index) + 1,
             ATTENTION_DIM,
-            weights=[self.embeddings_matrix],
+            weights=[embeddings_matrix],
             input_length=MAX_SENTENCE_LENGTH,
             trainable=True,
             mask_zero=True,
@@ -262,25 +274,88 @@ class HierarchicalAttentionNetwork:
         l_att = AttentionLayer(ATTENTION_DIM)(l_lstm)
         sentEncoder = Model(sentence_input, l_att)
 
-        checksum_input = Input(
+        input_layer = Input(
             shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;
         )
-        checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
+        layer_encoder = TimeDistributed(sentEncoder)(input_layer)
         l_lstm_sent = Bidirectional(GRU(ATTENTION_DIM, return_sequences=True))(
-            checksum_encoder
+            layer_encoder
         )
         l_att_sent = AttentionLayer(ATTENTION_DIM)(l_lstm_sent)
-        preds = Dense(2, activation=&#34;softmax&#34;)(l_att_sent)
-        model = Model(checksum_input, preds)
-        model.compile(loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=[&#34;acc&#34;])
-        print(&#34;Training HANN model now..&#34;)
-        model.fit(
-            self.x_train,
-            self.y_train,
-            validation_data=(self.x_val, self.y_val),
-            epochs=10,
-            batch_size=32,
-        )
+        if self.num_classes &gt; 2:
+            preds = Dense(self.num_classes, activation=&#34;softmax&#34;)(l_att_sent)
+            model = Model(input_layer, preds)
+            model.compile(loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics)
+        else:
+            preds = Dense(2, activation=&#34;sigmoid&#34;)(l_att_sent)
+            model = Model(input_layer, preds)
+            model.compile(loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics)
+        return model
+
+    def build_network_and_train_model(
+        self, embeddings_matrix, model_filepath: str = None
+    ):
+        &#34;&#34;&#34;Trains a model and saves to a given filepath (will default
+           to a filename).&#34;&#34;&#34;
+        model = self.create_model_base(embeddings_matrix)
+        k_ct = 1 # Which k-index are we on in kfold val
+        # Metrics
+        losses = []
+        accs = []
+        precisions = []
+        recalls = []
+        f1s = []
+        kappas = []
+        aucs = []
+        # Kfold validation
+        for train_index,test_index in kf.split(self.X, self.Y):
+            x_train,x_val=self.X[train_index],self.X[test_index]
+            y_train,y_val=self.Y[train_index],self.Y[test_index]
+            print(&#34;Creating HANN model now, with K-Fold cross-validation. K=&#34;, k_ct,
+                   &#34;and length: &#34;, len(x_train), len(x_val), &#34;for training / validation.&#34;)
+            model.fit(
+                x_train,
+                y_train,
+                validation_data=(x_val, y_val),
+                epochs=3,
+                batch_size=BATCH_SIZE,
+                verbose=2
+                # steps_per_epoch=compute_steps_per_epoch(len(x_train)),
+                # validation_steps=compute_steps_per_epoch(len(x_val))
+            )
+            k_ct += 1
+            loss, acc = model.evaluate(x_val, y_val)
+            losses.append(loss)
+            accs.append(acc)
+            print(&#34;Model evaluation: {} loss and {} accuracy&#34;.format(loss,
+                  acc))
+            y_pred = model.predict(x_val)
+            # Reverse one-hot encoding
+            _y_val = np.argmax(y_val, axis=1)
+            _x_val = np.argmax(x_val, axis=1)
+            _y_pred = np.argmax(y_pred, axis=1)
+            # Calculate metrics
+            cm = confusion_matrix(_y_val, _y_pred, [0, 1])
+            print(&#34;Confusion matrix:\n&#34;, cm)
+            accuracy = accuracy_score(_y_pred, _y_val)
+            print(&#39;Accuracy: {}&#39;.format(str(accuracy)))
+            precision = precision_score(_y_pred, _y_val)
+            print(&#39;Precision: {}&#39;.format(str(precision)))
+            precisions.append(precision)
+            recall = recall_score(_y_pred, _y_val)
+            print(&#39;Recall: {}&#39;.format(str(recall)))
+            recalls.append(recall)
+            f1 = f1_score(_y_pred, _y_val)
+            print(&#39;F1 score: {}&#39;.format(str(f1)))
+            f1s.append(f1)
+            kappa = cohen_kappa_score(_y_pred, _y_val)
+            print(&#39;Cohens kappa: {}&#39;.format(str(kappa)))
+            kappas.append(kappa)
+            auc = roc_auc_score(_y_pred, _y_val)
+            print(&#39;ROC AUC: {}&#39;.format(str(auc)))
+            aucs.append(auc)
+        print(&#34;Average loss in {}kfold: {}&#34;.format(K_NUM, str(sum(losses) / len(losses))))
+        print(&#34;Average accuracy in {}kfold: {}&#34;.format(K_NUM, str(sum(accs) / len(accs))))
         model.save(model_filepath)
         self.model = model
         return model_filepath
@@ -298,13 +373,18 @@ class HierarchicalAttentionNetwork:
                     for _, word in enumerate(wordTokens):
                         if type(word) is list:
                             word = &#34;&#34;.join(word)
-                            # if (
-                            # k &lt; MAX_SENTENCE_LENGTH
-                            # and
-                            # self.tokenizer.word_index[word] &lt; VOCABULARY_SIZE
-                            # ):
-                        feature_vector[i, j, k] = self.word_index[word]
-                        k = k + 1
+                        if (
+                          k &lt; MAX_SENTENCE_LENGTH
+                          and
+                          _ &lt; VOCABULARY_SIZE
+                        ):
+                            try:
+                                feature_vector[i, j, k] = self.word_index[word]
+                            except:
+                                feature_vector[i, j, k] = 0
+                            k = k + 1
+                        else:
+                            break
         return feature_vector
 
     def build_features_vecs_from_data(self, data_train, feature_keys_dict: dict = None):
@@ -337,8 +417,8 @@ class HierarchicalAttentionNetwork:
             self.texts.extend(sentences)
             self.texts_features.append(sentences)
         self.tokenizer = Tokenizer(nb_words=VOCABULARY_SIZE)
-        # self.texts = functools.reduce(operator.iconcat, self.texts, [])
         _texts = []
+        self.labels = []
         for i, each in enumerate(self.texts):
             if type(each) is list:
                 each = &#34;&#34;.join(each)
@@ -349,7 +429,10 @@ class HierarchicalAttentionNetwork:
         self.tokenizer.fit_on_texts(self.texts)
         self.word_index = self.tokenizer.word_index
         self.data = self._fill_feature_vec(self.texts_features, self.data)
-        self.labels_matrix = to_categorical(np.asarray(self.labels))
+        self.labels_matrix = to_categorical(self.labels)
+        self.Y = self.labels_matrix
+        self.X = self.data
+        # Shuffle data
         indices = np.arange(self.data.shape[0])
         np.random.shuffle(indices)
         self.data = self.data[indices]
@@ -402,7 +485,6 @@ class AttentionLayer(Layer):
     &#34;&#34;&#34;
     Attention layer for Hierarchical Attention Network.
     &#34;&#34;&#34;
-
     def __init__(self, attention_dim=ATTENTION_DIM, **kwargs):
         self.init = initializers.get(&#34;normal&#34;)
         self.supports_masking = False
@@ -419,6 +501,7 @@ class AttentionLayer(Layer):
 
     def compute_mask(self, inputs, mask=None):
         # return mask
+        # Masking layers is no longer supported in newer version of keras
         return None
 
     def call(self, x, mask=None):
@@ -462,6 +545,21 @@ else:
 <section>
 </section>
 <section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="restless.components.nlp.hann.hann.compute_steps_per_epoch"><code class="name flex">
+<span>def <span class="ident">compute_steps_per_epoch</span></span>(<span>x)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">compute_steps_per_epoch = lambda x: int(math.ceil(1. * x / BATCH_SIZE))</code></pre>
+</details>
+</dd>
+</dl>
 </section>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
@@ -480,7 +578,6 @@ else:
     &#34;&#34;&#34;
     Attention layer for Hierarchical Attention Network.
     &#34;&#34;&#34;
-
     def __init__(self, attention_dim=ATTENTION_DIM, **kwargs):
         self.init = initializers.get(&#34;normal&#34;)
         self.supports_masking = False
@@ -497,6 +594,7 @@ else:
 
     def compute_mask(self, inputs, mask=None):
         # return mask
+        # Masking layers is no longer supported in newer version of keras
         return None
 
     def call(self, x, mask=None):
@@ -608,6 +706,7 @@ mask: Tensor or list of tensors.
 </summary>
 <pre><code class="python">def compute_mask(self, inputs, mask=None):
     # return mask
+    # Masking layers is no longer supported in newer version of keras
     return None</code></pre>
 </details>
 </dd>
@@ -651,7 +750,6 @@ to match that input shape provided.</p>
     &#34;&#34;&#34;
     Hierarchical Attention Network implementation.
     &#34;&#34;&#34;
-
     def __init__(self, **kwargs):
         try:
             self.model = load_model(
@@ -662,7 +760,6 @@ to match that input shape provided.</p>
             pass
         self.texts = []
         self.texts_features = []
-        self.checksums = []
         self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
         # self.data_train = self.data_train.drop_duplicates()
         self.records = self.data_train.to_dict(&#34;records&#34;)
@@ -684,7 +781,7 @@ to match that input shape provided.</p>
             # {&#34;name&#34;: &#34;e_ss&#34;, &#34;index&#34;: 7, &#34;tokenize&#34;: &#34;none&#34;},
             # {&#34;name&#34;: &#34;e_sp&#34;, &#34;index&#34;: 8, &#34;tokenize&#34;: &#34;none&#34;},
             # {&#34;name&#34;: &#34;e_csum&#34;, &#34;index&#34;: 9, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;e_ip&#34;, &#34;index&#34;: 10, &#34;tokenize&#34;: &#34;char&#34;},
+            {&#34;name&#34;: &#34;e_ip&#34;, &#34;index&#34;: 10, &#34;tokenize&#34;: &#34;none&#34;},
             # {&#34;name&#34;: &#34;e_cs&#34;, &#34;index&#34;: 11, &#34;tokenize&#34;: &#34;none&#34;},
             # {&#34;name&#34;: &#34;e_lfarlc&#34;, &#34;index&#34;: 12, &#34;tokenize&#34;: &#34;none&#34;},
             # {&#34;name&#34;: &#34;e_ovno&#34;, &#34;index&#34;: 13, &#34;tokenize&#34;: &#34;none&#34;},
@@ -697,35 +794,34 @@ to match that input shape provided.</p>
             {&#34;name&#34;: &#34;NumberOfSections&#34;, &#34;index&#34;: 20, &#34;tokenize&#34;: &#34;none&#34;},
             {&#34;name&#34;: &#34;PointerToSymbolTable&#34;, &#34;index&#34;: 22, &#34;tokenize&#34;: &#34;none&#34;},
             {&#34;name&#34;: &#34;NumberOfSymbols&#34;, &#34;index&#34;: 23, &#34;tokenize&#34;: &#34;none&#34;},
-            {&#34;name&#34;: &#34;AddressOfEntryPoint&#34;, &#34;index&#34;: 32, &#34;tokenize&#34;: &#34;char&#34;},
-            {&#34;name&#34;: &#34;CheckSum&#34;, &#34;index&#34;: 46, &#34;tokenize&#34;: &#34;char&#34;},
+            {&#34;name&#34;: &#34;AddressOfEntryPoint&#34;, &#34;index&#34;: 32, &#34;tokenize&#34;: &#34;none&#34;},
+            {&#34;name&#34;: &#34;CheckSum&#34;, &#34;index&#34;: 46, &#34;tokenize&#34;: &#34;none&#34;},
         ]
 
         self.word_embedding = None
         self.word_attention_model = None
         self.tokenizer = None
-        self.class_count = 2
 
-        self.x_train = None
-        self.y_train = None
-        self.x_val = None
-        self.y_val = None
+        self.X = None
+        self.Y = None
 
         self.word_index = None
         self.embeddings_index = None
         self.embeddings_matrix = None
 
+
+        self.num_classes = 2
         self.preprocess_data(self.data_train)
         return
 
     def load_model(self, filepath: str):
         &#34;&#34;&#34;Loads a model with a custom AttentionLayer property.&#34;&#34;&#34;
-        res = load_model(
+        model = load_model(
             filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
         )
-        if res:
-            self.model = res
-            return True
+        if model:
+            self.model = model
+            return model
         else:
             return None
 
@@ -733,8 +829,7 @@ to match that input shape provided.</p>
         &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
         data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
         # data_train = data_train.drop_duplicates()
-        samples = self.preprocess_data(data_train)
-        self.prepare_training_and_validation_data(samples)
+        self.preprocess_data(data_train)
         self.embeddings_index = self.get_glove_embeddings()
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
         self.build_network_and_train_model(embeddings_matrix)
@@ -742,24 +837,18 @@ to match that input shape provided.</p>
 
     def preprocess_data(self, data_train: object):
         &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
+        # self.embeddings_index = self.get_glove_embeddings()
         self.feature_vecs = self.build_features_vecs_from_data(
             data_train, self.feature_keys_dict
         )
         print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
         print(&#34;Shape of data tensor before: &#34;, self.data)
-        samples = int(VALIDATION_SPLIT * self.data.shape[0])
-        return samples
-
-    def prepare_training_and_validation_data(self, samples):
-        self.x_train = self.data[:-samples]
-        self.y_train = self.labels_matrix[:-samples]
-        self.x_val = self.data[-samples:]
-        self.y_val = self.labels_matrix[-samples:]
-        print(self.y_train.sum(axis=0))
-        print(self.y_val.sum(axis=0))
-        return
+        # We&#39;ll do kfold val
+        # n_samples = int(VALIDATION_SPLIT * self.data.shape[0])
+        return self.data.shape[0]
 
     def get_glove_embeddings(self, glove_data_path: str = None):
+        &#34;&#34;&#34;Use pre-trained GloVe embeddings so we don&#39;t have to make our own word embeddings.&#34;&#34;&#34;
         embeddings_index = {}
         f = None
         if not glove_data_path:
@@ -775,6 +864,7 @@ to match that input shape provided.</p>
         return embeddings_index
 
     def make_embeddings_matrix(self, embeddings_index):
+        &#34;&#34;&#34;Get our word vectors for our embeddings indices.&#34;&#34;&#34;
         embeddings_matrix = np.random.random((len(self.word_index) + 1, ATTENTION_DIM))
         for word, i in self.word_index.items():
             embedding_vector = embeddings_index.get(word)
@@ -788,17 +878,14 @@ to match that input shape provided.</p>
         self.embeddings_matrix = embeddings_matrix
         return embeddings_matrix
 
-    def build_network_and_train_model(
-        self, embeddings_matrix, model_filepath: str = None
-    ):
-        &#34;&#34;&#34;Trains a model and saves to a given filepath (will default
-           to a filename).&#34;&#34;&#34;
-        if model_filepath is None:
-            model_filepath = DEFAULT_MODEL_PATH
+    def create_model_base(self, embeddings_matrix):
+        &#34;&#34;&#34;Creates the base hierarchical attention network with multiclass or binary tuning.
+           If doing non-binary classification, set self.num_classes to number of classes.
+        &#34;&#34;&#34;
         embedding_layer = Embedding(
             len(self.word_index) + 1,
             ATTENTION_DIM,
-            weights=[self.embeddings_matrix],
+            weights=[embeddings_matrix],
             input_length=MAX_SENTENCE_LENGTH,
             trainable=True,
             mask_zero=True,
@@ -811,25 +898,88 @@ to match that input shape provided.</p>
         l_att = AttentionLayer(ATTENTION_DIM)(l_lstm)
         sentEncoder = Model(sentence_input, l_att)
 
-        checksum_input = Input(
+        input_layer = Input(
             shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;
         )
-        checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
+        layer_encoder = TimeDistributed(sentEncoder)(input_layer)
         l_lstm_sent = Bidirectional(GRU(ATTENTION_DIM, return_sequences=True))(
-            checksum_encoder
+            layer_encoder
         )
         l_att_sent = AttentionLayer(ATTENTION_DIM)(l_lstm_sent)
-        preds = Dense(2, activation=&#34;softmax&#34;)(l_att_sent)
-        model = Model(checksum_input, preds)
-        model.compile(loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=[&#34;acc&#34;])
-        print(&#34;Training HANN model now..&#34;)
-        model.fit(
-            self.x_train,
-            self.y_train,
-            validation_data=(self.x_val, self.y_val),
-            epochs=10,
-            batch_size=32,
-        )
+        if self.num_classes &gt; 2:
+            preds = Dense(self.num_classes, activation=&#34;softmax&#34;)(l_att_sent)
+            model = Model(input_layer, preds)
+            model.compile(loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics)
+        else:
+            preds = Dense(2, activation=&#34;sigmoid&#34;)(l_att_sent)
+            model = Model(input_layer, preds)
+            model.compile(loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics)
+        return model
+
+    def build_network_and_train_model(
+        self, embeddings_matrix, model_filepath: str = None
+    ):
+        &#34;&#34;&#34;Trains a model and saves to a given filepath (will default
+           to a filename).&#34;&#34;&#34;
+        model = self.create_model_base(embeddings_matrix)
+        k_ct = 1 # Which k-index are we on in kfold val
+        # Metrics
+        losses = []
+        accs = []
+        precisions = []
+        recalls = []
+        f1s = []
+        kappas = []
+        aucs = []
+        # Kfold validation
+        for train_index,test_index in kf.split(self.X, self.Y):
+            x_train,x_val=self.X[train_index],self.X[test_index]
+            y_train,y_val=self.Y[train_index],self.Y[test_index]
+            print(&#34;Creating HANN model now, with K-Fold cross-validation. K=&#34;, k_ct,
+                   &#34;and length: &#34;, len(x_train), len(x_val), &#34;for training / validation.&#34;)
+            model.fit(
+                x_train,
+                y_train,
+                validation_data=(x_val, y_val),
+                epochs=3,
+                batch_size=BATCH_SIZE,
+                verbose=2
+                # steps_per_epoch=compute_steps_per_epoch(len(x_train)),
+                # validation_steps=compute_steps_per_epoch(len(x_val))
+            )
+            k_ct += 1
+            loss, acc = model.evaluate(x_val, y_val)
+            losses.append(loss)
+            accs.append(acc)
+            print(&#34;Model evaluation: {} loss and {} accuracy&#34;.format(loss,
+                  acc))
+            y_pred = model.predict(x_val)
+            # Reverse one-hot encoding
+            _y_val = np.argmax(y_val, axis=1)
+            _x_val = np.argmax(x_val, axis=1)
+            _y_pred = np.argmax(y_pred, axis=1)
+            # Calculate metrics
+            cm = confusion_matrix(_y_val, _y_pred, [0, 1])
+            print(&#34;Confusion matrix:\n&#34;, cm)
+            accuracy = accuracy_score(_y_pred, _y_val)
+            print(&#39;Accuracy: {}&#39;.format(str(accuracy)))
+            precision = precision_score(_y_pred, _y_val)
+            print(&#39;Precision: {}&#39;.format(str(precision)))
+            precisions.append(precision)
+            recall = recall_score(_y_pred, _y_val)
+            print(&#39;Recall: {}&#39;.format(str(recall)))
+            recalls.append(recall)
+            f1 = f1_score(_y_pred, _y_val)
+            print(&#39;F1 score: {}&#39;.format(str(f1)))
+            f1s.append(f1)
+            kappa = cohen_kappa_score(_y_pred, _y_val)
+            print(&#39;Cohens kappa: {}&#39;.format(str(kappa)))
+            kappas.append(kappa)
+            auc = roc_auc_score(_y_pred, _y_val)
+            print(&#39;ROC AUC: {}&#39;.format(str(auc)))
+            aucs.append(auc)
+        print(&#34;Average loss in {}kfold: {}&#34;.format(K_NUM, str(sum(losses) / len(losses))))
+        print(&#34;Average accuracy in {}kfold: {}&#34;.format(K_NUM, str(sum(accs) / len(accs))))
         model.save(model_filepath)
         self.model = model
         return model_filepath
@@ -847,13 +997,18 @@ to match that input shape provided.</p>
                     for _, word in enumerate(wordTokens):
                         if type(word) is list:
                             word = &#34;&#34;.join(word)
-                            # if (
-                            # k &lt; MAX_SENTENCE_LENGTH
-                            # and
-                            # self.tokenizer.word_index[word] &lt; VOCABULARY_SIZE
-                            # ):
-                        feature_vector[i, j, k] = self.word_index[word]
-                        k = k + 1
+                        if (
+                          k &lt; MAX_SENTENCE_LENGTH
+                          and
+                          _ &lt; VOCABULARY_SIZE
+                        ):
+                            try:
+                                feature_vector[i, j, k] = self.word_index[word]
+                            except:
+                                feature_vector[i, j, k] = 0
+                            k = k + 1
+                        else:
+                            break
         return feature_vector
 
     def build_features_vecs_from_data(self, data_train, feature_keys_dict: dict = None):
@@ -886,8 +1041,8 @@ to match that input shape provided.</p>
             self.texts.extend(sentences)
             self.texts_features.append(sentences)
         self.tokenizer = Tokenizer(nb_words=VOCABULARY_SIZE)
-        # self.texts = functools.reduce(operator.iconcat, self.texts, [])
         _texts = []
+        self.labels = []
         for i, each in enumerate(self.texts):
             if type(each) is list:
                 each = &#34;&#34;.join(each)
@@ -898,7 +1053,10 @@ to match that input shape provided.</p>
         self.tokenizer.fit_on_texts(self.texts)
         self.word_index = self.tokenizer.word_index
         self.data = self._fill_feature_vec(self.texts_features, self.data)
-        self.labels_matrix = to_categorical(np.asarray(self.labels))
+        self.labels_matrix = to_categorical(self.labels)
+        self.Y = self.labels_matrix
+        self.X = self.data
+        # Shuffle data
         indices = np.arange(self.data.shape[0])
         np.random.shuffle(indices)
         self.data = self.data[indices]
@@ -987,8 +1145,8 @@ to match that input shape provided.</p>
         self.texts.extend(sentences)
         self.texts_features.append(sentences)
     self.tokenizer = Tokenizer(nb_words=VOCABULARY_SIZE)
-    # self.texts = functools.reduce(operator.iconcat, self.texts, [])
     _texts = []
+    self.labels = []
     for i, each in enumerate(self.texts):
         if type(each) is list:
             each = &#34;&#34;.join(each)
@@ -999,7 +1157,10 @@ to match that input shape provided.</p>
     self.tokenizer.fit_on_texts(self.texts)
     self.word_index = self.tokenizer.word_index
     self.data = self._fill_feature_vec(self.texts_features, self.data)
-    self.labels_matrix = to_categorical(np.asarray(self.labels))
+    self.labels_matrix = to_categorical(self.labels)
+    self.Y = self.labels_matrix
+    self.X = self.data
+    # Shuffle data
     indices = np.arange(self.data.shape[0])
     np.random.shuffle(indices)
     self.data = self.data[indices]
@@ -1064,12 +1225,88 @@ to a filename).</p></section>
 ):
     &#34;&#34;&#34;Trains a model and saves to a given filepath (will default
        to a filename).&#34;&#34;&#34;
-    if model_filepath is None:
-        model_filepath = DEFAULT_MODEL_PATH
+    model = self.create_model_base(embeddings_matrix)
+    k_ct = 1 # Which k-index are we on in kfold val
+    # Metrics
+    losses = []
+    accs = []
+    precisions = []
+    recalls = []
+    f1s = []
+    kappas = []
+    aucs = []
+    # Kfold validation
+    for train_index,test_index in kf.split(self.X, self.Y):
+        x_train,x_val=self.X[train_index],self.X[test_index]
+        y_train,y_val=self.Y[train_index],self.Y[test_index]
+        print(&#34;Creating HANN model now, with K-Fold cross-validation. K=&#34;, k_ct,
+               &#34;and length: &#34;, len(x_train), len(x_val), &#34;for training / validation.&#34;)
+        model.fit(
+            x_train,
+            y_train,
+            validation_data=(x_val, y_val),
+            epochs=3,
+            batch_size=BATCH_SIZE,
+            verbose=2
+            # steps_per_epoch=compute_steps_per_epoch(len(x_train)),
+            # validation_steps=compute_steps_per_epoch(len(x_val))
+        )
+        k_ct += 1
+        loss, acc = model.evaluate(x_val, y_val)
+        losses.append(loss)
+        accs.append(acc)
+        print(&#34;Model evaluation: {} loss and {} accuracy&#34;.format(loss,
+              acc))
+        y_pred = model.predict(x_val)
+        # Reverse one-hot encoding
+        _y_val = np.argmax(y_val, axis=1)
+        _x_val = np.argmax(x_val, axis=1)
+        _y_pred = np.argmax(y_pred, axis=1)
+        # Calculate metrics
+        cm = confusion_matrix(_y_val, _y_pred, [0, 1])
+        print(&#34;Confusion matrix:\n&#34;, cm)
+        accuracy = accuracy_score(_y_pred, _y_val)
+        print(&#39;Accuracy: {}&#39;.format(str(accuracy)))
+        precision = precision_score(_y_pred, _y_val)
+        print(&#39;Precision: {}&#39;.format(str(precision)))
+        precisions.append(precision)
+        recall = recall_score(_y_pred, _y_val)
+        print(&#39;Recall: {}&#39;.format(str(recall)))
+        recalls.append(recall)
+        f1 = f1_score(_y_pred, _y_val)
+        print(&#39;F1 score: {}&#39;.format(str(f1)))
+        f1s.append(f1)
+        kappa = cohen_kappa_score(_y_pred, _y_val)
+        print(&#39;Cohens kappa: {}&#39;.format(str(kappa)))
+        kappas.append(kappa)
+        auc = roc_auc_score(_y_pred, _y_val)
+        print(&#39;ROC AUC: {}&#39;.format(str(auc)))
+        aucs.append(auc)
+    print(&#34;Average loss in {}kfold: {}&#34;.format(K_NUM, str(sum(losses) / len(losses))))
+    print(&#34;Average accuracy in {}kfold: {}&#34;.format(K_NUM, str(sum(accs) / len(accs))))
+    model.save(model_filepath)
+    self.model = model
+    return model_filepath</code></pre>
+</details>
+</dd>
+<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.create_model_base"><code class="name flex">
+<span>def <span class="ident">create_model_base</span></span>(<span>self, embeddings_matrix)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Creates the base hierarchical attention network with multiclass or binary tuning.
+If doing non-binary classification, set self.num_classes to number of classes.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def create_model_base(self, embeddings_matrix):
+    &#34;&#34;&#34;Creates the base hierarchical attention network with multiclass or binary tuning.
+       If doing non-binary classification, set self.num_classes to number of classes.
+    &#34;&#34;&#34;
     embedding_layer = Embedding(
         len(self.word_index) + 1,
         ATTENTION_DIM,
-        weights=[self.embeddings_matrix],
+        weights=[embeddings_matrix],
         input_length=MAX_SENTENCE_LENGTH,
         trainable=True,
         mask_zero=True,
@@ -1082,40 +1319,36 @@ to a filename).</p></section>
     l_att = AttentionLayer(ATTENTION_DIM)(l_lstm)
     sentEncoder = Model(sentence_input, l_att)
 
-    checksum_input = Input(
+    input_layer = Input(
         shape=(MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;
     )
-    checksum_encoder = TimeDistributed(sentEncoder)(checksum_input)
+    layer_encoder = TimeDistributed(sentEncoder)(input_layer)
     l_lstm_sent = Bidirectional(GRU(ATTENTION_DIM, return_sequences=True))(
-        checksum_encoder
+        layer_encoder
     )
     l_att_sent = AttentionLayer(ATTENTION_DIM)(l_lstm_sent)
-    preds = Dense(2, activation=&#34;softmax&#34;)(l_att_sent)
-    model = Model(checksum_input, preds)
-    model.compile(loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=[&#34;acc&#34;])
-    print(&#34;Training HANN model now..&#34;)
-    model.fit(
-        self.x_train,
-        self.y_train,
-        validation_data=(self.x_val, self.y_val),
-        epochs=10,
-        batch_size=32,
-    )
-    model.save(model_filepath)
-    self.model = model
-    return model_filepath</code></pre>
+    if self.num_classes &gt; 2:
+        preds = Dense(self.num_classes, activation=&#34;softmax&#34;)(l_att_sent)
+        model = Model(input_layer, preds)
+        model.compile(loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics)
+    else:
+        preds = Dense(2, activation=&#34;sigmoid&#34;)(l_att_sent)
+        model = Model(input_layer, preds)
+        model.compile(loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics)
+    return model</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_glove_embeddings"><code class="name flex">
 <span>def <span class="ident">get_glove_embeddings</span></span>(<span>self, glove_data_path=None)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Use pre-trained GloVe embeddings so we don't have to make our own word embeddings.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def get_glove_embeddings(self, glove_data_path: str = None):
+    &#34;&#34;&#34;Use pre-trained GloVe embeddings so we don&#39;t have to make our own word embeddings.&#34;&#34;&#34;
     embeddings_index = {}
     f = None
     if not glove_data_path:
@@ -1142,12 +1375,12 @@ to a filename).</p></section>
 </summary>
 <pre><code class="python">def load_model(self, filepath: str):
     &#34;&#34;&#34;Loads a model with a custom AttentionLayer property.&#34;&#34;&#34;
-    res = load_model(
+    model = load_model(
         filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
     )
-    if res:
-        self.model = res
-        return True
+    if model:
+        self.model = model
+        return model
     else:
         return None</code></pre>
 </details>
@@ -1156,12 +1389,13 @@ to a filename).</p></section>
 <span>def <span class="ident">make_embeddings_matrix</span></span>(<span>self, embeddings_index)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Get our word vectors for our embeddings indices.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def make_embeddings_matrix(self, embeddings_index):
+    &#34;&#34;&#34;Get our word vectors for our embeddings indices.&#34;&#34;&#34;
     embeddings_matrix = np.random.random((len(self.word_index) + 1, ATTENTION_DIM))
     for word, i in self.word_index.items():
         embedding_vector = embeddings_index.get(word)
@@ -1195,25 +1429,6 @@ to a filename).</p></section>
     return (benign, malicious)</code></pre>
 </details>
 </dd>
-<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.prepare_training_and_validation_data"><code class="name flex">
-<span>def <span class="ident">prepare_training_and_validation_data</span></span>(<span>self, samples)</span>
-</code></dt>
-<dd>
-<section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def prepare_training_and_validation_data(self, samples):
-    self.x_train = self.data[:-samples]
-    self.y_train = self.labels_matrix[:-samples]
-    self.x_val = self.data[-samples:]
-    self.y_val = self.labels_matrix[-samples:]
-    print(self.y_train.sum(axis=0))
-    print(self.y_val.sum(axis=0))
-    return</code></pre>
-</details>
-</dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.preprocess_data"><code class="name flex">
 <span>def <span class="ident">preprocess_data</span></span>(<span>self, data_train)</span>
 </code></dt>
@@ -1225,13 +1440,15 @@ to a filename).</p></section>
 </summary>
 <pre><code class="python">def preprocess_data(self, data_train: object):
     &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
+    # self.embeddings_index = self.get_glove_embeddings()
     self.feature_vecs = self.build_features_vecs_from_data(
         data_train, self.feature_keys_dict
     )
     print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
     print(&#34;Shape of data tensor before: &#34;, self.data)
-    samples = int(VALIDATION_SPLIT * self.data.shape[0])
-    return samples</code></pre>
+    # We&#39;ll do kfold val
+    # n_samples = int(VALIDATION_SPLIT * self.data.shape[0])
+    return self.data.shape[0]</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.read_and_train_data"><code class="name flex">
@@ -1247,8 +1464,7 @@ to a filename).</p></section>
     &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
     data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
     # data_train = data_train.drop_duplicates()
-    samples = self.preprocess_data(data_train)
-    self.prepare_training_and_validation_data(samples)
+    self.preprocess_data(data_train)
     self.embeddings_index = self.get_glove_embeddings()
     embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
     self.build_network_and_train_model(embeddings_matrix)
@@ -1271,6 +1487,11 @@ to a filename).</p></section>
 <li><code><a title="restless.components.nlp.hann" href="index.html">restless.components.nlp.hann</a></code></li>
 </ul>
 </li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="restless.components.nlp.hann.hann.compute_steps_per_epoch" href="#restless.components.nlp.hann.hann.compute_steps_per_epoch">compute_steps_per_epoch</a></code></li>
+</ul>
+</li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
@@ -1288,11 +1509,11 @@ to a filename).</p></section>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data">build_features_vecs_from_data</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_input" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_input">build_features_vecs_from_input</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_network_and_train_model" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_network_and_train_model">build_network_and_train_model</a></code></li>
+<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.create_model_base" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.create_model_base">create_model_base</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_glove_embeddings" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_glove_embeddings">get_glove_embeddings</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.load_model" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.load_model">load_model</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.make_embeddings_matrix" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.make_embeddings_matrix">make_embeddings_matrix</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.predict" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.predict">predict</a></code></li>
-<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.prepare_training_and_validation_data" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.prepare_training_and_validation_data">prepare_training_and_validation_data</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.preprocess_data" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.preprocess_data">preprocess_data</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.read_and_train_data" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.read_and_train_data">read_and_train_data</a></code></li>
 </ul>
