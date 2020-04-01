@@ -166,12 +166,12 @@ class HierarchicalAttentionNetwork:
 
     def load_model(self, filepath: str):
         """Loads a model with a custom AttentionLayer property."""
-        res = load_model(
+        model = load_model(
             filepath, custom_objects={"AttentionLayer": AttentionLayer(Layer)}
         )
-        if res:
-            self.model = res
-            return True
+        if model:
+            self.model = model
+            return model
         else:
             return None
 
