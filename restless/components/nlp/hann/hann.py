@@ -128,10 +128,10 @@ class HierarchicalAttentionNetwork:
 
         self.data = None
 
-        self.labels = []
+        self.labels = None
         self.labels_matrix = None  # Map labels into matrix for prediction
 
-        self.feature_keys = []  # Mappings of feature indices from dataset
+        self.feature_keys = None  # Mappings of feature indices from dataset
 
         self.word_index = None
         self.embeddings_index = None
@@ -168,6 +168,14 @@ class HierarchicalAttentionNetwork:
     ):
         """Reads a CSV file into training data and trains network."""
         self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
+        # Get rid of the classification / class column since that's not a feature
+        if self.feature_keys is None or len(self.feature_keys) is 0:
+            feature_keys = [key for key in list(self.X.columns) if key is not "class" or "classification"]
+            # Map feature keys with their indices (since eventually we may want to eliminate features
+            # from being trained, without modifiying the original dataset, so order of indices may not
+            # be continuous. Also, we can define a tokenization level in these mappings.
+            feature_keys = [{"name": feature_key, "index": i} for i, feature_key in enumerate(feature_keys)]
+            self.feature_keys = feature_keys
         self.preprocess_data(self.X)
         self.embeddings_index = self.get_glove_embeddings()
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
@@ -430,7 +438,7 @@ class HierarchicalAttentionNetwork:
                 key = dict["name"]
                 sentence = str(data_train[key][idx])
                 sentence = text_normalizer.normalize_text_defaults(sentence)
-                if dict["tokenize"] is "char":
+                if "tokenize" in dict and  dict["tokenize"] is "char":
                     sentence = [char for char in sentence]
                 sentences.append(sentence)
             texts.extend(sentences)
@@ -472,7 +480,7 @@ class HierarchicalAttentionNetwork:
                 val = dict["index"]
                 sentence = str(input_features[val])
                 sentence = text_normalizer.normalize_text(sentence)
-                if dict["tokenize"] is "char":
+                if "tokenize" in dict and dict["tokenize"] is "char":
                     sentence = [char for char in sentence]
                 sentences.append(sentence)
             texts_features.append(sentences)

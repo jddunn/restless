@@ -107,9 +107,9 @@ def train_hann_model(
     # For now the PE header / metadata model will be our default one
     # but eventually we'll have multiple classifiers built using the HANN model
     hann = HierarchicalAttentionNetwork()
-    hann.feature_keys = feature_keys
+    # hann.feature_keys = feature_keys
     print(
-        "Training file {} with feature keys: {}.".format(training_fp, hann.feature_keys)
+        "Training file {}.".format(training_fp)
     )
     model = hann.read_and_train_data(training_fp)
     print("Training successful.")
@@ -121,9 +121,13 @@ def train_hann_model(
 
 if __name__ == "__main__":
     training_fp = DEFAULT_TRAINING_DATA_PATH
-    feature_keys = pe_headers_feature_keys
-    feature_keys_list = [dict["name"] for dict in pe_headers_feature_keys]
-    feature_keys_list.append("classification")
+    # feature_keys = pe_headers_feature_keys
+    # feature_keys_list = [dict["name"] for dict in pe_headers_feature_keys]
+    feature_keys_list = list(pd.read_csv(training_fp).columns)
+    # Classification label can't be considered a feature (for training the model at least), so we'll
+    # filter that out
+    feature_keys_filtered = [key for key in feature_keys_list if key is not "classification" or "class"]
+    # feature_keys_list.append("classification")
     target_feature = "classification"
     # Let's see our most important features from the training data
     corr = get_features_corr(training_fp, feature_keys_list)[0]["corr"]
@@ -140,4 +144,4 @@ if __name__ == "__main__":
         show=True,
     )
     results = get_features_corr(training_fp, feature_keys_list, target_feature)
-    train_hann_model(training_fp, feature_keys)
+    train_hann_model(training_fp, feature_keys_filtered)
