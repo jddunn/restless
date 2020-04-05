@@ -1,7 +1,7 @@
 from .hann import HierarchicalAttentionNetwork
 from .text_normalizer import text_normalizer
 
-hann = HierarchicalAttentionNetwork()
+hann = HierarchicalAttentionNetwork(load_default_model=True)
 
 
 class NLP:

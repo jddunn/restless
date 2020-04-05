@@ -13,6 +13,8 @@ from components.watcher import Watcher
 from components.scanner import Scanner
 from components.nlp import nlp
 
+from components.nlp.hann.feature_keys import pe_headers_feature_keys
+
 
 class Restless(object):
     """
@@ -45,8 +47,12 @@ class Restless(object):
         for file_result in file_results:
             fname = file_result[0]
             features = file_result[1]
-            matrix_results = self.nlp.hann.build_features_vecs_from_input(features)
+            print("THESE YOUR FEATURES BOY? ", features)
+            matrix_results = self.nlp.hann.build_features_vecs_from_input(
+                features, pe_headers_feature_keys
+            )
             # print("Predicting: ", fname)
+            print("MATRIX RESULTS: ", matrix_results)
             res = (fname, self.nlp.hann.predict(matrix_results))
             results.append(res)
             utils.print_logm(
