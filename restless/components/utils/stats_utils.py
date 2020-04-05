@@ -134,8 +134,6 @@ class StatsUtils:
         )
         return result
 
-    def visualize_metrics(self, metrics: list) -> None:
-        return
 
     def pretty_print_cm(
         self,
