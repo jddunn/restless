@@ -77,7 +77,7 @@ def get_features_corr(
         result["corr"] = corr
         results.append(result)
         print("\t", corr)
-    return corr
+    return results
 
 
 def train_hann_model(
