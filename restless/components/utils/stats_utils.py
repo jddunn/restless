@@ -117,7 +117,7 @@ class StatsUtils:
             print("\tROC AUC score: {}".format(auc))
         return result
 
-    def get_dicts_averages(self, dicts: list) -> dict:
+    def get_metrics_averages(self, metrics: list) -> dict:
         """
         Takes a list of dictionaries and returns their averaged
         values for each key in each list. Values in the dictionary
@@ -129,9 +129,8 @@ class StatsUtils:
         Returns:
             dict: Dictionary with averaged values.
         """
-        result = dict(
-            functools.reduce(operator.add, map(collections.Counter, ini_dict))
-        )
+        result = dict(functools.reduce(operator.add, map(collections.Counter, metrics)))
+        result.update({n: result[n] / len(metrics) for n in result.keys()})
         return result
 
     def pretty_print_cm(

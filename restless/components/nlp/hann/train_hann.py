@@ -27,6 +27,7 @@ except:
     from ...utils import utils
 
 stats = utils.stats
+stats_vis = utils.stats_vis
 
 
 def get_features_corr(
@@ -53,6 +54,7 @@ def get_features_corr(
     """
     results = []
     df = pd.read_csv(training_filepath)
+    print("DF COLUMNS: ", df.columns)
     if target_feature:
         print(
             "Getting correlation for each feature with target_feature {}.".format(
@@ -71,6 +73,7 @@ def get_features_corr(
             result["corr"] = corr
             results.append(result)
     else:
+        result = {}
         print("Getting correlation for all features {}.".format(features))
         corr = stats.get_correlation_for_features(df, features, correlation)
         result["features"] = features
@@ -120,7 +123,21 @@ if __name__ == "__main__":
     training_fp = DEFAULT_TRAINING_DATA_PATH
     feature_keys = pe_headers_feature_keys
     feature_keys_list = [dict["name"] for dict in pe_headers_feature_keys]
+    feature_keys_list.append("classification")
     target_feature = "classification"
     # Let's see our most important features from the training data
-    get_features_corr(training_fp, feature_keys_list, target_feature)
+    corr = get_features_corr(training_fp, feature_keys_list)[0]["corr"]
+    stats_vis.visualize_correlation_diagonal_matrix(
+        corr,
+        plot_title="Features Correlation for PE Header Data",
+        save_image=True,
+        show=True,
+    )
+    stats_vis.visualize_correlation(
+        corr,
+        plot_title="Features Correlation for PE Header Data",
+        save_image=True,
+        show=True,
+    )
+    results = get_features_corr(training_fp, feature_keys_list, target_feature)
     train_hann_model(training_fp, feature_keys)

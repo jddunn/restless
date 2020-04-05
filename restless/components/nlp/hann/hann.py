@@ -60,9 +60,6 @@ import seaborn as sb
 import nltk
 
 # make dep imports work when running as lib / in high-levels scripts
-# import repackage
-# repackage.up(2)
-# repackage.up(1)
 PACKAGE_PARENT = "../../../.."
 SCRIPT_DIR = os.path.dirname(
     os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__)))
@@ -102,6 +99,9 @@ DEFAULT_TRAINING_DATA_PATH = os.path.abspath(
 DEFAULT_MODEL_DIR_PATH = os.path.abspath(os.path.join(DEFAULT_DATA_PATH, "models"))
 
 DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "default.h5"))
+
+stats = utils.stats
+stats_vis = utils.stats_vis
 
 compute_steps_per_epoch = lambda x: int(math.ceil(1.0 * x / BATCH_SIZE))
 
@@ -297,13 +297,17 @@ class HierarchicalAttentionNetwork:
         return model
 
     def build_network_and_train_model(
-        self, embeddings_matrix, model_filepath: str = None
+        self,
+        embeddings_matrix,
+        model_filepath: str = None,
+        save_metrics_results: bool = False,
     ):
         """Trains a model and saves to a given filepath (will default
            to a filename)."""
         model = self.create_model_base(embeddings_matrix)
         k_ct = 1  # Which k-index are we on in kfold val
         metrics_arr = []
+        models = []  # store all our models and we'll save the best performing one
         # Kfold validation
         for train_index, test_index in kf.split(self.X, self.Y):
             x_train, x_val = self.X[train_index], self.X[test_index]
@@ -338,6 +342,7 @@ class HierarchicalAttentionNetwork:
             # x_val = x_val[0, :, ;,]
             # x_train = x_train[0, :, ;,]
             model.fit(x_train, y_train)
+            models.append(model)
             # f_importances(model.coef_, feature_keys_list)
             k_ct += 1
             # loss, acc = model.evaluate(x_val, y_val)
@@ -352,11 +357,35 @@ class HierarchicalAttentionNetwork:
             # _y_val = y_val
             # Model evaluation
             labels = ["benign", "malicious"]
-            metrics = utils.stats.get_model_metrics(
+            metrics = stats.get_model_metrics(
                 _y_val, _y_pred, labels, print_output=True
             )
             metrics_arr.append(metrics)
-        print("Metrics summed: ", metrics_arr)
+        # Drop confusion matrices from our summed metrics since we can't average those easily
+        filtered_metrics_arr = [
+            {k: v for k, v in d.items() if k != "cm"} for d in metrics_arr
+        ]
+        metrics_summed = stats.get_metrics_averages(filtered_metrics_arr)
+        print("Metrics summed and averaged: ", metrics_summed)
+        top_score = 0
+        index = 1
+        for i, metrics in enumerate(metrics_arr):
+            # We'll save the model with the best performing metric (F1 score)
+            if metrics["f1"] > top_score:
+                top_score = metrics["f1"]
+                if i is 0:
+                    index = i + 1
+                else:
+                    index = i
+        best_model = models[index]
+        model = best_model
+        print(
+            "The best performing model (based on F1 score) was number {}. That is the model that will be returned.".format(
+                index
+            )
+        )
+        if save_metrics_results:
+            pass
         return model
 
     def _fill_feature_vec(self, texts_features: list, feature_vector):
