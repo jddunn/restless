@@ -134,7 +134,6 @@ class StatsUtils:
         )
         return result
 
-
     def pretty_print_cm(
         self,
         cm,
