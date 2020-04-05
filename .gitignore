@@ -114,3 +114,5 @@ crashlytics-build.properties
 Pipfile.lock
 
 nohup.out
+
+test_exes/
