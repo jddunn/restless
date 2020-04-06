@@ -35,4 +35,3 @@ pe_headers_feature_keys = [
     {"name": "AddressOfEntryPoint", "index": 32, "tokenize": "none"},
     {"name": "CheckSum", "index": 46, "tokenize": "none"},
 ]
-

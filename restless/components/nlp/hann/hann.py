@@ -49,13 +49,11 @@ from sklearn.model_selection import KFold
 
 from sklearn.preprocessing import RobustScaler
 
+from sklearn.utils.multiclass import type_of_target
+
 scaler = RobustScaler()
 
-from sklearn.linear_model import LogisticRegression
-from sklearn import svm
 from sklearn.feature_extraction.text import CountVectorizer
-import matplotlib.pyplot as plt
-import seaborn as sb
 
 import nltk
 
@@ -105,9 +103,8 @@ stats_vis = utils.stats_vis
 
 compute_steps_per_epoch = lambda x: int(math.ceil(1.0 * x / BATCH_SIZE))
 
-kf = KFold(n_splits=K_NUM, random_state=None, shuffle=False)
+kf = KFold(n_splits=K_NUM, shuffle=True, random_state=1618)
 
-# metrics = ['mse', 'mae', 'mape', 'cosine', 'accuracy']
 metrics = ["accuracy"]
 
 cv = CountVectorizer()
@@ -163,6 +160,7 @@ class HierarchicalAttentionNetwork:
     def read_and_train_data(
         self,
         filepath: str,
+        model_base: object = None,
         outputpath: str = DEFAULT_MODEL_PATH,
         save_model: bool = False,
     ):
@@ -170,16 +168,25 @@ class HierarchicalAttentionNetwork:
         self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
         # Get rid of the classification / class column since that's not a feature
         if self.feature_keys is None or len(self.feature_keys) is 0:
-            feature_keys = [key for key in list(self.X.columns) if key is not "class" or "classification"]
+            feature_keys = [
+                key
+                for key in list(self.X.columns)
+                if key is not "class" or "classification"
+            ]
             # Map feature keys with their indices (since eventually we may want to eliminate features
             # from being trained, without modifiying the original dataset, so order of indices may not
             # be continuous. Also, we can define a tokenization level in these mappings.
-            feature_keys = [{"name": feature_key, "index": i} for i, feature_key in enumerate(feature_keys)]
+            feature_keys = [
+                {"name": feature_key, "index": i}
+                for i, feature_key in enumerate(feature_keys)
+            ]
             self.feature_keys = feature_keys
         self.preprocess_data(self.X)
         self.embeddings_index = self.get_glove_embeddings()
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
-        model = self.build_network_and_train_model(embeddings_matrix)
+        model = self.build_network_and_train_model(
+            embeddings_matrix, model_base=model_base
+        )
         self.model = model
         outputpath = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "model.p"))
         if save_model:
@@ -191,7 +198,7 @@ class HierarchicalAttentionNetwork:
         self.data = np.zeros(
             (len(self.X), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32",
         )
-        self.labels_matrix = np.zeros(len(self.X), dtype="int32")
+        self.labels_matrix = np.zeros((self.num_classes,), dtype="int32")
         if feature_keys is None:
             feature_keys = self.feature_keys
         else:
@@ -206,9 +213,6 @@ class HierarchicalAttentionNetwork:
         # model = load_model(
         #  filepath, custom_objects={"AttentionLayer": AttentionLayer(Layer)}
         # )
-        model = pickle.loads(
-            os.path.join(DEFAULT_DATA_PATH, "models", "baselineclassifier.pkl")
-        )
         if model:
             self.model = model
             return model
@@ -220,8 +224,7 @@ class HierarchicalAttentionNetwork:
         Saves a model to a given filepath.
         """
         try:
-            with open(os.path.join(fp), "wb") as file:
-                pickle.dump(model, file)
+            model.save(fp)
             return True
         except:
             return False
@@ -301,70 +304,85 @@ class HierarchicalAttentionNetwork:
             model.compile(
                 loss="binary_crossentropy", optimizer="rmsprop", metrics=metrics
             )
-        model = LogisticRegression()
         return model
 
     def build_network_and_train_model(
         self,
         embeddings_matrix,
+        model_base: object = None,
         model_filepath: str = None,
+        labels: list = ["0", "1"],
         save_metrics_results: bool = False,
     ):
         """Trains a model and saves to a given filepath (will default
            to a filename)."""
-        model = self.create_model_base(embeddings_matrix)
+        if not model_base:
+            model = self.create_model_base(embeddings_matrix)
+            print("Creating HANN architecture with Keras - {}.".format(model))
+        else:
+            print("Creating non-HANN model base {}.".format(model_base))
+            model = model_base
         k_ct = 1  # Which k-index are we on in kfold val
         metrics_arr = []
         models = []  # store all our models and we'll save the best performing one
+        if labels is ["0", "1"]:
+            # Will be used for labelling metrics
+            labels = ["benign", "malicious"]
         # Kfold validation
         for train_index, test_index in kf.split(self.X, self.Y):
             x_train, x_val = self.X[train_index], self.X[test_index]
             y_train, y_val = self.Y[train_index], self.Y[test_index]
-            print(
-                "Creating HANN model now, with K-Fold cross-validation. K=",
-                k_ct,
-                "and length: ",
-                len(x_train),
-                len(x_val),
-                "for training / validation.",
-            )
-            # model.fit(
-            #  x_train,
-            # y_train,
-            # validation_data=(x_val, y_val),
-            # epochs=3,
-            # batch_size=BATCH_SIZE,
-            # verbose=2
-            # steps_per_epoch=compute_steps_per_epoch(len(x_train)),
-            # validation_steps=compute_steps_per_epoch(len(x_val))
-            # )
-            # x_val = x_val.transpose(2,0,1).reshape(3,-1)
-            # x_train = x_train.transpose(2,0,1).reshape(3,-1)
-            x_val = x_val.reshape(len(x_val), -1)
-            x_train = x_train.reshape(len(x_train), -1)
-            x_train = scaler.fit_transform(x_train)
-            x_val = scaler.fit_transform(x_val)
-            # y_train = y_train.idmax(axis=1)
-            # y_train = y_train.dot(ohe.active_features_).astype(int)
-            y_train = np.argmax(y_train, axis=1)
-            # x_val = x_val[0, :, ;,]
-            # x_train = x_train[0, :, ;,]
-            model.fit(x_train, y_train)
+            if not model_base:
+                # We're creating a HANN model using Keras
+                print(
+                    "Creating HANN model now, with K-Fold cross-validation. K=",
+                    k_ct,
+                    "and length: ",
+                    len(x_train),
+                    len(x_val),
+                    "for training / validation.",
+                )
+                model.fit(
+                    x_train,
+                    y_train,
+                    validation_data=(x_val, y_val),
+                    epochs=1,
+                    batch_size=BATCH_SIZE,
+                    verbose=2,
+                )
+            else:
+                # If we're given a model base, then we're probably
+                # not building a HANN model, but this class is being
+                # used to create baseline models for comparison with HANN.
+                # This really should be refactored out into another class, but
+                # for now this is clean enough.
+
+                # Reshape the data from 3D to 2D (for non-HANN models)
+                x_val = x_val.reshape(len(x_val), -1)
+                x_train = x_train.reshape(len(x_train), -1)
+                x_train = scaler.fit_transform(x_train)
+                x_val = scaler.fit_transform(x_val)
+                y_train = np.argmax(y_train, axis=1)
+                print(
+                    "Creating baseline model now, with K-Fold cross-validation. K=",
+                    k_ct,
+                    "and length: ",
+                    len(x_train),
+                    len(x_val),
+                    "for training / validation.",
+                )
+                model.fit(x_train, y_train)
             models.append(model)
             # f_importances(model.coef_, feature_keys_list)
             k_ct += 1
-            # loss, acc = model.evaluate(x_val, y_val)
-            # print("Model evaluation: loss - {}\t acc - {}".format(str(loss), str(acc)))
-            # losses.append(loss)
-            # accs.append(acc)
             y_pred = model.predict(x_val)
-            _y_pred = y_pred
             # Reverse one-hot encoding
             _y_val = np.argmax(y_val, axis=1)
-            # _y_pred = np.argmax(y_pred, axis=1)
-            # _y_val = y_val
-            # Model evaluation
-            labels = ["benign", "malicious"]
+            if not model_base:
+                _y_pred = np.argmax(y_pred, axis=1)
+            else:
+                _y_pred = y_pred
+            # Model evaluation / metrics
             metrics = stats.get_model_metrics(
                 _y_val, _y_pred, labels, print_output=True
             )
@@ -430,6 +448,7 @@ class HierarchicalAttentionNetwork:
         self.tokenizer = Tokenizer()
         texts = []
         texts_features = []
+        self.labels = []
         for idx in range(
             data_train.shape[0]
         ):  # doesn't matter we're just getting count here
@@ -438,14 +457,13 @@ class HierarchicalAttentionNetwork:
                 key = dict["name"]
                 sentence = str(data_train[key][idx])
                 sentence = text_normalizer.normalize_text_defaults(sentence)
-                if "tokenize" in dict and  dict["tokenize"] is "char":
+                if "tokenize" in dict and dict["tokenize"] is "char":
                     sentence = [char for char in sentence]
                 sentences.append(sentence)
             texts.extend(sentences)
             texts_features.append(sentences)
         self.tokenizer = Tokenizer(nb_words=VOCABULARY_SIZE)
         _texts = []
-        self.labels = []
         for i, each in enumerate(texts):
             if type(each) is list:
                 each = "".join(each)
@@ -456,12 +474,16 @@ class HierarchicalAttentionNetwork:
         self.tokenizer.fit_on_texts(texts)
         self.word_index = self.tokenizer.word_index
         self.data = self._fill_feature_vec(texts_features, self.data)
-        self.labels_matrix = to_categorical(self.labels)
+        # Get unique classes from labels (in same order of occurence)
+        classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
+        self.num_classes = len(classes)
         # Shuffle data
-        indices = np.arange(self.data.shape[0])
-        np.random.shuffle(indices)
-        self.data = self.data[indices]
-        self.labels_matrix = self.labels_matrix[indices]
+        # indices = np.arange(self.data.shape[0])
+        # np.random.shuffle(indices)
+        # self.data = self.data[indices]
+        # self.labels = self.labels[indices]
+        self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
+        print(self.labels_matrix, self.labels_matrix.shape)
         self.Y = self.labels_matrix
         self.X = self.data
         return self.data
@@ -495,7 +517,6 @@ class HierarchicalAttentionNetwork:
     def predict(self, data):
         """Predicts binary classification of classes with probabilities given a feature matrix."""
         res = self.model.predict(data)
-        classes = to_categorical(res)
         probs = res[0]
         malicious = probs[1]
         benign = probs[0]

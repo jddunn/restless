@@ -1,5 +1,12 @@
 import os, sys
 import pandas as pd
+import numpy as np
+from sklearn.feature_selection import RFECV
+from sklearn.model_selection import StratifiedKFold
+from sklearn.preprocessing import RobustScaler
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import LinearSVC
 
 # make dep imports work when running in dir and in outside scripts
 PACKAGE_PARENT = "../../../.."
@@ -28,6 +35,11 @@ except:
 
 stats = utils.stats
 stats_vis = utils.stats_vis
+scaler = RobustScaler()
+
+N_FEATURES = (
+    24  # Minimum number of top features to extract (based on Pearson correlation)
+)
 
 
 def get_features_corr(
@@ -54,7 +66,6 @@ def get_features_corr(
     """
     results = []
     df = pd.read_csv(training_filepath)
-    print("DF COLUMNS: ", df.columns)
     if target_feature:
         print(
             "Getting correlation for each feature with target_feature {}.".format(
@@ -67,7 +78,7 @@ def get_features_corr(
             corr = stats.get_correlation_for_features(
                 df, feature, target_feature, correlation
             )
-            print("\tCorrelation for {} is {}.".format(feature, corr))
+            # print("\tCorrelation for {} is {}.".format(feature, corr))
             result["feature"] = feature
             result["target_feature"] = target_feature
             result["corr"] = corr
@@ -83,9 +94,10 @@ def get_features_corr(
     return results
 
 
-def train_hann_model(
+def train_model(
     training_fp: str,
     feature_keys: dict,
+    model_base: object = None,
     model_save: bool = True,
     model_fp: str = DEFAULT_MODEL_PATH,
 ) -> object:
@@ -97,6 +109,9 @@ def train_hann_model(
              must be CSV or text.
         feature_keys (dict): Dictionary containing features and their
             properties mapped from the training file.
+        model_base (object, optional): If specified, train a classifier with
+           given model (instead of default HANN). Should be used to test
+           trained model with various baselines.
         model_save (bool, optional): Whether to save trained model to disk.
         model_fp (str, optional): Filepath to save the model to, if
             model_save is set to True. Will default if not specified.
@@ -108,15 +123,13 @@ def train_hann_model(
     # but eventually we'll have multiple classifiers built using the HANN model
     hann = HierarchicalAttentionNetwork()
     # hann.feature_keys = feature_keys
-    print(
-        "Training file {}.".format(training_fp)
-    )
-    model = hann.read_and_train_data(training_fp)
+    print("Training file {}.".format(training_fp))
+    model = hann.read_and_train_data(training_fp, model_base=model_base)
     print("Training successful.")
     if model_save:
         hann.save_model(model, model_fp)
         print("Saving model to {}.".format(model_fp))
-    return model
+    return (model, (hann.X, hann.Y))
 
 
 if __name__ == "__main__":
@@ -124,24 +137,36 @@ if __name__ == "__main__":
     # feature_keys = pe_headers_feature_keys
     # feature_keys_list = [dict["name"] for dict in pe_headers_feature_keys]
     feature_keys_list = list(pd.read_csv(training_fp).columns)
-    # Classification label can't be considered a feature (for training the model at least), so we'll
-    # filter that out
-    feature_keys_filtered = [key for key in feature_keys_list if key is not "classification" or "class"]
+    # Classification label can't be considered a feature (for training the model
+    # at least), so we'll filter that out
+    feature_keys_filtered = [
+        key for key in feature_keys_list if key is not "classification" or "class"
+    ]
     # feature_keys_list.append("classification")
     target_feature = "classification"
-    # Let's see our most important features from the training data
+    # Get our most important features from the training data
+    # Using Pearson correlation is appropriate because we only have
+    # two categories (point-biserial correlation).
+    # If we had multi-class dataset there'd need to be
+    # additional preprocessing done.
     corr = get_features_corr(training_fp, feature_keys_list)[0]["corr"]
-    stats_vis.visualize_correlation_diagonal_matrix(
+    stats_vis.visualize_correlation_matrix(
         corr,
+        annot=False,
         plot_title="Features Correlation for PE Header Data",
         save_image=True,
         show=True,
     )
-    stats_vis.visualize_correlation(
+    # Now out of those, let's get the top N features
+    stats_vis.visualize_correlation_matrix(
         corr,
+        annot=True,
         plot_title="Features Correlation for PE Header Data",
         save_image=True,
         show=True,
     )
     results = get_features_corr(training_fp, feature_keys_list, target_feature)
-    train_hann_model(training_fp, feature_keys_filtered)
+    # Let's make a LogisticRegression model first, to use as a baseline comparison
+    model_base = LogisticRegression(random_state=1618)
+    model_results = train_model(training_fp, feature_keys_filtered, model_base=model_base)
+    model = model_results[0]
