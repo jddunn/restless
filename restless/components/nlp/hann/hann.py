@@ -160,6 +160,7 @@ class HierarchicalAttentionNetwork:
     def read_and_train_data(
         self,
         filepath: str,
+        labels: list,
         model_base: object = None,
         outputpath: str = DEFAULT_MODEL_PATH,
         save_model: bool = False,
@@ -185,7 +186,7 @@ class HierarchicalAttentionNetwork:
         self.embeddings_index = self.get_glove_embeddings()
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
         model = self.build_network_and_train_model(
-            embeddings_matrix, model_base=model_base
+            embeddings_matrix, labels=labels, model_base=model_base
         )
         self.model = model
         outputpath = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "model.p"))

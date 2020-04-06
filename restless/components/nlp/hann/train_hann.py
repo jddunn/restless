@@ -37,10 +37,6 @@ stats = utils.stats
 stats_vis = utils.stats_vis
 scaler = RobustScaler()
 
-N_FEATURES = (
-    24  # Minimum number of top features to extract (based on Pearson correlation)
-)
-
 
 def get_features_corr(
     training_filepath: str,
@@ -67,11 +63,6 @@ def get_features_corr(
     results = []
     df = pd.read_csv(training_filepath)
     if target_feature:
-        print(
-            "Getting correlation for each feature with target_feature {}.".format(
-                target_feature
-            )
-        )
         for feature in features:
             feature = [feature]
             result = {}
@@ -109,6 +100,8 @@ def train_model(
              must be CSV or text.
         feature_keys (dict): Dictionary containing features and their
             properties mapped from the training file.
+        labels (list, optional): List of labels (used for labelling charts
+            and model metrics).
         model_base (object, optional): If specified, train a classifier with
            given model (instead of default HANN). Should be used to test
            trained model with various baselines.
@@ -133,6 +126,7 @@ def train_model(
 
 
 if __name__ == "__main__":
+    labels = ["benign", "malicious"]
     training_fp = DEFAULT_TRAINING_DATA_PATH
     # feature_keys = pe_headers_feature_keys
     # feature_keys_list = [dict["name"] for dict in pe_headers_feature_keys]
@@ -168,5 +162,5 @@ if __name__ == "__main__":
     results = get_features_corr(training_fp, feature_keys_list, target_feature)
     # Let's make a LogisticRegression model first, to use as a baseline comparison
     model_base = LogisticRegression(random_state=1618)
-    model_results = train_model(training_fp, feature_keys_filtered, model_base=model_base)
+    model_results = train_model(training_fp, feature_keys_filtered, labels=labels, model_base=model_base)
     model = model_results[0]
