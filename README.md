@@ -9,13 +9,15 @@
         </p>
 </p>
 
-
 <!-- TABLE OF CONTENTS -->
 ## Table of contents
-
 * [About](#about)
-  * [Concepts overview](#concepts-overview)
-  * [Architecture overview](#architecture-overview)
+  * [Screenshots and Results](#screenshots-and-results)
+  * [Training Hierarchical Attention Network Model](#training-hierarchical-attention-network-model)
+  * [Example CLI Usage](#example-cli-usage)
+* [Background](#background)
+  * [Concepts](#concepts)
+  * [Architecture](#architecture)
 * [Getting Started](#getting-started)
   * [Prerequisites](#prerequisites)
   * [Installation with pip](#installation-with-pip)
@@ -39,19 +41,28 @@
 
 * Analysis of files for malware probabilty based on comparing the extracted metadata and file contents with trained Portable Executable data *(completed model with almost a dozen extracted PE header features with **~83% accuracy**)*
 * Analysis of system logs for abnormal activities / deviations *(not started)*
-* Analysis of web pages during browsing sessions to determine maliciousness *(not started)*
 * Constant, efficient and ongoing analysis of system files / logs *(in-progress)*
 
 All analyses will be constantly ongoing, occur in real-time, and performed through machine learning models (using both supervised and unsupervised training techniques). No database is currently integrated with the code, but Spark clusters will be used along with Ray for distributed processing (eventually).
-
-By constantly watching and only scanning new files as verified by timestamps, **restless** can offer ongoing protection with minimal effort resources. You can also configure **restless** to run full or partial system scans on a schedule.
 
 Restless aims to be fast and fully functional offline. The current configuration is for Ubuntu-based machines, but can be modified for other platforms by editing the `Dockerfile` and `docker-compose.yml` (eventually, Docker images will be built for Mac and Windows and linked here for download).
 
 Currently, there is no REST API functionality besides serving the documentation; only the CLI and library is functional.
 
-----------------------------------------------------
-### Preliminary results of training the HAN (Hierarchical Attention Network)  model with extracted PE features (CheckSum, AddressOfEntryPoint, e_minalloc, e_maxalloc, etc.):
+## Screenshots and Rxamples 
+<div>
+  <p>We use Pearson coefficient to see how our features correlate with each other, and since we're doing binary classification, we can get the point-biserial correlation for each feature compared to our target feature (classification of "benign" or "malicious").</p>
+  <a href="./screenshots/model_results/Features Correlation Matrix for PE Header Data 2020-04-06 19:19:16.png" style="left">
+    <img src="./screenshots/model_results/Features Correlation Matrix for PE Header Data 2020-04-06 19:19:16.png" alt="Features Correlaton Matrix for PE Header Data" width="450">
+  </a>
+  <a href="./screenshots/model_results/Top Features Correlation Matrix for PE Header Data (Minimum threshold of 0.1) 2020-04-06 19:19:18.png" style="right">
+    <img src="./screenshots/model_results/Top Features Correlation Matrix for PE Header Data (Minimum threshold of 0.1) 2020-04-06 19:19:18.png" alt="Top Features Correlaton Matrix for PE Header Data" width="450">
+  </a>
+</div>
+
+---------------------------------------------------
+### Training Hierarchical Attention Network Model with extracted PE features (CheckSum, AddressOfEntryPoint, e_minalloc, e_maxalloc, etc.):
+
 ```
 cd restless/components/nlp/hann
 python hann.py
@@ -82,7 +93,7 @@ Epoch 10/10
 After 10 epochs, we have a loss of `0.3846` in testing vs `0.3819` in validation (so we're not overfitting or underfitting the model), and end with a final accuracy of `0.8329` and `0.8349`.
 
 ---------------------------------------------------
-### Example program usage (CLI):
+### Example CLI Usage
 -i = file or folder to scan recursively
 ```
 cd restless
@@ -116,13 +127,15 @@ PEAnalyzer scanning:  data/test_exes/
 ---------------------------------------------------
 Malicious executables obtained from [http://www.tekdefense.com/downloads/malware-samples/](http://www.tekdefense.com/downloads/malware-samples/). Training dataset taken from [https://github.com/urwithajit9/ClaMP](https://github.com/urwithajit9/ClaMP). 
 
-###  Concepts overview
+## Background
+
+### Concepts
 
 Signature detection, the traditional method of antiviruses which creates the need to connect to online databases for incesstant updating, cannot keep up with the emergence of new malware, or even of known malware that's able to change itself, and while heuirstics-based approaches can combat polymorphic viruses while offering further degrees of granularity, they tend to give off so many false positives that they do more harm than good by wasting computing resources and increasing cognitive load.
 
 The incorporation of machine learning (usually, natural langauge processing techniques although computer vision algorithms can also be applied) in antivirus software empowers them with a level of pattern recognition that previous approaches do not have. Rather than relying on known vulnerabilities / exploits or commonly re-used patterns of malicious code, restless and other ML-powered antiviruses can work well on classifying malware never seen before. This integration of NLP methods with information security has been dubbed malicious language processing by Elastic.
 
-### Architecture overview
+### Architecture
 
 * Hierarchical attention network (LSTM) for binary classification (benign vs malicious) of EXE files via extracting PE metadata and strings from file contents (including obfuscated strings). The HANN model is perfect as it retains some element of document structure, which is important when analyzing file contents and looking for potentially destructive patterns in code.
 * HANN trained for system API calls for benign vs malicious binary classification of logs (planned)
