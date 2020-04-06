@@ -21,7 +21,6 @@ try:
         DEFAULT_TRAINING_DATA_PATH,
         DEFAULT_MODEL_PATH,
     )
-    from restless.components.nlp.hann.feature_keys import *
     from restless.components.utils import utils
 except:
     from hann import HierarchicalAttentionNetwork
@@ -30,7 +29,6 @@ except:
         DEFAULT_TRAINING_DATA_PATH,
         DEFAULT_MODEL_PATH,
     )
-    from feature_keys import *
     from ...utils import utils
 
 stats = utils.stats
@@ -88,6 +86,7 @@ def get_features_corr(
 def train_model(
     training_fp: str,
     feature_keys: dict,
+    labels: list = None,
     model_base: object = None,
     model_save: bool = True,
     model_fp: str = DEFAULT_MODEL_PATH,
@@ -117,7 +116,7 @@ def train_model(
     hann = HierarchicalAttentionNetwork()
     # hann.feature_keys = feature_keys
     print("Training file {}.".format(training_fp))
-    model = hann.read_and_train_data(training_fp, model_base=model_base)
+    model = hann.read_and_train_data(training_fp, model_base=model_base, labels=labels)
     print("Training successful.")
     if model_save:
         hann.save_model(model, model_fp)
@@ -162,6 +161,8 @@ if __name__ == "__main__":
     results = get_features_corr(training_fp, feature_keys_list, target_feature)
     # Let's make a LogisticRegression model first, to use as a baseline comparison
     model_base = LogisticRegression(random_state=1618)
+    # If we don't pass a model_base, will train HANN architecture by default.
+    # model_base = None
     model_results = train_model(
         training_fp, feature_keys_filtered, labels=labels, model_base=model_base
     )

@@ -66,7 +66,7 @@ class StatsUtils:
         self,
         y,
         y_pred,
-        labels: list = ["benign", "malicious"],
+        labels: list = ["0", "1"],
         print_output: bool = False,
     ) -> dict:
         """
@@ -80,8 +80,7 @@ class StatsUtils:
         try:
             # we can only get cms from binary classifiers
             cm = confusion_matrix(y, y_pred, _labels)
-        except Exception as e:
-            print(e)
+        except:
             pass
         result["cm"] = cm
         accuracy = accuracy_score(y_pred, y)
@@ -102,7 +101,7 @@ class StatsUtils:
         result["auc"] = auc
         if print_output:
             print("Model evaluation metrics: ")
-            print("\tConfusion matrix: ")
+            print("\tConfusion matrix: ", cm)
             try:
                 print("\t", self.pretty_print_cm(cm, labels))
             except Exception as e:

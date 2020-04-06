@@ -160,7 +160,7 @@ class HierarchicalAttentionNetwork:
     def read_and_train_data(
         self,
         filepath: str,
-        labels: list,
+        labels: list = None,
         model_base: object = None,
         outputpath: str = DEFAULT_MODEL_PATH,
         save_model: bool = False,
@@ -168,20 +168,7 @@ class HierarchicalAttentionNetwork:
         """Reads a CSV file into training data and trains network."""
         self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
         # Get rid of the classification / class column since that's not a feature
-        if self.feature_keys is None or len(self.feature_keys) is 0:
-            feature_keys = [
-                key
-                for key in list(self.X.columns)
-                if key is not "class" or "classification"
-            ]
-            # Map feature keys with their indices (since eventually we may want to eliminate features
-            # from being trained, without modifiying the original dataset, so order of indices may not
-            # be continuous. Also, we can define a tokenization level in these mappings.
-            feature_keys = [
-                {"name": feature_key, "index": i}
-                for i, feature_key in enumerate(feature_keys)
-            ]
-            self.feature_keys = feature_keys
+        self.feature_keys = self._get_feature_keys(filepath)
         self.preprocess_data(self.X)
         self.embeddings_index = self.get_glove_embeddings()
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
@@ -201,6 +188,8 @@ class HierarchicalAttentionNetwork:
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype="int32")
         if feature_keys is None:
+            if self.feature_keys is None or len(self.feature_keys) is 0:
+                self.feature_keys = self._get_feature_keys()
             feature_keys = self.feature_keys
         else:
             self.feature_keys = feature_keys
@@ -415,6 +404,25 @@ class HierarchicalAttentionNetwork:
             pass
         return model
 
+    def _get_feature_keys(self, filepath:str=DEFAULT_TRAINING_DATA_PATH) -> list:
+        if self.feature_keys is None or len(self.feature_keys) is 0:
+            df = pd.read_csv(filepath, nrows=MAX_DOCS)
+            feature_keys = [
+                key
+                for key in list(df.columns)
+                if key is not "class" or "classification"
+            ]
+            # Map feature keys with their indices (since eventually we may want to eliminate features
+            # from being trained, without modifiying the original dataset, so order of indices may not
+            # be continuous. Also, we can define a tokenization level in these mappings.
+            feature_keys = [
+                {"name": feature_key, "index": i}
+                for i, feature_key in enumerate(feature_keys)
+            ]
+            return feature_keys
+        else:
+            return self.feature_keys
+
     def _fill_feature_vec(self, texts_features: list, feature_vector):
         """Helper function to build feature vector for HANN to classify."""
         for i, sentences in enumerate(texts_features):
@@ -441,6 +449,8 @@ class HierarchicalAttentionNetwork:
     def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
         """Vectorizes the training dataset for HANN."""
         if feature_keys is None:
+            if self.feature_keys is None or len(self.feature_keys) is 0:
+                self.feature_keys = self._get_feature_keys()
             feature_keys = self.feature_keys
         else:
             self.feature_keys = feature_keys
@@ -494,6 +504,8 @@ class HierarchicalAttentionNetwork:
         results = []
         texts_features = []
         if feature_keys is None:
+            if self.feature_keys is None or len(self.feature_keys) is 0:
+                self.feature_keys = self._get_feature_keys()
             feature_keys = self.feature_keys
         else:
             self.feature_keys = feature_keys
