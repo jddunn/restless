@@ -40,8 +40,8 @@ class StatsVisUtils:
         https://seaborn.pydata.org/examples/many_pairwise_correlations.html
         """
         # Generate a mask for the upper triangle
-        # mask = np.triu(np.ones_like(corr, dtype=np.bool))
-        mask = np.zeros_like(corr)
+        mask = np.triu(np.ones_like(corr, dtype=np.bool))
+        # mask = np.zeros_like(corr)
         mask[np.triu_indices_from(mask)] = True
         # Set up the matplotlib figure
         f, ax = plt.subplots(figsize=(11, 9))
@@ -60,6 +60,7 @@ class StatsVisUtils:
             fmt=".2g",
             linewidths=0.5,
             cbar_kws={"shrink": 0.5},
+            annot_kws={"size": 6},
         )
         if plot_title:
             plt.title(plot_title)

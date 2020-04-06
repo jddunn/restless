@@ -36,7 +36,7 @@ stats_vis = utils.stats_vis
 scaler = RobustScaler()
 
 MAX_N_FEATURES = None  # If none we have no limit
-CORR_THRESHOLD = 0.05  # minimum val to consider meaningful linear correlation
+CORR_THRESHOLD = 0.1  # minimum val to consider meaningful linear correlation
 
 
 def transform_df_with_top_features_for_hann(
