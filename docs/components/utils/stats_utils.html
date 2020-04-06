@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.7.5" />
+<title>restless.components.utils.stats_utils API documentation</title>
+<meta name="description" content="" />
+<link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
+<link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
+<style>.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{font-weight:bold}#index h4 + ul{margin-bottom:.6em}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>restless.components.utils.stats_utils</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import os
+import collections, functools, operator
+
+from pandas import DataFrame
+
+from sklearn.metrics import (
+    confusion_matrix,
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    cohen_kappa_score,
+    roc_auc_score,
+    log_loss,
+)
+from sklearn.model_selection import cross_val_score
+
+# Path to save visualization output images
+DEFAULT_SCREENSHOTS_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), &#34;..&#34;, &#34;..&#34;, &#34;..&#34;, &#34;..&#34;, &#34;screenshots&#34;)
+)
+
+
+class StatsUtils:
+    &#34;&#34;&#34;
+    Contains functions to facilitate statistical modeling
+    and ML processing.
+    &#34;&#34;&#34;
+
+    def __init__(self):
+        pass
+
+    def get_correlation_for_features(
+        self,
+        data_train: DataFrame,
+        features_to_compare: list = [],
+        target_feature: str = None,
+        get_corr_with_target_feature_only: bool = False,
+        correlation: str = &#34;pearson&#34;,
+        print_output: bool = False,
+    ):
+        &#34;&#34;&#34;
+        Gets correlation for a feature with all other features
+        in a dataframe, if $features param is not provided.
+
+        Args:
+            data_train (DataFrame): Pandas df for data
+            features_to_compare (list, optional): Optional; if set,
+                function will get the correlation values for
+                just the specified features.
+            target_feature (str, optional): Name of feature (column)
+                to get correlation values with (e.g. classification)
+            get_corr_with_target_feature_only (bool, optional): Whether
+                to get feature correlations with just the target feature.
+            correlation (str, optional): Type of correlation
+                metric to use; defaults to &#34;pearson.&#34;
+            print_output (bool, optional): Whether to output of results.
+        &#34;&#34;&#34;
+        # if not get_corr_with_target_feature_only:
+        #  features_to_compare.append(target_feature)
+        # data_train = data_train.filter(features_to_compare)
+        index = len(features_to_compare)
+        if not get_corr_with_target_feature_only:
+            corr = data_train[features_to_compare].corr(method=correlation)
+        else:
+            # corr = data_train[data_train.columns[:index]].corr(method=correlation)[target_feature]
+            corr = data_train[data_train.columns].corr(method=correlation)[
+                target_feature
+            ][:]
+            # corr = data_train[features_to_compare].corr(method=correlation_method)[target_feature][:]
+        if print_output:
+            print(
+                &#34;Correlation for features: {} is {}&#34;.format(features_to_compare, corr)
+            )
+        return corr
+
+    def get_model_metrics(
+        self, y, y_pred, labels: list = [&#34;0&#34;, &#34;1&#34;], print_output: bool = False,
+    ) -&gt; dict:
+        &#34;&#34;&#34;
+        Gets metrics from evaluated model and input data, including
+        accuracy, loss, confusion matrix (if applicable), F1 score,
+        etc.
+        &#34;&#34;&#34;
+        result = {}
+        cm = None
+        _labels = [0, 1]
+        try:
+            # we can only get cms from binary classifiers
+            cm = confusion_matrix(y, y_pred, _labels)
+        except:
+            pass
+        result[&#34;cm&#34;] = cm
+        accuracy = accuracy_score(y_pred, y)
+        result[&#34;accuracy&#34;] = accuracy
+        loss = log_loss(y, y_pred)
+        result[&#34;loss&#34;] = loss
+        precision = precision_score(y_pred, y)
+        result[&#34;precision&#34;] = precision
+        recall = recall_score(y_pred, y)
+        result[&#34;recall&#34;] = recall
+        f1 = f1_score(y_pred, y)
+        result[&#34;f1&#34;] = f1
+        # cross_val = cross_val_score(y_pred, y)
+        # result[&#34;cross_val&#34;] = cross_val
+        kappa = cohen_kappa_score(y_pred, y)
+        result[&#34;kappa&#34;] = kappa
+        auc = roc_auc_score(y_pred, y)
+        result[&#34;auc&#34;] = auc
+        if print_output:
+            print(&#34;Model evaluation metrics: &#34;)
+            print(&#34;\tConfusion matrix: &#34;, cm)
+            try:
+                print(&#34;\t&#34;, self.pretty_print_cm(cm, labels))
+            except Exception as e:
+                print(e)
+                pass
+            print(&#34;\tAccuracy: {} \tLoss: {}&#34;.format(accuracy, loss))
+            print(&#34;\tPrecision: {}&#34;.format(precision))
+            print(&#34;\tRecall: {}&#34;.format(recall))
+            print(&#34;\tF1 score: {}&#34;.format(f1))
+            # print(&#34;\tCross-val score: {}&#34;.format(cross_val))
+            print(&#34;\tCohens kappa score: {}&#34;.format(kappa))
+            print(&#34;\tROC AUC score: {}&#34;.format(auc))
+        return result
+
+    def get_metrics_averages(self, metrics: list) -&gt; dict:
+        &#34;&#34;&#34;
+        Takes a list of dictionaries and returns their averaged
+        values for each key in each list. Values in the dictionary
+        must be int or floats.
+
+        Args:
+            dicts (list): A list of dictionaries to to average.
+
+        Returns:
+            dict: Dictionary with averaged values.
+        &#34;&#34;&#34;
+        result = dict(functools.reduce(operator.add, map(collections.Counter, metrics)))
+        result.update({n: result[n] / len(metrics) for n in result.keys()})
+        return result
+
+    def pretty_print_cm(
+        self,
+        cm,
+        labels: list,
+        hide_zeroes: bool = False,
+        hide_diagonal: bool = False,
+        hide_threshold: bool = None,
+    ) -&gt; None:
+        &#34;&#34;&#34;
+        Pretty print for confusion matrixes.
+        https://gist.github.com/zachguo/10296432
+        &#34;&#34;&#34;
+        # Print header
+        columnwidth = max([len(x) for x in labels] + [5])  # 5 is value length
+        empty_cell = &#34; &#34; * columnwidth
+        # Print header
+        print(&#34;    &#34; + empty_cell, end=&#34; &#34;)
+        for label in labels:
+            print(&#34;%{0}s&#34;.format(columnwidth) % label, end=&#34; &#34;)
+        print()
+        # Print rows
+        for i, label1 in enumerate(labels):
+            print(&#34;    %{0}s&#34;.format(columnwidth) % label1, end=&#34; &#34;)
+            for j in range(len(labels)):
+                cell = &#34;%{0}.1f&#34;.format(columnwidth) % cm[i, j]
+                if hide_zeroes:
+                    cell = cell if float(cm[i, j]) != 0 else empty_cell
+                if hide_diagonal:
+                    cell = cell if i != j else empty_cell
+                if hide_threshold:
+                    cell = cell if cm[i, j] &gt; hide_threshold else empty_cell
+                print(cell, end=&#34; &#34;)
+            print()
+        return</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="restless.components.utils.stats_utils.StatsUtils"><code class="flex name class">
+<span>class <span class="ident">StatsUtils</span></span>
+</code></dt>
+<dd>
+<section class="desc"><p>Contains functions to facilitate statistical modeling
+and ML processing.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class StatsUtils:
+    &#34;&#34;&#34;
+    Contains functions to facilitate statistical modeling
+    and ML processing.
+    &#34;&#34;&#34;
+
+    def __init__(self):
+        pass
+
+    def get_correlation_for_features(
+        self,
+        data_train: DataFrame,
+        features_to_compare: list = [],
+        target_feature: str = None,
+        get_corr_with_target_feature_only: bool = False,
+        correlation: str = &#34;pearson&#34;,
+        print_output: bool = False,
+    ):
+        &#34;&#34;&#34;
+        Gets correlation for a feature with all other features
+        in a dataframe, if $features param is not provided.
+
+        Args:
+            data_train (DataFrame): Pandas df for data
+            features_to_compare (list, optional): Optional; if set,
+                function will get the correlation values for
+                just the specified features.
+            target_feature (str, optional): Name of feature (column)
+                to get correlation values with (e.g. classification)
+            get_corr_with_target_feature_only (bool, optional): Whether
+                to get feature correlations with just the target feature.
+            correlation (str, optional): Type of correlation
+                metric to use; defaults to &#34;pearson.&#34;
+            print_output (bool, optional): Whether to output of results.
+        &#34;&#34;&#34;
+        # if not get_corr_with_target_feature_only:
+        #  features_to_compare.append(target_feature)
+        # data_train = data_train.filter(features_to_compare)
+        index = len(features_to_compare)
+        if not get_corr_with_target_feature_only:
+            corr = data_train[features_to_compare].corr(method=correlation)
+        else:
+            # corr = data_train[data_train.columns[:index]].corr(method=correlation)[target_feature]
+            corr = data_train[data_train.columns].corr(method=correlation)[
+                target_feature
+            ][:]
+            # corr = data_train[features_to_compare].corr(method=correlation_method)[target_feature][:]
+        if print_output:
+            print(
+                &#34;Correlation for features: {} is {}&#34;.format(features_to_compare, corr)
+            )
+        return corr
+
+    def get_model_metrics(
+        self, y, y_pred, labels: list = [&#34;0&#34;, &#34;1&#34;], print_output: bool = False,
+    ) -&gt; dict:
+        &#34;&#34;&#34;
+        Gets metrics from evaluated model and input data, including
+        accuracy, loss, confusion matrix (if applicable), F1 score,
+        etc.
+        &#34;&#34;&#34;
+        result = {}
+        cm = None
+        _labels = [0, 1]
+        try:
+            # we can only get cms from binary classifiers
+            cm = confusion_matrix(y, y_pred, _labels)
+        except:
+            pass
+        result[&#34;cm&#34;] = cm
+        accuracy = accuracy_score(y_pred, y)
+        result[&#34;accuracy&#34;] = accuracy
+        loss = log_loss(y, y_pred)
+        result[&#34;loss&#34;] = loss
+        precision = precision_score(y_pred, y)
+        result[&#34;precision&#34;] = precision
+        recall = recall_score(y_pred, y)
+        result[&#34;recall&#34;] = recall
+        f1 = f1_score(y_pred, y)
+        result[&#34;f1&#34;] = f1
+        # cross_val = cross_val_score(y_pred, y)
+        # result[&#34;cross_val&#34;] = cross_val
+        kappa = cohen_kappa_score(y_pred, y)
+        result[&#34;kappa&#34;] = kappa
+        auc = roc_auc_score(y_pred, y)
+        result[&#34;auc&#34;] = auc
+        if print_output:
+            print(&#34;Model evaluation metrics: &#34;)
+            print(&#34;\tConfusion matrix: &#34;, cm)
+            try:
+                print(&#34;\t&#34;, self.pretty_print_cm(cm, labels))
+            except Exception as e:
+                print(e)
+                pass
+            print(&#34;\tAccuracy: {} \tLoss: {}&#34;.format(accuracy, loss))
+            print(&#34;\tPrecision: {}&#34;.format(precision))
+            print(&#34;\tRecall: {}&#34;.format(recall))
+            print(&#34;\tF1 score: {}&#34;.format(f1))
+            # print(&#34;\tCross-val score: {}&#34;.format(cross_val))
+            print(&#34;\tCohens kappa score: {}&#34;.format(kappa))
+            print(&#34;\tROC AUC score: {}&#34;.format(auc))
+        return result
+
+    def get_metrics_averages(self, metrics: list) -&gt; dict:
+        &#34;&#34;&#34;
+        Takes a list of dictionaries and returns their averaged
+        values for each key in each list. Values in the dictionary
+        must be int or floats.
+
+        Args:
+            dicts (list): A list of dictionaries to to average.
+
+        Returns:
+            dict: Dictionary with averaged values.
+        &#34;&#34;&#34;
+        result = dict(functools.reduce(operator.add, map(collections.Counter, metrics)))
+        result.update({n: result[n] / len(metrics) for n in result.keys()})
+        return result
+
+    def pretty_print_cm(
+        self,
+        cm,
+        labels: list,
+        hide_zeroes: bool = False,
+        hide_diagonal: bool = False,
+        hide_threshold: bool = None,
+    ) -&gt; None:
+        &#34;&#34;&#34;
+        Pretty print for confusion matrixes.
+        https://gist.github.com/zachguo/10296432
+        &#34;&#34;&#34;
+        # Print header
+        columnwidth = max([len(x) for x in labels] + [5])  # 5 is value length
+        empty_cell = &#34; &#34; * columnwidth
+        # Print header
+        print(&#34;    &#34; + empty_cell, end=&#34; &#34;)
+        for label in labels:
+            print(&#34;%{0}s&#34;.format(columnwidth) % label, end=&#34; &#34;)
+        print()
+        # Print rows
+        for i, label1 in enumerate(labels):
+            print(&#34;    %{0}s&#34;.format(columnwidth) % label1, end=&#34; &#34;)
+            for j in range(len(labels)):
+                cell = &#34;%{0}.1f&#34;.format(columnwidth) % cm[i, j]
+                if hide_zeroes:
+                    cell = cell if float(cm[i, j]) != 0 else empty_cell
+                if hide_diagonal:
+                    cell = cell if i != j else empty_cell
+                if hide_threshold:
+                    cell = cell if cm[i, j] &gt; hide_threshold else empty_cell
+                print(cell, end=&#34; &#34;)
+            print()
+        return</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="restless.components.utils.stats_utils.StatsUtils.get_correlation_for_features"><code class="name flex">
+<span>def <span class="ident">get_correlation_for_features</span></span>(<span>self, data_train, features_to_compare=[], target_feature=None, get_corr_with_target_feature_only=False, correlation='pearson', print_output=False)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Gets correlation for a feature with all other features
+in a dataframe, if $features param is not provided.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>data_train</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd>Pandas df for data</dd>
+<dt><strong><code>features_to_compare</code></strong> :&ensp;<code>list</code>, optional</dt>
+<dd>Optional; if set,
+function will get the correlation values for
+just the specified features.</dd>
+<dt><strong><code>target_feature</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>Name of feature (column)
+to get correlation values with (e.g. classification)</dd>
+<dt><strong><code>get_corr_with_target_feature_only</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>Whether
+to get feature correlations with just the target feature.</dd>
+<dt><strong><code>correlation</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>Type of correlation
+metric to use; defaults to "pearson."</dd>
+<dt><strong><code>print_output</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>Whether to output of results.</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_correlation_for_features(
+    self,
+    data_train: DataFrame,
+    features_to_compare: list = [],
+    target_feature: str = None,
+    get_corr_with_target_feature_only: bool = False,
+    correlation: str = &#34;pearson&#34;,
+    print_output: bool = False,
+):
+    &#34;&#34;&#34;
+    Gets correlation for a feature with all other features
+    in a dataframe, if $features param is not provided.
+
+    Args:
+        data_train (DataFrame): Pandas df for data
+        features_to_compare (list, optional): Optional; if set,
+            function will get the correlation values for
+            just the specified features.
+        target_feature (str, optional): Name of feature (column)
+            to get correlation values with (e.g. classification)
+        get_corr_with_target_feature_only (bool, optional): Whether
+            to get feature correlations with just the target feature.
+        correlation (str, optional): Type of correlation
+            metric to use; defaults to &#34;pearson.&#34;
+        print_output (bool, optional): Whether to output of results.
+    &#34;&#34;&#34;
+    # if not get_corr_with_target_feature_only:
+    #  features_to_compare.append(target_feature)
+    # data_train = data_train.filter(features_to_compare)
+    index = len(features_to_compare)
+    if not get_corr_with_target_feature_only:
+        corr = data_train[features_to_compare].corr(method=correlation)
+    else:
+        # corr = data_train[data_train.columns[:index]].corr(method=correlation)[target_feature]
+        corr = data_train[data_train.columns].corr(method=correlation)[
+            target_feature
+        ][:]
+        # corr = data_train[features_to_compare].corr(method=correlation_method)[target_feature][:]
+    if print_output:
+        print(
+            &#34;Correlation for features: {} is {}&#34;.format(features_to_compare, corr)
+        )
+    return corr</code></pre>
+</details>
+</dd>
+<dt id="restless.components.utils.stats_utils.StatsUtils.get_metrics_averages"><code class="name flex">
+<span>def <span class="ident">get_metrics_averages</span></span>(<span>self, metrics)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Takes a list of dictionaries and returns their averaged
+values for each key in each list. Values in the dictionary
+must be int or floats.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>dicts</code></strong> :&ensp;<code>list</code></dt>
+<dd>A list of dictionaries to to average.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>dict</code></strong></dt>
+<dd>Dictionary with averaged values.</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_metrics_averages(self, metrics: list) -&gt; dict:
+    &#34;&#34;&#34;
+    Takes a list of dictionaries and returns their averaged
+    values for each key in each list. Values in the dictionary
+    must be int or floats.
+
+    Args:
+        dicts (list): A list of dictionaries to to average.
+
+    Returns:
+        dict: Dictionary with averaged values.
+    &#34;&#34;&#34;
+    result = dict(functools.reduce(operator.add, map(collections.Counter, metrics)))
+    result.update({n: result[n] / len(metrics) for n in result.keys()})
+    return result</code></pre>
+</details>
+</dd>
+<dt id="restless.components.utils.stats_utils.StatsUtils.get_model_metrics"><code class="name flex">
+<span>def <span class="ident">get_model_metrics</span></span>(<span>self, y, y_pred, labels=['0', '1'], print_output=False)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Gets metrics from evaluated model and input data, including
+accuracy, loss, confusion matrix (if applicable), F1 score,
+etc.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_model_metrics(
+    self, y, y_pred, labels: list = [&#34;0&#34;, &#34;1&#34;], print_output: bool = False,
+) -&gt; dict:
+    &#34;&#34;&#34;
+    Gets metrics from evaluated model and input data, including
+    accuracy, loss, confusion matrix (if applicable), F1 score,
+    etc.
+    &#34;&#34;&#34;
+    result = {}
+    cm = None
+    _labels = [0, 1]
+    try:
+        # we can only get cms from binary classifiers
+        cm = confusion_matrix(y, y_pred, _labels)
+    except:
+        pass
+    result[&#34;cm&#34;] = cm
+    accuracy = accuracy_score(y_pred, y)
+    result[&#34;accuracy&#34;] = accuracy
+    loss = log_loss(y, y_pred)
+    result[&#34;loss&#34;] = loss
+    precision = precision_score(y_pred, y)
+    result[&#34;precision&#34;] = precision
+    recall = recall_score(y_pred, y)
+    result[&#34;recall&#34;] = recall
+    f1 = f1_score(y_pred, y)
+    result[&#34;f1&#34;] = f1
+    # cross_val = cross_val_score(y_pred, y)
+    # result[&#34;cross_val&#34;] = cross_val
+    kappa = cohen_kappa_score(y_pred, y)
+    result[&#34;kappa&#34;] = kappa
+    auc = roc_auc_score(y_pred, y)
+    result[&#34;auc&#34;] = auc
+    if print_output:
+        print(&#34;Model evaluation metrics: &#34;)
+        print(&#34;\tConfusion matrix: &#34;, cm)
+        try:
+            print(&#34;\t&#34;, self.pretty_print_cm(cm, labels))
+        except Exception as e:
+            print(e)
+            pass
+        print(&#34;\tAccuracy: {} \tLoss: {}&#34;.format(accuracy, loss))
+        print(&#34;\tPrecision: {}&#34;.format(precision))
+        print(&#34;\tRecall: {}&#34;.format(recall))
+        print(&#34;\tF1 score: {}&#34;.format(f1))
+        # print(&#34;\tCross-val score: {}&#34;.format(cross_val))
+        print(&#34;\tCohens kappa score: {}&#34;.format(kappa))
+        print(&#34;\tROC AUC score: {}&#34;.format(auc))
+    return result</code></pre>
+</details>
+</dd>
+<dt id="restless.components.utils.stats_utils.StatsUtils.pretty_print_cm"><code class="name flex">
+<span>def <span class="ident">pretty_print_cm</span></span>(<span>self, cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Pretty print for confusion matrixes.
+<a href="https://gist.github.com/zachguo/10296432">https://gist.github.com/zachguo/10296432</a></p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def pretty_print_cm(
+    self,
+    cm,
+    labels: list,
+    hide_zeroes: bool = False,
+    hide_diagonal: bool = False,
+    hide_threshold: bool = None,
+) -&gt; None:
+    &#34;&#34;&#34;
+    Pretty print for confusion matrixes.
+    https://gist.github.com/zachguo/10296432
+    &#34;&#34;&#34;
+    # Print header
+    columnwidth = max([len(x) for x in labels] + [5])  # 5 is value length
+    empty_cell = &#34; &#34; * columnwidth
+    # Print header
+    print(&#34;    &#34; + empty_cell, end=&#34; &#34;)
+    for label in labels:
+        print(&#34;%{0}s&#34;.format(columnwidth) % label, end=&#34; &#34;)
+    print()
+    # Print rows
+    for i, label1 in enumerate(labels):
+        print(&#34;    %{0}s&#34;.format(columnwidth) % label1, end=&#34; &#34;)
+        for j in range(len(labels)):
+            cell = &#34;%{0}.1f&#34;.format(columnwidth) % cm[i, j]
+            if hide_zeroes:
+                cell = cell if float(cm[i, j]) != 0 else empty_cell
+            if hide_diagonal:
+                cell = cell if i != j else empty_cell
+            if hide_threshold:
+                cell = cell if cm[i, j] &gt; hide_threshold else empty_cell
+            print(cell, end=&#34; &#34;)
+        print()
+    return</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="restless.components.utils" href="index.html">restless.components.utils</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="restless.components.utils.stats_utils.StatsUtils" href="#restless.components.utils.stats_utils.StatsUtils">StatsUtils</a></code></h4>
+<ul class="">
+<li><code><a title="restless.components.utils.stats_utils.StatsUtils.get_correlation_for_features" href="#restless.components.utils.stats_utils.StatsUtils.get_correlation_for_features">get_correlation_for_features</a></code></li>
+<li><code><a title="restless.components.utils.stats_utils.StatsUtils.get_metrics_averages" href="#restless.components.utils.stats_utils.StatsUtils.get_metrics_averages">get_metrics_averages</a></code></li>
+<li><code><a title="restless.components.utils.stats_utils.StatsUtils.get_model_metrics" href="#restless.components.utils.stats_utils.StatsUtils.get_model_metrics">get_model_metrics</a></code></li>
+<li><code><a title="restless.components.utils.stats_utils.StatsUtils.pretty_print_cm" href="#restless.components.utils.stats_utils.StatsUtils.pretty_print_cm">pretty_print_cm</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.7.5</a>.</p>
+</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad()</script>
+</body>
+</html>

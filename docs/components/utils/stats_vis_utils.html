@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.7.5" />
+<title>restless.components.utils.stats_vis_utils API documentation</title>
+<meta name="description" content="" />
+<link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
+<link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
+<style>.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{font-weight:bold}#index h4 + ul{margin-bottom:.6em}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>restless.components.utils.stats_vis_utils</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import os
+
+import numpy as np
+
+from pandas import DataFrame
+
+import matplotlib.pyplot as plt
+import seaborn as sbn
+from datetime import datetime
+
+# Path to save visualization output images
+DEFAULT_SCREENSHOTS_PATH = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__), &#34;..&#34;, &#34;..&#34;, &#34;..&#34;, &#34;screenshots&#34;, &#34;model_results&#34;
+    )
+)
+
+# Generate a custom diverging colormap
+cmap = sbn.diverging_palette(220, 10, as_cmap=True)
+
+
+class StatsVisUtils:
+    def __init__(self):
+        return
+
+    def visualize_correlation_matrix(
+        self,
+        corr,
+        features_list: list,
+        annot: bool = False,
+        plot_title: str = None,
+        save_image: bool = False,
+        output_fp: str = None,
+        show: bool = True,
+    ) -&gt; object:
+        &#34;&#34;&#34;
+        Graphs df correlation with diagonal matrix. Suitable for lots of
+        features as it doesn&#39;t display annotations. Optionally saves output
+        to image.
+        https://seaborn.pydata.org/examples/many_pairwise_correlations.html
+        &#34;&#34;&#34;
+        # Generate a mask for the upper triangle
+        mask = np.triu(np.ones_like(corr, dtype=np.bool))
+        # mask = np.zeros_like(corr)
+        mask[np.triu_indices_from(mask)] = True
+        # Set up the matplotlib figure
+        f, ax = plt.subplots(figsize=(11, 9))
+        # Draw the heatmap with the mask and correct aspect ratio
+        hmap = sbn.heatmap(
+            corr,
+            annot=annot,
+            mask=mask,
+            cmap=cmap,
+            vmax=1,
+            vmin=-1,
+            center=0,
+            xticklabels=features_list,
+            yticklabels=features_list,
+            square=True,
+            fmt=&#34;.2g&#34;,
+            linewidths=0.5,
+            cbar_kws={&#34;shrink&#34;: 0.5},
+            annot_kws={&#34;size&#34;: 6},
+        )
+        if plot_title:
+            plt.title(plot_title)
+        if show:
+            plt.show()
+        if save_image:
+            now = datetime.now().replace(microsecond=0)
+            if not output_fp:
+                if plot_title:
+                    output_fp = os.path.abspath(
+                        os.path.join(
+                            DEFAULT_SCREENSHOTS_PATH, plot_title + &#34; &#34; + str(now)
+                        )
+                    )
+                else:
+                    output_fp = os.path.abspath(
+                        os.path.join(DEFAULT_SCREENSHOTS_PATH, str(now))
+                    )
+            if plot_title:
+                print(&#34;Saving plot {} to {}.&#34;.format(plot_title, output_fp))
+            else:
+                print(&#34;Saving plot to {}.&#34;.format(output_fp))
+            plt.savefig(output_fp + &#34;.png&#34;, dpi=300)
+        return hmap
+
+    def plot_learning_curve(
+        estimator,
+        title,
+        X,
+        y,
+        axes=None,
+        ylim=None,
+        cv=None,
+        n_jobs=None,
+        train_sizes=np.linspace(0.1, 1.0, 5),
+    ):
+        &#34;&#34;&#34;
+        From https://scikit-learn.org/stable/auto_examples/model_selection/plot_learning_curve.html
+
+        Generate 3 plots: the test and training learning curve, the training
+        samples vs fit times curve, the fit times vs score curve.
+
+        Parameters
+        ----------
+        estimator : object type that implements the &#34;fit&#34; and &#34;predict&#34; methods
+            An object of that type which is cloned for each validation.
+
+        title : string
+            Title for the chart.
+
+        X : array-like, shape (n_samples, n_features)
+            Training vector, where n_samples is the number of samples and
+            n_features is the number of features.
+
+        y : array-like, shape (n_samples) or (n_samples, n_features), optional
+            Target relative to X for classification or regression;
+            None for unsupervised learning.
+
+        axes : array of 3 axes, optional (default=None)
+            Axes to use for plotting the curves.
+
+        ylim : tuple, shape (ymin, ymax), optional
+            Defines minimum and maximum yvalues plotted.
+
+        cv : int, cross-validation generator or an iterable, optional
+            Determines the cross-validation splitting strategy.
+            Possible inputs for cv are:
+            - None, to use the default 5-fold cross-validation,
+            - integer, to specify the number of folds.
+            - :term:`CV splitter`,
+            - An iterable yielding (train, test) splits as arrays of indices.
+
+            For integer/None inputs, if ``y`` is binary or multiclass,
+            :class:`StratifiedKFold` used. If the estimator is not a classifier
+            or if ``y`` is neither binary nor multiclass, :class:`KFold` is used.
+
+            Refer :ref:`User Guide &lt;cross_validation&gt;` for the various
+            cross-validators that can be used here.
+
+        n_jobs : int or None, optional (default=None)
+            Number of jobs to run in parallel.
+            ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+            ``-1`` means using all processors. See :term:`Glossary &lt;n_jobs&gt;`
+            for more details.
+
+        train_sizes : array-like, shape (n_ticks,), dtype float or int
+            Relative or absolute numbers of training examples that will be used to
+            generate the learning curve. If the dtype is float, it is regarded as a
+            fraction of the maximum size of the training set (that is determined
+            by the selected validation method), i.e. it has to be within (0, 1].
+            Otherwise it is interpreted as absolute sizes of the training sets.
+            Note that for classification the number of samples usually have to
+            be big enough to contain at least one sample from each class.
+            (default: np.linspace(0.1, 1.0, 5))
+        &#34;&#34;&#34;
+        if axes is None:
+            _, axes = plt.subplots(1, 3, figsize=(20, 5))
+
+        axes[0].set_title(title)
+        if ylim is not None:
+            axes[0].set_ylim(*ylim)
+        axes[0].set_xlabel(&#34;Training examples&#34;)
+        axes[0].set_ylabel(&#34;Score&#34;)
+
+        train_sizes, train_scores, test_scores, fit_times, _ = learning_curve(
+            estimator,
+            X,
+            y,
+            cv=cv,
+            n_jobs=n_jobs,
+            train_sizes=train_sizes,
+            return_times=True,
+        )
+        train_scores_mean = np.mean(train_scores, axis=1)
+        train_scores_std = np.std(train_scores, axis=1)
+        test_scores_mean = np.mean(test_scores, axis=1)
+        test_scores_std = np.std(test_scores, axis=1)
+        fit_times_mean = np.mean(fit_times, axis=1)
+        fit_times_std = np.std(fit_times, axis=1)
+
+        # Plot learning curve
+        axes[0].grid()
+        axes[0].fill_between(
+            train_sizes,
+            train_scores_mean - train_scores_std,
+            train_scores_mean + train_scores_std,
+            alpha=0.1,
+            color=&#34;r&#34;,
+        )
+        axes[0].fill_between(
+            train_sizes,
+            test_scores_mean - test_scores_std,
+            test_scores_mean + test_scores_std,
+            alpha=0.1,
+            color=&#34;g&#34;,
+        )
+        axes[0].plot(
+            train_sizes, train_scores_mean, &#34;o-&#34;, color=&#34;r&#34;, label=&#34;Training score&#34;
+        )
+        axes[0].plot(
+            train_sizes,
+            test_scores_mean,
+            &#34;o-&#34;,
+            color=&#34;g&#34;,
+            label=&#34;Cross-validation score&#34;,
+        )
+        axes[0].legend(loc=&#34;best&#34;)
+
+        # Plot n_samples vs fit_times
+        axes[1].grid()
+        axes[1].plot(train_sizes, fit_times_mean, &#34;o-&#34;)
+        axes[1].fill_between(
+            train_sizes,
+            fit_times_mean - fit_times_std,
+            fit_times_mean + fit_times_std,
+            alpha=0.1,
+        )
+        axes[1].set_xlabel(&#34;Training examples&#34;)
+        axes[1].set_ylabel(&#34;fit_times&#34;)
+        axes[1].set_title(&#34;Scalability of the model&#34;)
+
+        # Plot fit_time vs score
+        axes[2].grid()
+        axes[2].plot(fit_times_mean, test_scores_mean, &#34;o-&#34;)
+        axes[2].fill_between(
+            fit_times_mean,
+            test_scores_mean - test_scores_std,
+            test_scores_mean + test_scores_std,
+            alpha=0.1,
+        )
+        axes[2].set_xlabel(&#34;fit_times&#34;)
+        axes[2].set_ylabel(&#34;Score&#34;)
+        axes[2].set_title(&#34;Performance of the model&#34;)
+        return plt</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="restless.components.utils.stats_vis_utils.StatsVisUtils"><code class="flex name class">
+<span>class <span class="ident">StatsVisUtils</span></span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class StatsVisUtils:
+    def __init__(self):
+        return
+
+    def visualize_correlation_matrix(
+        self,
+        corr,
+        features_list: list,
+        annot: bool = False,
+        plot_title: str = None,
+        save_image: bool = False,
+        output_fp: str = None,
+        show: bool = True,
+    ) -&gt; object:
+        &#34;&#34;&#34;
+        Graphs df correlation with diagonal matrix. Suitable for lots of
+        features as it doesn&#39;t display annotations. Optionally saves output
+        to image.
+        https://seaborn.pydata.org/examples/many_pairwise_correlations.html
+        &#34;&#34;&#34;
+        # Generate a mask for the upper triangle
+        mask = np.triu(np.ones_like(corr, dtype=np.bool))
+        # mask = np.zeros_like(corr)
+        mask[np.triu_indices_from(mask)] = True
+        # Set up the matplotlib figure
+        f, ax = plt.subplots(figsize=(11, 9))
+        # Draw the heatmap with the mask and correct aspect ratio
+        hmap = sbn.heatmap(
+            corr,
+            annot=annot,
+            mask=mask,
+            cmap=cmap,
+            vmax=1,
+            vmin=-1,
+            center=0,
+            xticklabels=features_list,
+            yticklabels=features_list,
+            square=True,
+            fmt=&#34;.2g&#34;,
+            linewidths=0.5,
+            cbar_kws={&#34;shrink&#34;: 0.5},
+            annot_kws={&#34;size&#34;: 6},
+        )
+        if plot_title:
+            plt.title(plot_title)
+        if show:
+            plt.show()
+        if save_image:
+            now = datetime.now().replace(microsecond=0)
+            if not output_fp:
+                if plot_title:
+                    output_fp = os.path.abspath(
+                        os.path.join(
+                            DEFAULT_SCREENSHOTS_PATH, plot_title + &#34; &#34; + str(now)
+                        )
+                    )
+                else:
+                    output_fp = os.path.abspath(
+                        os.path.join(DEFAULT_SCREENSHOTS_PATH, str(now))
+                    )
+            if plot_title:
+                print(&#34;Saving plot {} to {}.&#34;.format(plot_title, output_fp))
+            else:
+                print(&#34;Saving plot to {}.&#34;.format(output_fp))
+            plt.savefig(output_fp + &#34;.png&#34;, dpi=300)
+        return hmap
+
+    def plot_learning_curve(
+        estimator,
+        title,
+        X,
+        y,
+        axes=None,
+        ylim=None,
+        cv=None,
+        n_jobs=None,
+        train_sizes=np.linspace(0.1, 1.0, 5),
+    ):
+        &#34;&#34;&#34;
+        From https://scikit-learn.org/stable/auto_examples/model_selection/plot_learning_curve.html
+
+        Generate 3 plots: the test and training learning curve, the training
+        samples vs fit times curve, the fit times vs score curve.
+
+        Parameters
+        ----------
+        estimator : object type that implements the &#34;fit&#34; and &#34;predict&#34; methods
+            An object of that type which is cloned for each validation.
+
+        title : string
+            Title for the chart.
+
+        X : array-like, shape (n_samples, n_features)
+            Training vector, where n_samples is the number of samples and
+            n_features is the number of features.
+
+        y : array-like, shape (n_samples) or (n_samples, n_features), optional
+            Target relative to X for classification or regression;
+            None for unsupervised learning.
+
+        axes : array of 3 axes, optional (default=None)
+            Axes to use for plotting the curves.
+
+        ylim : tuple, shape (ymin, ymax), optional
+            Defines minimum and maximum yvalues plotted.
+
+        cv : int, cross-validation generator or an iterable, optional
+            Determines the cross-validation splitting strategy.
+            Possible inputs for cv are:
+            - None, to use the default 5-fold cross-validation,
+            - integer, to specify the number of folds.
+            - :term:`CV splitter`,
+            - An iterable yielding (train, test) splits as arrays of indices.
+
+            For integer/None inputs, if ``y`` is binary or multiclass,
+            :class:`StratifiedKFold` used. If the estimator is not a classifier
+            or if ``y`` is neither binary nor multiclass, :class:`KFold` is used.
+
+            Refer :ref:`User Guide &lt;cross_validation&gt;` for the various
+            cross-validators that can be used here.
+
+        n_jobs : int or None, optional (default=None)
+            Number of jobs to run in parallel.
+            ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+            ``-1`` means using all processors. See :term:`Glossary &lt;n_jobs&gt;`
+            for more details.
+
+        train_sizes : array-like, shape (n_ticks,), dtype float or int
+            Relative or absolute numbers of training examples that will be used to
+            generate the learning curve. If the dtype is float, it is regarded as a
+            fraction of the maximum size of the training set (that is determined
+            by the selected validation method), i.e. it has to be within (0, 1].
+            Otherwise it is interpreted as absolute sizes of the training sets.
+            Note that for classification the number of samples usually have to
+            be big enough to contain at least one sample from each class.
+            (default: np.linspace(0.1, 1.0, 5))
+        &#34;&#34;&#34;
+        if axes is None:
+            _, axes = plt.subplots(1, 3, figsize=(20, 5))
+
+        axes[0].set_title(title)
+        if ylim is not None:
+            axes[0].set_ylim(*ylim)
+        axes[0].set_xlabel(&#34;Training examples&#34;)
+        axes[0].set_ylabel(&#34;Score&#34;)
+
+        train_sizes, train_scores, test_scores, fit_times, _ = learning_curve(
+            estimator,
+            X,
+            y,
+            cv=cv,
+            n_jobs=n_jobs,
+            train_sizes=train_sizes,
+            return_times=True,
+        )
+        train_scores_mean = np.mean(train_scores, axis=1)
+        train_scores_std = np.std(train_scores, axis=1)
+        test_scores_mean = np.mean(test_scores, axis=1)
+        test_scores_std = np.std(test_scores, axis=1)
+        fit_times_mean = np.mean(fit_times, axis=1)
+        fit_times_std = np.std(fit_times, axis=1)
+
+        # Plot learning curve
+        axes[0].grid()
+        axes[0].fill_between(
+            train_sizes,
+            train_scores_mean - train_scores_std,
+            train_scores_mean + train_scores_std,
+            alpha=0.1,
+            color=&#34;r&#34;,
+        )
+        axes[0].fill_between(
+            train_sizes,
+            test_scores_mean - test_scores_std,
+            test_scores_mean + test_scores_std,
+            alpha=0.1,
+            color=&#34;g&#34;,
+        )
+        axes[0].plot(
+            train_sizes, train_scores_mean, &#34;o-&#34;, color=&#34;r&#34;, label=&#34;Training score&#34;
+        )
+        axes[0].plot(
+            train_sizes,
+            test_scores_mean,
+            &#34;o-&#34;,
+            color=&#34;g&#34;,
+            label=&#34;Cross-validation score&#34;,
+        )
+        axes[0].legend(loc=&#34;best&#34;)
+
+        # Plot n_samples vs fit_times
+        axes[1].grid()
+        axes[1].plot(train_sizes, fit_times_mean, &#34;o-&#34;)
+        axes[1].fill_between(
+            train_sizes,
+            fit_times_mean - fit_times_std,
+            fit_times_mean + fit_times_std,
+            alpha=0.1,
+        )
+        axes[1].set_xlabel(&#34;Training examples&#34;)
+        axes[1].set_ylabel(&#34;fit_times&#34;)
+        axes[1].set_title(&#34;Scalability of the model&#34;)
+
+        # Plot fit_time vs score
+        axes[2].grid()
+        axes[2].plot(fit_times_mean, test_scores_mean, &#34;o-&#34;)
+        axes[2].fill_between(
+            fit_times_mean,
+            test_scores_mean - test_scores_std,
+            test_scores_mean + test_scores_std,
+            alpha=0.1,
+        )
+        axes[2].set_xlabel(&#34;fit_times&#34;)
+        axes[2].set_ylabel(&#34;Score&#34;)
+        axes[2].set_title(&#34;Performance of the model&#34;)
+        return plt</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="restless.components.utils.stats_vis_utils.StatsVisUtils.plot_learning_curve"><code class="name flex">
+<span>def <span class="ident">plot_learning_curve</span></span>(<span>estimator, title, X, y, axes=None, ylim=None, cv=None, n_jobs=None, train_sizes=array([0.1
+, 0.325, 0.55 , 0.775, 1.
+]))</span>
+</code></dt>
+<dd>
+<section class="desc"><p>From <a href="https://scikit-learn.org/stable/auto_examples/model_selection/plot_learning_curve.html">https://scikit-learn.org/stable/auto_examples/model_selection/plot_learning_curve.html</a></p>
+<p>Generate 3 plots: the test and training learning curve, the training
+samples vs fit times curve, the fit times vs score curve.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>estimator</code></strong> :&ensp;<code>object</code> <code>type</code> <code>that</code> <code>implements</code> <code>the</code> <code>"fit"</code> <code>and</code> <code>"predict"</code> <code>methods</code></dt>
+<dd>An object of that type which is cloned for each validation.</dd>
+<dt><strong><code>title</code></strong> :&ensp;<code>string</code></dt>
+<dd>Title for the chart.</dd>
+<dt><strong><code>X</code></strong> :&ensp;<code>array</code>-<code>like</code>, <code>shape</code> (<code>n_samples</code>, <code>n_features</code>)</dt>
+<dd>Training vector, where n_samples is the number of samples and
+n_features is the number of features.</dd>
+<dt><strong><code>y</code></strong> :&ensp;<code>array</code>-<code>like</code>, <code>shape</code> (<code>n_samples</code>) or (<code>n_samples</code>, <code>n_features</code>), optional</dt>
+<dd>Target relative to X for classification or regression;
+None for unsupervised learning.</dd>
+<dt><strong><code>axes</code></strong> :&ensp;<code>array</code> of <code>3</code> <code>axes</code>, optional (default=<code>None</code>)</dt>
+<dd>Axes to use for plotting the curves.</dd>
+<dt><strong><code>ylim</code></strong> :&ensp;<code>tuple</code>, <code>shape</code> (<code>ymin</code>, <code>ymax</code>), optional</dt>
+<dd>Defines minimum and maximum yvalues plotted.</dd>
+<dt><strong><code>cv</code></strong> :&ensp;<code>int</code>, <code>cross</code>-<code>validation</code> <code>generator</code> or <code>an</code> <code>iterable</code>, optional</dt>
+<dd>
+<p>Determines the cross-validation splitting strategy.
+Possible inputs for cv are:
+- None, to use the default 5-fold cross-validation,
+- integer, to specify the number of folds.
+- :term:<code>CV splitter</code>,
+- An iterable yielding (train, test) splits as arrays of indices.</p>
+<p>For integer/None inputs, if <code>y</code> is binary or multiclass,
+:class:<code>StratifiedKFold</code> used. If the estimator is not a classifier
+or if <code>y</code> is neither binary nor multiclass, :class:<code>KFold</code> is used.</p>
+<p>Refer :ref:<code>User Guide &lt;cross_validation&gt;</code> for the various
+cross-validators that can be used here.</p>
+</dd>
+<dt><strong><code>n_jobs</code></strong> :&ensp;<code>int</code> or <code>None</code>, optional (default=<code>None</code>)</dt>
+<dd>Number of jobs to run in parallel.
+<code>None</code> means 1 unless in a :obj:<code>joblib.parallel_backend</code> context.
+<code>-1</code> means using all processors. See :term:<code>Glossary &lt;n_jobs&gt;</code>
+for more details.</dd>
+<dt><strong><code>train_sizes</code></strong> :&ensp;<code>array</code>-<code>like</code>, <code>shape</code> (<code>n_ticks</code>,), <code>dtype</code> <code>float</code> or <code>int</code></dt>
+<dd>Relative or absolute numbers of training examples that will be used to
+generate the learning curve. If the dtype is float, it is regarded as a
+fraction of the maximum size of the training set (that is determined
+by the selected validation method), i.e. it has to be within (0, 1].
+Otherwise it is interpreted as absolute sizes of the training sets.
+Note that for classification the number of samples usually have to
+be big enough to contain at least one sample from each class.
+(default: np.linspace(0.1, 1.0, 5))</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def plot_learning_curve(
+    estimator,
+    title,
+    X,
+    y,
+    axes=None,
+    ylim=None,
+    cv=None,
+    n_jobs=None,
+    train_sizes=np.linspace(0.1, 1.0, 5),
+):
+    &#34;&#34;&#34;
+    From https://scikit-learn.org/stable/auto_examples/model_selection/plot_learning_curve.html
+
+    Generate 3 plots: the test and training learning curve, the training
+    samples vs fit times curve, the fit times vs score curve.
+
+    Parameters
+    ----------
+    estimator : object type that implements the &#34;fit&#34; and &#34;predict&#34; methods
+        An object of that type which is cloned for each validation.
+
+    title : string
+        Title for the chart.
+
+    X : array-like, shape (n_samples, n_features)
+        Training vector, where n_samples is the number of samples and
+        n_features is the number of features.
+
+    y : array-like, shape (n_samples) or (n_samples, n_features), optional
+        Target relative to X for classification or regression;
+        None for unsupervised learning.
+
+    axes : array of 3 axes, optional (default=None)
+        Axes to use for plotting the curves.
+
+    ylim : tuple, shape (ymin, ymax), optional
+        Defines minimum and maximum yvalues plotted.
+
+    cv : int, cross-validation generator or an iterable, optional
+        Determines the cross-validation splitting strategy.
+        Possible inputs for cv are:
+        - None, to use the default 5-fold cross-validation,
+        - integer, to specify the number of folds.
+        - :term:`CV splitter`,
+        - An iterable yielding (train, test) splits as arrays of indices.
+
+        For integer/None inputs, if ``y`` is binary or multiclass,
+        :class:`StratifiedKFold` used. If the estimator is not a classifier
+        or if ``y`` is neither binary nor multiclass, :class:`KFold` is used.
+
+        Refer :ref:`User Guide &lt;cross_validation&gt;` for the various
+        cross-validators that can be used here.
+
+    n_jobs : int or None, optional (default=None)
+        Number of jobs to run in parallel.
+        ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+        ``-1`` means using all processors. See :term:`Glossary &lt;n_jobs&gt;`
+        for more details.
+
+    train_sizes : array-like, shape (n_ticks,), dtype float or int
+        Relative or absolute numbers of training examples that will be used to
+        generate the learning curve. If the dtype is float, it is regarded as a
+        fraction of the maximum size of the training set (that is determined
+        by the selected validation method), i.e. it has to be within (0, 1].
+        Otherwise it is interpreted as absolute sizes of the training sets.
+        Note that for classification the number of samples usually have to
+        be big enough to contain at least one sample from each class.
+        (default: np.linspace(0.1, 1.0, 5))
+    &#34;&#34;&#34;
+    if axes is None:
+        _, axes = plt.subplots(1, 3, figsize=(20, 5))
+
+    axes[0].set_title(title)
+    if ylim is not None:
+        axes[0].set_ylim(*ylim)
+    axes[0].set_xlabel(&#34;Training examples&#34;)
+    axes[0].set_ylabel(&#34;Score&#34;)
+
+    train_sizes, train_scores, test_scores, fit_times, _ = learning_curve(
+        estimator,
+        X,
+        y,
+        cv=cv,
+        n_jobs=n_jobs,
+        train_sizes=train_sizes,
+        return_times=True,
+    )
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+    fit_times_mean = np.mean(fit_times, axis=1)
+    fit_times_std = np.std(fit_times, axis=1)
+
+    # Plot learning curve
+    axes[0].grid()
+    axes[0].fill_between(
+        train_sizes,
+        train_scores_mean - train_scores_std,
+        train_scores_mean + train_scores_std,
+        alpha=0.1,
+        color=&#34;r&#34;,
+    )
+    axes[0].fill_between(
+        train_sizes,
+        test_scores_mean - test_scores_std,
+        test_scores_mean + test_scores_std,
+        alpha=0.1,
+        color=&#34;g&#34;,
+    )
+    axes[0].plot(
+        train_sizes, train_scores_mean, &#34;o-&#34;, color=&#34;r&#34;, label=&#34;Training score&#34;
+    )
+    axes[0].plot(
+        train_sizes,
+        test_scores_mean,
+        &#34;o-&#34;,
+        color=&#34;g&#34;,
+        label=&#34;Cross-validation score&#34;,
+    )
+    axes[0].legend(loc=&#34;best&#34;)
+
+    # Plot n_samples vs fit_times
+    axes[1].grid()
+    axes[1].plot(train_sizes, fit_times_mean, &#34;o-&#34;)
+    axes[1].fill_between(
+        train_sizes,
+        fit_times_mean - fit_times_std,
+        fit_times_mean + fit_times_std,
+        alpha=0.1,
+    )
+    axes[1].set_xlabel(&#34;Training examples&#34;)
+    axes[1].set_ylabel(&#34;fit_times&#34;)
+    axes[1].set_title(&#34;Scalability of the model&#34;)
+
+    # Plot fit_time vs score
+    axes[2].grid()
+    axes[2].plot(fit_times_mean, test_scores_mean, &#34;o-&#34;)
+    axes[2].fill_between(
+        fit_times_mean,
+        test_scores_mean - test_scores_std,
+        test_scores_mean + test_scores_std,
+        alpha=0.1,
+    )
+    axes[2].set_xlabel(&#34;fit_times&#34;)
+    axes[2].set_ylabel(&#34;Score&#34;)
+    axes[2].set_title(&#34;Performance of the model&#34;)
+    return plt</code></pre>
+</details>
+</dd>
+<dt id="restless.components.utils.stats_vis_utils.StatsVisUtils.visualize_correlation_matrix"><code class="name flex">
+<span>def <span class="ident">visualize_correlation_matrix</span></span>(<span>self, corr, features_list, annot=False, plot_title=None, save_image=False, output_fp=None, show=True)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Graphs df correlation with diagonal matrix. Suitable for lots of
+features as it doesn't display annotations. Optionally saves output
+to image.
+<a href="https://seaborn.pydata.org/examples/many_pairwise_correlations.html">https://seaborn.pydata.org/examples/many_pairwise_correlations.html</a></p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def visualize_correlation_matrix(
+    self,
+    corr,
+    features_list: list,
+    annot: bool = False,
+    plot_title: str = None,
+    save_image: bool = False,
+    output_fp: str = None,
+    show: bool = True,
+) -&gt; object:
+    &#34;&#34;&#34;
+    Graphs df correlation with diagonal matrix. Suitable for lots of
+    features as it doesn&#39;t display annotations. Optionally saves output
+    to image.
+    https://seaborn.pydata.org/examples/many_pairwise_correlations.html
+    &#34;&#34;&#34;
+    # Generate a mask for the upper triangle
+    mask = np.triu(np.ones_like(corr, dtype=np.bool))
+    # mask = np.zeros_like(corr)
+    mask[np.triu_indices_from(mask)] = True
+    # Set up the matplotlib figure
+    f, ax = plt.subplots(figsize=(11, 9))
+    # Draw the heatmap with the mask and correct aspect ratio
+    hmap = sbn.heatmap(
+        corr,
+        annot=annot,
+        mask=mask,
+        cmap=cmap,
+        vmax=1,
+        vmin=-1,
+        center=0,
+        xticklabels=features_list,
+        yticklabels=features_list,
+        square=True,
+        fmt=&#34;.2g&#34;,
+        linewidths=0.5,
+        cbar_kws={&#34;shrink&#34;: 0.5},
+        annot_kws={&#34;size&#34;: 6},
+    )
+    if plot_title:
+        plt.title(plot_title)
+    if show:
+        plt.show()
+    if save_image:
+        now = datetime.now().replace(microsecond=0)
+        if not output_fp:
+            if plot_title:
+                output_fp = os.path.abspath(
+                    os.path.join(
+                        DEFAULT_SCREENSHOTS_PATH, plot_title + &#34; &#34; + str(now)
+                    )
+                )
+            else:
+                output_fp = os.path.abspath(
+                    os.path.join(DEFAULT_SCREENSHOTS_PATH, str(now))
+                )
+        if plot_title:
+            print(&#34;Saving plot {} to {}.&#34;.format(plot_title, output_fp))
+        else:
+            print(&#34;Saving plot to {}.&#34;.format(output_fp))
+        plt.savefig(output_fp + &#34;.png&#34;, dpi=300)
+    return hmap</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="restless.components.utils" href="index.html">restless.components.utils</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="restless.components.utils.stats_vis_utils.StatsVisUtils" href="#restless.components.utils.stats_vis_utils.StatsVisUtils">StatsVisUtils</a></code></h4>
+<ul class="">
+<li><code><a title="restless.components.utils.stats_vis_utils.StatsVisUtils.plot_learning_curve" href="#restless.components.utils.stats_vis_utils.StatsVisUtils.plot_learning_curve">plot_learning_curve</a></code></li>
+<li><code><a title="restless.components.utils.stats_vis_utils.StatsVisUtils.visualize_correlation_matrix" href="#restless.components.utils.stats_vis_utils.StatsVisUtils.visualize_correlation_matrix">visualize_correlation_matrix</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.7.5</a>.</p>
+</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad()</script>
+</body>
+</html>

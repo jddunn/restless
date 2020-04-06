@@ -24,7 +24,11 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">from .utils import Utils
+<pre><code class="python">import os, sys
+
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+
+from .utils import Utils
 
 utils = Utils()</code></pre>
 </details>
@@ -36,7 +40,15 @@ utils = Utils()</code></pre>
 <dd>
 <section class="desc"></section>
 </dd>
-<dt><code class="name"><a title="restless.components.utils.logger" href="logger.html">restless.components.utils.logger</a></code></dt>
+<dt><code class="name"><a title="restless.components.utils.logger_utils" href="logger_utils.html">restless.components.utils.logger_utils</a></code></dt>
+<dd>
+<section class="desc"></section>
+</dd>
+<dt><code class="name"><a title="restless.components.utils.stats_utils" href="stats_utils.html">restless.components.utils.stats_utils</a></code></dt>
+<dd>
+<section class="desc"></section>
+</dd>
+<dt><code class="name"><a title="restless.components.utils.stats_vis_utils" href="stats_vis_utils.html">restless.components.utils.stats_vis_utils</a></code></dt>
 <dd>
 <section class="desc"></section>
 </dd>
@@ -67,7 +79,9 @@ utils = Utils()</code></pre>
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
 <ul>
 <li><code><a title="restless.components.utils.db_caller" href="db_caller.html">restless.components.utils.db_caller</a></code></li>
-<li><code><a title="restless.components.utils.logger" href="logger.html">restless.components.utils.logger</a></code></li>
+<li><code><a title="restless.components.utils.logger_utils" href="logger_utils.html">restless.components.utils.logger_utils</a></code></li>
+<li><code><a title="restless.components.utils.stats_utils" href="stats_utils.html">restless.components.utils.stats_utils</a></code></li>
+<li><code><a title="restless.components.utils.stats_vis_utils" href="stats_vis_utils.html">restless.components.utils.stats_vis_utils</a></code></li>
 <li><code><a title="restless.components.utils.utils" href="utils.html">restless.components.utils.utils</a></code></li>
 </ul>
 </li>

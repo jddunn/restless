@@ -27,11 +27,15 @@
 <pre><code class="python">import os
 import subprocess
 
-from .logger import Logger
+from .logger_utils import LoggerUtils
+from .stats_utils import StatsUtils
+from .stats_vis_utils import StatsVisUtils
 
 # from .db_caller import DB_Caller
 
-logger = Logger()
+logger = LoggerUtils()
+stats = StatsUtils()
+stats_vis = StatsVisUtils()
 # db = DB_Caller()
 
 DEFAULT_LOG_DIR = &#34;./logs&#34;
@@ -44,11 +48,13 @@ class Utils:
 
     def __init__(self):
         self.logger = logger
+        self.stats = stats
+        self.stats_vis = stats_vis
         # self.db = db
         # self.print_logm(&#34;Initializing db: &#34; + str(self.db.context))
         pass
 
-    def print_logm(self, message: str):
+    def print_logm(self, message: str) -&gt; None:
         &#34;&#34;&#34;
         Prints a log to sys output, by default to `INFO` level. Accepts a str message as only param.
 
@@ -58,7 +64,7 @@ class Utils:
         self.logger._print_log({&#34;message&#34;: message})
         return
 
-    def print_log(self, data: dict):
+    def print_log(self, data: dict) -&gt; None:
         &#34;&#34;&#34;
         Prints a log to sys output.
 
@@ -69,7 +75,7 @@ class Utils:
         self.logger._print_log(data)
         return
 
-    def write_log(self, data: dict, filepath: str = DEFAULT_LOG_DIR):
+    def write_log(self, data: dict, filepath: str = DEFAULT_LOG_DIR) -&gt; bool:
         &#34;&#34;&#34;
         Prints and writes a log to disk.
 
@@ -79,7 +85,7 @@ class Utils:
         &#34;&#34;&#34;
         return
 
-    def check_if_in_docker_container(self):
+    def check_if_in_docker_container(self) -&gt; bool:
         &#34;&#34;&#34;
         Check to see if we&#39;re running inside a Docker container (via checking env var `APP_ENV`).
         &#34;&#34;&#34;
@@ -171,11 +177,13 @@ class Utils:
 
     def __init__(self):
         self.logger = logger
+        self.stats = stats
+        self.stats_vis = stats_vis
         # self.db = db
         # self.print_logm(&#34;Initializing db: &#34; + str(self.db.context))
         pass
 
-    def print_logm(self, message: str):
+    def print_logm(self, message: str) -&gt; None:
         &#34;&#34;&#34;
         Prints a log to sys output, by default to `INFO` level. Accepts a str message as only param.
 
@@ -185,7 +193,7 @@ class Utils:
         self.logger._print_log({&#34;message&#34;: message})
         return
 
-    def print_log(self, data: dict):
+    def print_log(self, data: dict) -&gt; None:
         &#34;&#34;&#34;
         Prints a log to sys output.
 
@@ -196,7 +204,7 @@ class Utils:
         self.logger._print_log(data)
         return
 
-    def write_log(self, data: dict, filepath: str = DEFAULT_LOG_DIR):
+    def write_log(self, data: dict, filepath: str = DEFAULT_LOG_DIR) -&gt; bool:
         &#34;&#34;&#34;
         Prints and writes a log to disk.
 
@@ -206,7 +214,7 @@ class Utils:
         &#34;&#34;&#34;
         return
 
-    def check_if_in_docker_container(self):
+    def check_if_in_docker_container(self) -&gt; bool:
         &#34;&#34;&#34;
         Check to see if we&#39;re running inside a Docker container (via checking env var `APP_ENV`).
         &#34;&#34;&#34;
@@ -356,7 +364,7 @@ class Utils:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def check_if_in_docker_container(self):
+<pre><code class="python">def check_if_in_docker_container(self) -&gt; bool:
     &#34;&#34;&#34;
     Check to see if we&#39;re running inside a Docker container (via checking env var `APP_ENV`).
     &#34;&#34;&#34;
@@ -415,7 +423,7 @@ class Utils:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def print_log(self, data: dict):
+<pre><code class="python">def print_log(self, data: dict) -&gt; None:
     &#34;&#34;&#34;
     Prints a log to sys output.
 
@@ -441,7 +449,7 @@ class Utils:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def print_logm(self, message: str):
+<pre><code class="python">def print_logm(self, message: str) -&gt; None:
     &#34;&#34;&#34;
     Prints a log to sys output, by default to `INFO` level. Accepts a str message as only param.
 
@@ -468,7 +476,7 @@ class Utils:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def write_log(self, data: dict, filepath: str = DEFAULT_LOG_DIR):
+<pre><code class="python">def write_log(self, data: dict, filepath: str = DEFAULT_LOG_DIR) -&gt; bool:
     &#34;&#34;&#34;
     Prints and writes a log to disk.
 

@@ -24,19 +24,23 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import numpy as np
+<pre><code class="python"># Hierarchical attention model code adapted from
+# https://github.com/richliao/textClassifier/blob/master/textClassifierHATT.py,
+# which implemented this https://www.cs.cmu.edu/~hovy/papers/16HLT-hierarchical-attention-networks.pdf.
+
+# The architecture from the paper has been modified in this model
+# to accept a vector (array) as well as scalars for both the words / sentences
+# that comprise a document&#39;s vocabulary. This allows us to represent any arbitrary set
+# of features as a document that the HAN model can learn from, as GloVe will have
+# have weights for words as well as numbers.
+
+import numpy as np
 import pandas as pd
-from collections import defaultdict
 
 import sys
 import os
 import string
 import math
-
-# make dep imports work when running as lib / in high-levels scripts
-sys.path.append(&#34;..&#34;)
-sys.path.append(&#34;../..&#34;)
-sys.path.append(&#34;../../../..&#34;)
 
 DEFAULT_DATA_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), &#34;..&#34;, &#34;..&#34;, &#34;..&#34;, &#34;data&#34;)
@@ -69,19 +73,23 @@ from keras import initializers
 
 from sklearn.model_selection import KFold
 
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import precision_score
-from sklearn.metrics import recall_score
-from sklearn.metrics import f1_score
-from sklearn.metrics import cohen_kappa_score
-from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import RobustScaler
 
 from sklearn.utils.multiclass import type_of_target
 
+scaler = RobustScaler()
+
+from sklearn.feature_extraction.text import CountVectorizer
+
 import nltk
 
-# Make imports work for Docker package and when running as a script
+# make dep imports work when running as lib / in high-levels scripts
+PACKAGE_PARENT = &#34;../../../..&#34;
+SCRIPT_DIR = os.path.dirname(
+    os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__)))
+)
+sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
+
 try:
     from restless.components.utils import utils
 except:
@@ -89,19 +97,19 @@ except:
 try:
     from restless.components.nlp.text_normalizer import text_normalizer
 except:
-    from ..text_normalizer import text_normalizer
+    from text_normalizer import text_normalizer
 
 # Hyperparams
 MAX_SENTENCE_LENGTH = 100
-MAX_SENTENCE_COUNT = 32
+MAX_SENTENCE_COUNT = 48
 VOCABULARY_SIZE = 100
 ATTENTION_DIM = 50
 GLOVE_DIMENSION_SIZE = ATTENTION_DIM  # needs same dimension
 MAX_DOCS = 1000000  # Limit number of records to train for speed if needed
 BATCH_SIZE = 32
-EPOCH_NUM = 10
+EPOCH_NUM = 3
 
-K_NUM = 5 # Number of KFold validation groups
+K_NUM = 5  # Number of KFold validation groups
 
 GLOVE_DATA_PATH = os.path.abspath(
     os.path.join(
@@ -111,43 +119,45 @@ GLOVE_DATA_PATH = os.path.abspath(
 DEFAULT_TRAINING_DATA_PATH = os.path.abspath(
     os.path.join(DEFAULT_DATA_PATH, &#34;training&#34;, &#34;malware-dataset.csv&#34;)
 )
-DEFAULT_MODEL_PATH = os.path.abspath(
-    os.path.join(DEFAULT_DATA_PATH, &#34;models&#34;, &#34;default.h5&#34;)
-)
 
-compute_steps_per_epoch = lambda x: int(math.ceil(1. * x / BATCH_SIZE))
+DEFAULT_MODEL_DIR_PATH = os.path.abspath(os.path.join(DEFAULT_DATA_PATH, &#34;models&#34;))
 
-kf = KFold(n_splits=K_NUM, random_state=None, shuffle=False)
+DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, &#34;default.h5&#34;))
 
-# metrics = [&#39;mse&#39;, &#39;mae&#39;, &#39;mape&#39;, &#39;cosine&#39;, &#39;accuracy&#39;]
-metrics = [&#39;accuracy&#39;]
+stats = utils.stats
+stats_vis = utils.stats_vis
+
+compute_steps_per_epoch = lambda x: int(math.ceil(1.0 * x / BATCH_SIZE))
+
+kf = KFold(n_splits=K_NUM, shuffle=True, random_state=1618)
+
+metrics = [&#34;accuracy&#34;]
+
+cv = CountVectorizer()
+
+import pickle
+
 
 class HierarchicalAttentionNetwork:
     &#34;&#34;&#34;
     Hierarchical Attention Network implementation.
     &#34;&#34;&#34;
-    def __init__(self, **kwargs):
-        try:
-            self.model = load_model(
-                DEFAULT_MODEL_PATH, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer}
-            )
-            self.model.load_weights(DEFAULT_MODEL_PATH)
-        except:
-            pass
-        self.texts = []
-        self.texts_features = []
-        self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
-        # self.data_train = self.data_train.drop_duplicates()
-        self.records = self.data_train.to_dict(&#34;records&#34;)
-        self.data = np.zeros(
-            (len(self.records), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
-        )
-        self.labels = []
-        self.labels_matrix = np.zeros(len(self.records), dtype=&#34;int32&#34;)
-        # For now before we integrate the db load corpus from CSV
-        # We should play around with combinations of features to detect malware
-        self.feature_keys = [] # Mappings of feature indices from dataset
 
+    def __init__(self, load_default_model: bool = False, **kwargs):
+        self.model = None
+
+        self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
+        self.records = self.data_train.to_dict(&#34;records&#34;)
+
+        self.data = None
+
+        self.labels = None
+        self.labels_matrix = None  # Map labels into matrix for prediction
+
+        self.feature_keys = None  # Mappings of feature indices from dataset
+
+        self.word_index = None
+        self.embeddings_index = None
         self.word_embedding = None
         self.word_attention_model = None
         self.tokenizer = None
@@ -155,46 +165,92 @@ class HierarchicalAttentionNetwork:
         self.X = None
         self.Y = None
 
-        self.word_index = None
-        self.embeddings_index = None
-
-        self.num_classes = 2
+        self.num_classes = 2  # number of classes in our model; default is binary model
+        if load_default_model:
+            try:
+                self.model = load_model(
+                    DEFAULT_MODEL_PATH,
+                    custom_objects={&#34;AttentionLayer&#34;: AttentionLayer},
+                )
+                self.model.load_weights(DEFAULT_MODEL_PATH)
+                self.data_train = pd.read_csv(
+                    DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS
+                )
+                self.preprocess_data(self.data_train)
+                self.embeddings_index = self.get_glove_embeddings()
+                embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
+            except Exception as e:
+                print(&#34;Error loading model: &#34;, e)
         return
+
+    def read_and_train_data(
+        self,
+        filepath: str,
+        top_features: list = None,
+        labels: list = None,
+        model_base: object = None,
+        outputpath: str = DEFAULT_MODEL_PATH,
+        save_model: bool = False,
+    ):
+        &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
+        self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
+        self.X = self.X.filter(top_features)
+        # Get rid of the classification / class column since that&#39;s not a feature
+        self.feature_keys = self._get_feature_keys(filepath, top_features=top_features)
+        self.preprocess_data(self.X)
+        self.embeddings_index = self.get_glove_embeddings()
+        embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
+        model = self.build_network_and_train_model(
+            embeddings_matrix, labels=labels, model_base=model_base
+        )
+        self.model = model
+        outputpath = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, &#34;model.p&#34;))
+        if save_model:
+            self.save_model(model, outputpath)
+        return model
+
+    def preprocess_data(self, data_train: object, feature_keys: dict = None):
+        &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
+        self.data = np.zeros(
+            (len(self.X), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
+        )
+        self.labels_matrix = np.zeros((self.num_classes,), dtype=&#34;int32&#34;)
+        if feature_keys is None:
+            if self.feature_keys is None or len(self.feature_keys) is 0:
+                self.feature_keys = self._get_feature_keys()
+            feature_keys = self.feature_keys
+        else:
+            self.feature_keys = feature_keys
+        self.feature_vecs = self.build_features_vecs_from_data(data_train, feature_keys)
+        print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
+        print(&#34;Shape of data tensor: &#34;, self.data, self.data.shape)
+        return self.data
 
     def load_model(self, filepath: str):
         &#34;&#34;&#34;Loads a model with a custom AttentionLayer property.&#34;&#34;&#34;
-        model = load_model(
-            filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
-        )
+        # model = load_model(
+        #  filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
+        # )
         if model:
             self.model = model
             return model
         else:
             return None
 
-    def read_and_train_data(self, filepath: str):
-        &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
-        data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
-        # data_train = data_train.drop_duplicates()
-        self.preprocess_data(data_train)
-        self.embeddings_index = self.get_glove_embeddings()
-        embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
-        model = self.build_network_and_train_model(embeddings_matrix)
-        return model
-
-    def preprocess_data(self, data_train: object, feature_keys: dict = None):
-        &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
-        if feature_keys is None:
-            feature_keys = self.feature_keys
-        self.feature_vecs = self.build_features_vecs_from_data(
-            data_train, feature_keys
-        )
-        print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
-        print(&#34;Shape of data tensor before: &#34;, self.data)
-        return self.data
+    def save_model(self, model: object, fp: str) -&gt; bool:
+        &#34;&#34;&#34;
+        Saves a model to a given filepath.
+        &#34;&#34;&#34;
+        try:
+            model.save(fp)
+            return True
+        except:
+            return False
 
     def get_glove_embeddings(self, glove_data_path: str = None):
-        &#34;&#34;&#34;Use pre-trained GloVe embeddings so we don&#39;t have to make our own word embeddings.&#34;&#34;&#34;
+        &#34;&#34;&#34;Use pre-trained GloVe embeddings so we don&#39;t have to
+           make our own for the model.
+        &#34;&#34;&#34;
         embeddings_index = {}
         f = None
         if not glove_data_path:
@@ -224,8 +280,9 @@ class HierarchicalAttentionNetwork:
         return embeddings_matrix
 
     def create_model_base(self, embeddings_matrix):
-        &#34;&#34;&#34;Creates the base hierarchical attention network with multiclass or binary tuning.
-           If doing non-binary classification, set self.num_classes to number of classes.
+        &#34;&#34;&#34;Creates the base hierarchical attention network with multiclass
+           or binary tuning. If doing non-binary classification, set
+           self.num_classes to number of classes.
         &#34;&#34;&#34;
         embedding_layer = Embedding(
             len(self.word_index) + 1,
@@ -252,83 +309,151 @@ class HierarchicalAttentionNetwork:
         )
         l_att_sent = AttentionLayer(ATTENTION_DIM)(l_lstm_sent)
         if self.num_classes &gt; 2:
+            # multi-class classifier
             preds = Dense(self.num_classes, activation=&#34;softmax&#34;)(l_att_sent)
             model = Model(input_layer, preds)
-            model.compile(loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics)
+            model.compile(
+                loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics
+            )
         else:
+            # binary classifier
             preds = Dense(2, activation=&#34;sigmoid&#34;)(l_att_sent)
             model = Model(input_layer, preds)
-            model.compile(loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics)
+            model.compile(
+                loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics
+            )
         return model
 
     def build_network_and_train_model(
-        self, embeddings_matrix, model_filepath: str = None
+        self,
+        embeddings_matrix,
+        model_base: object = None,
+        model_filepath: str = None,
+        labels: list = [&#34;0&#34;, &#34;1&#34;],
+        save_metrics_results: bool = False,
     ):
         &#34;&#34;&#34;Trains a model and saves to a given filepath (will default
            to a filename).&#34;&#34;&#34;
-        model = self.create_model_base(embeddings_matrix)
-        k_ct = 1 # Which k-index are we on in kfold val
-        # Metrics
-        losses = []
-        accs = []
-        precisions = []
-        recalls = []
-        f1s = []
-        kappas = []
-        aucs = []
+        if not model_base:
+            model = self.create_model_base(embeddings_matrix)
+            print(&#34;Creating HANN architecture with Keras - {}.&#34;.format(model))
+        else:
+            print(&#34;Creating non-HANN model base {}.&#34;.format(model_base))
+            model = model_base
+        k_ct = 1  # Which k-index are we on in kfold val
+        metrics_arr = []
+        models = []  # store all our models and we&#39;ll save the best performing one
         # Kfold validation
-        for train_index,test_index in kf.split(self.X, self.Y):
-            x_train,x_val=self.X[train_index],self.X[test_index]
-            y_train,y_val=self.Y[train_index],self.Y[test_index]
-            print(&#34;Creating HANN model now, with K-Fold cross-validation. K=&#34;, k_ct,
-                   &#34;and length: &#34;, len(x_train), len(x_val), &#34;for training / validation.&#34;)
-            model.fit(
-                x_train,
-                y_train,
-                validation_data=(x_val, y_val),
-                epochs=3,
-                batch_size=BATCH_SIZE,
-                verbose=2
-                # steps_per_epoch=compute_steps_per_epoch(len(x_train)),
-                # validation_steps=compute_steps_per_epoch(len(x_val))
-            )
+        for train_index, test_index in kf.split(self.X, self.Y):
+            x_train, x_val = self.X[train_index], self.X[test_index]
+            y_train, y_val = self.Y[train_index], self.Y[test_index]
+            if not model_base:
+                # We&#39;re creating a HANN model using Keras
+                print(
+                    &#34;Creating HANN model now, with K-Fold cross-validation. K=&#34;,
+                    k_ct,
+                    &#34;and length: &#34;,
+                    len(x_train),
+                    len(x_val),
+                    &#34;for training / validation.&#34;,
+                )
+                model.fit(
+                    x_train,
+                    y_train,
+                    validation_data=(x_val, y_val),
+                    epochs=EPOCH_NUM,
+                    batch_size=BATCH_SIZE,
+                    verbose=2,
+                )
+            else:
+                # If we&#39;re given a model base, then we&#39;re probably
+                # not building a HANN model, but this class is being
+                # used to create baseline models for comparison with HANN.
+                # This really should be refactored out into another class, but
+                # for now this is clean enough.
+
+                # Reshape the data from 3D to 2D (for non-HANN models)
+                x_val = x_val.reshape(len(x_val), -1)
+                x_train = x_train.reshape(len(x_train), -1)
+                x_train = scaler.fit_transform(x_train)
+                x_val = scaler.fit_transform(x_val)
+                y_train = np.argmax(y_train, axis=1)
+                print(
+                    &#34;Creating baseline model now, with K-Fold cross-validation. K=&#34;,
+                    k_ct,
+                    &#34;and length: &#34;,
+                    len(x_train),
+                    len(x_val),
+                    &#34;for training / validation.&#34;,
+                )
+                model.fit(x_train, y_train)
+            models.append(model)
+            # f_importances(model.coef_, feature_keys_list)
             k_ct += 1
-            loss, acc = model.evaluate(x_val, y_val)
-            print(&#34;Model evaluation: loss - {}\t acc - {}&#34;.format(str(loss), str(acc)))
-            losses.append(loss)
-            accs.append(acc)
             y_pred = model.predict(x_val)
             # Reverse one-hot encoding
             _y_val = np.argmax(y_val, axis=1)
-            _x_val = np.argmax(x_val, axis=1)
-            _y_pred = np.argmax(y_pred, axis=1)
-            # Calculate metrics
-            cm = confusion_matrix(_y_val, _y_pred, [0, 1])
-            print(&#34;Confusion matrix:&#34;)
-            self._p_print_cm(cm, [&#39;benign&#39;, &#39;malicious&#39;])
-            accuracy = accuracy_score(_y_pred, _y_val)
-            print(&#39;Accuracy: {}&#39;.format(str(accuracy)))
-            precision = precision_score(_y_pred, _y_val)
-            print(&#39;Precision: {}&#39;.format(str(precision)))
-            precisions.append(precision)
-            recall = recall_score(_y_pred, _y_val)
-            print(&#39;Recall: {}&#39;.format(str(recall)))
-            recalls.append(recall)
-            f1 = f1_score(_y_pred, _y_val)
-            print(&#39;F1 score: {}&#39;.format(str(f1)))
-            f1s.append(f1)
-            kappa = cohen_kappa_score(_y_pred, _y_val)
-            print(&#39;Cohens kappa: {}&#39;.format(str(kappa)))
-            kappas.append(kappa)
-            auc = roc_auc_score(_y_pred, _y_val)
-            print(&#39;ROC AUC: {}&#39;.format(str(auc)))
-            aucs.append(auc)
-        print(&#34;Average loss in {}kfold: {}&#34;.format(K_NUM, str(sum(losses) / len(losses))))
-        print(&#34;Average accuracy in {}kfold: {}&#34;.format(K_NUM, str(sum(accs) / len(accs))))
-        # model.save(model_filepath)
-        self.model = model
-        # return model_filepath
+            if not model_base:
+                _y_pred = np.argmax(y_pred, axis=1)
+            else:
+                _y_pred = y_pred
+            # Model evaluation / metrics
+            metrics = stats.get_model_metrics(
+                _y_val, _y_pred, labels, print_output=True
+            )
+            metrics_arr.append(metrics)
+        # Drop confusion matrices from our summed metrics since we can&#39;t average those easily
+        filtered_metrics_arr = [
+            {k: v for k, v in d.items() if k != &#34;cm&#34;} for d in metrics_arr
+        ]
+        metrics_summed = stats.get_metrics_averages(filtered_metrics_arr)
+        print(&#34;Metrics summed and averaged: &#34;, metrics_summed)
+        top_score = 0
+        index = 1
+        for i, metrics in enumerate(metrics_arr):
+            # We&#39;ll save the model with the best performing metric (F1 score)
+            if metrics[&#34;f1&#34;] &gt; top_score:
+                top_score = metrics[&#34;f1&#34;]
+                if i is 0:
+                    index = i + 1
+                else:
+                    index = i
+        best_model = models[index]
+        model = best_model
+        print(
+            &#34;The best performing model (based on F1 score) was number {}. That is the model that will be returned.&#34;.format(
+                index
+            )
+        )
+        if save_metrics_results:
+            pass
         return model
+
+    def _get_feature_keys(
+        self, filepath: str = DEFAULT_TRAINING_DATA_PATH, top_features: list = None
+    ) -&gt; list:
+        if self.feature_keys is None or len(self.feature_keys) is 0:
+            df = pd.read_csv(filepath, nrows=MAX_DOCS)
+            if top_features is not None and len(top_features) is not 0:
+                feature_keys = [
+                    key
+                    for key in list(df.columns)
+                    if key != &#34;classification&#34; and key in top_features
+                ]
+            else:
+                feature_keys = [
+                    key for key in list(df.columns) if key != &#34;classification&#34;
+                ]
+            # Map feature keys with their indices (since eventually we may want to eliminate features
+            # from being trained, without modifiying the original dataset, so order of indices may not
+            # be continuous. Also, we can define a tokenization level in these mappings.
+            feature_keys = [
+                {&#34;name&#34;: feature_key, &#34;index&#34;: i}
+                for i, feature_key in enumerate(feature_keys)
+            ]
+            return feature_keys
+        else:
+            return self.feature_keys
 
     def _fill_feature_vec(self, texts_features: list, feature_vector):
         &#34;&#34;&#34;Helper function to build feature vector for HANN to classify.&#34;&#34;&#34;
@@ -343,11 +468,7 @@ class HierarchicalAttentionNetwork:
                     for _, word in enumerate(wordTokens):
                         if type(word) is list:
                             word = &#34;&#34;.join(word)
-                        if (
-                          k &lt; MAX_SENTENCE_LENGTH
-                          and
-                          _ &lt; VOCABULARY_SIZE
-                        ):
+                        if k &lt; MAX_SENTENCE_LENGTH and _ &lt; VOCABULARY_SIZE:
                             try:
                                 feature_vector[i, j, k] = self.word_index[word]
                             except:
@@ -357,124 +478,101 @@ class HierarchicalAttentionNetwork:
                             break
         return feature_vector
 
-    def build_features_vecs_from_data(self, data_train, feature_keys: dict):
+    def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
         &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
+        if feature_keys is None:
+            if self.feature_keys is None or len(self.feature_keys) is 0:
+                self.feature_keys = self._get_feature_keys()
+            feature_keys = self.feature_keys
+        else:
+            self.feature_keys = feature_keys
         results = []
-        _data_train = data_train.to_dict()
+        data_train_dict = data_train.to_dict()
         self.tokenizer = Tokenizer()
-        self.texts = []
-        self.texts_features = []
+        texts = []
+        texts_features = []
+        self.labels = []
         for idx in range(
             data_train.shape[0]
         ):  # doesn&#39;t matter we&#39;re just getting count here
             sentences = []
             for dict in feature_keys:
                 key = dict[&#34;name&#34;]
-                sentence = str(_data_train[key][idx])
-                sentence = text_normalizer.normalize_text(
-                    sentence,
-                    lowercase=True,
-                    strip_punct=True,
-                    # remove_stopwords=True,
-                    lemmatize_text=True,
-                    # stem_text=True
-                )
-                if dict[&#34;tokenize&#34;] is &#34;char&#34;:
+                sentence = str(data_train[key][idx])
+                sentence = text_normalizer.normalize_text_defaults(sentence)
+                if &#34;tokenize&#34; in dict and dict[&#34;tokenize&#34;] is &#34;char&#34;:
                     sentence = [char for char in sentence]
                 sentences.append(sentence)
-            self.texts.extend(sentences)
-            self.texts_features.append(sentences)
+            texts.extend(sentences)
+            texts_features.append(sentences)
         self.tokenizer = Tokenizer(nb_words=VOCABULARY_SIZE)
         _texts = []
-        self.labels = []
-        for i, each in enumerate(self.texts):
+        for i, each in enumerate(texts):
             if type(each) is list:
                 each = &#34;&#34;.join(each)
             _texts.append(str(each))
         for i in range(len(self.records)):
             self.labels.append(self.records[i][&#34;classification&#34;])
-        self.texts = _texts
-        self.tokenizer.fit_on_texts(self.texts)
+        texts = _texts
+        self.tokenizer.fit_on_texts(texts)
         self.word_index = self.tokenizer.word_index
-        self.data = self._fill_feature_vec(self.texts_features, self.data)
-        self.labels_matrix = to_categorical(self.labels)
+        self.data = self._fill_feature_vec(texts_features, self.data)
+        # Get unique classes from labels (in same order of occurence)
+        classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
+        self.num_classes = len(classes)
+        # Shuffle data
+        # indices = np.arange(self.data.shape[0])
+        # np.random.shuffle(indices)
+        # self.data = self.data[indices]
+        # self.labels = self.labels[indices]
+        self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
+        print(self.labels_matrix, self.labels_matrix.shape)
         self.Y = self.labels_matrix
         self.X = self.data
-        # Shuffle data
-        indices = np.arange(self.data.shape[0])
-        np.random.shuffle(indices)
-        self.data = self.data[indices]
-        self.labels_matrix = self.labels_matrix[indices]
         return self.data
 
-    def build_features_vecs_from_input(
-        self, input_features, feature_keys
-    ):
+    def build_features_vecs_from_input(self, input_features, feature_keys: dict = None):
         &#34;&#34;&#34;Vectorizes a feature matrix from extracted PE data for HANN classification.&#34;&#34;&#34;
         results = []
-        self.texts_features = []
+        texts_features = []
+        if feature_keys is None:
+            if self.feature_keys is None or len(self.feature_keys) is 0:
+                self.feature_keys = self._get_feature_keys()
+            feature_keys = self.feature_keys
+        else:
+            self.feature_keys = feature_keys
         for idx in range(len(input_features)):
             sentences = []
             for dict in self.feature_keys:
                 val = dict[&#34;index&#34;]
                 sentence = str(input_features[val])
-                sentence = text_normalizer.normalize_text(
-                    sentence,
-                    lowercase=True,
-                    strip_punct=True,
-                    # remove_stopwords=True,
-                    lemmatize_text=True,
-                    # stem_text=True
-                )
-                if dict[&#34;tokenize&#34;] is &#34;char&#34;:
+                sentence = text_normalizer.normalize_text(sentence)
+                if &#34;tokenize&#34; in dict and dict[&#34;tokenize&#34;] is &#34;char&#34;:
                     sentence = [char for char in sentence]
                 sentences.append(sentence)
-            self.texts_features.append(sentences)
+            texts_features.append(sentences)
         feature_vector = np.zeros(
             (len(input_features), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
             dtype=&#34;int32&#34;,
         )
-        feature_vector = self._fill_feature_vec(self.texts_features, feature_vector)
+        feature_vector = self._fill_feature_vec(texts_features, feature_vector)
+        # feature_vector = feature_vector.reshape(len(feature_vector), -1)
         return feature_vector
 
     def predict(self, data):
         &#34;&#34;&#34;Predicts binary classification of classes with probabilities given a feature matrix.&#34;&#34;&#34;
         res = self.model.predict(data)
-        classes = to_categorical(res)
         probs = res[0]
         malicious = probs[1]
         benign = probs[0]
         return (benign, malicious)
 
-    def _p_print_cm(self, cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None):
-        &#34;&#34;&#34;pretty print for confusion matrixes
-           https://gist.github.com/zachguo/10296432
-        &#34;&#34;&#34;
-        columnwidth = max([len(x) for x in labels] + [5])  # 5 is value length
-        empty_cell = &#34; &#34; * columnwidth
-        # Print header
-        print(&#34;    &#34; + empty_cell, end=&#34; &#34;)
-        for label in labels:
-            print(&#34;%{0}s&#34;.format(columnwidth) % label, end=&#34; &#34;)
-        print()
-        # Print rows
-        for i, label1 in enumerate(labels):
-            print(&#34;    %{0}s&#34;.format(columnwidth) % label1, end=&#34; &#34;)
-            for j in range(len(labels)):
-                cell = &#34;%{0}.1f&#34;.format(columnwidth) % cm[i, j]
-                if hide_zeroes:
-                    cell = cell if float(cm[i, j]) != 0 else empty_cell
-                if hide_diagonal:
-                    cell = cell if i != j else empty_cell
-                if hide_threshold:
-                    cell = cell if cm[i, j] &gt; hide_threshold else empty_cell
-                print(cell, end=&#34; &#34;)
-            print()
 
 class AttentionLayer(Layer):
     &#34;&#34;&#34;
     Attention layer for Hierarchical Attention Network.
     &#34;&#34;&#34;
+
     def __init__(self, attention_dim=ATTENTION_DIM, **kwargs):
         self.init = initializers.get(&#34;normal&#34;)
         self.supports_masking = False
@@ -501,9 +599,7 @@ class AttentionLayer(Layer):
         uit = K.tanh(K.bias_add(K.dot(x, self.W), self.b))
         ait = K.dot(uit, self.u)
         ait = K.squeeze(ait, -1)
-
         ait = K.exp(ait)
-
         if mask is not None:
             # Cast the mask to floatX to avoid float64 upcasting in theano
             ait *= K.cast(mask, K.floatx())
@@ -511,7 +607,6 @@ class AttentionLayer(Layer):
         ait = K.expand_dims(ait)
         weighted_input = x * ait
         output = K.sum(weighted_input, axis=1)
-
         return output
 
     def compute_output_shape(self, input_shape):
@@ -521,12 +616,7 @@ class AttentionLayer(Layer):
 if __name__ == &#34;__main__&#34;:
     print(&#34;Use train_hann.py to train the HANN network, or import as a module.&#34;)
 else:
-    utils.print_logm(&#34;Initializing HANN.&#34;)
-    hann = HierarchicalAttentionNetwork()
-    if hann.load_model(DEFAULT_MODEL_PATH):
-        print(&#34;Succesfully loaded HANN model: &#34;, DEFAULT_MODEL_PATH)
-    else:
-        hann.read_and_train_data(DEFAULT_TRAINING_DATA_PATH)</code></pre>
+    utils.print_logm(&#34;Initializing HANN module.&#34;)</code></pre>
 </details>
 </section>
 <section>
@@ -545,7 +635,7 @@ else:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">compute_steps_per_epoch = lambda x: int(math.ceil(1. * x / BATCH_SIZE))</code></pre>
+<pre><code class="python">compute_steps_per_epoch = lambda x: int(math.ceil(1.0 * x / BATCH_SIZE))</code></pre>
 </details>
 </dd>
 </dl>
@@ -567,6 +657,7 @@ else:
     &#34;&#34;&#34;
     Attention layer for Hierarchical Attention Network.
     &#34;&#34;&#34;
+
     def __init__(self, attention_dim=ATTENTION_DIM, **kwargs):
         self.init = initializers.get(&#34;normal&#34;)
         self.supports_masking = False
@@ -593,9 +684,7 @@ else:
         uit = K.tanh(K.bias_add(K.dot(x, self.W), self.b))
         ait = K.dot(uit, self.u)
         ait = K.squeeze(ait, -1)
-
         ait = K.exp(ait)
-
         if mask is not None:
             # Cast the mask to floatX to avoid float64 upcasting in theano
             ait *= K.cast(mask, K.floatx())
@@ -603,7 +692,6 @@ else:
         ait = K.expand_dims(ait)
         weighted_input = x * ait
         output = K.sum(weighted_input, axis=1)
-
         return output
 
     def compute_output_shape(self, input_shape):
@@ -662,9 +750,7 @@ else:
     uit = K.tanh(K.bias_add(K.dot(x, self.W), self.b))
     ait = K.dot(uit, self.u)
     ait = K.squeeze(ait, -1)
-
     ait = K.exp(ait)
-
     if mask is not None:
         # Cast the mask to floatX to avoid float64 upcasting in theano
         ait *= K.cast(mask, K.floatx())
@@ -672,7 +758,6 @@ else:
     ait = K.expand_dims(ait)
     weighted_input = x * ait
     output = K.sum(weighted_input, axis=1)
-
     return output</code></pre>
 </details>
 </dd>
@@ -727,7 +812,7 @@ to match that input shape provided.</p>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork"><code class="flex name class">
 <span>class <span class="ident">HierarchicalAttentionNetwork</span></span>
-<span>(</span><span>**kwargs)</span>
+<span>(</span><span>load_default_model=False, **kwargs)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Hierarchical Attention Network implementation.</p></section>
@@ -739,28 +824,22 @@ to match that input shape provided.</p>
     &#34;&#34;&#34;
     Hierarchical Attention Network implementation.
     &#34;&#34;&#34;
-    def __init__(self, **kwargs):
-        try:
-            self.model = load_model(
-                DEFAULT_MODEL_PATH, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer}
-            )
-            self.model.load_weights(DEFAULT_MODEL_PATH)
-        except:
-            pass
-        self.texts = []
-        self.texts_features = []
-        self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
-        # self.data_train = self.data_train.drop_duplicates()
-        self.records = self.data_train.to_dict(&#34;records&#34;)
-        self.data = np.zeros(
-            (len(self.records), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
-        )
-        self.labels = []
-        self.labels_matrix = np.zeros(len(self.records), dtype=&#34;int32&#34;)
-        # For now before we integrate the db load corpus from CSV
-        # We should play around with combinations of features to detect malware
-        self.feature_keys = [] # Mappings of feature indices from dataset
 
+    def __init__(self, load_default_model: bool = False, **kwargs):
+        self.model = None
+
+        self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
+        self.records = self.data_train.to_dict(&#34;records&#34;)
+
+        self.data = None
+
+        self.labels = None
+        self.labels_matrix = None  # Map labels into matrix for prediction
+
+        self.feature_keys = None  # Mappings of feature indices from dataset
+
+        self.word_index = None
+        self.embeddings_index = None
         self.word_embedding = None
         self.word_attention_model = None
         self.tokenizer = None
@@ -768,46 +847,92 @@ to match that input shape provided.</p>
         self.X = None
         self.Y = None
 
-        self.word_index = None
-        self.embeddings_index = None
-
-        self.num_classes = 2
+        self.num_classes = 2  # number of classes in our model; default is binary model
+        if load_default_model:
+            try:
+                self.model = load_model(
+                    DEFAULT_MODEL_PATH,
+                    custom_objects={&#34;AttentionLayer&#34;: AttentionLayer},
+                )
+                self.model.load_weights(DEFAULT_MODEL_PATH)
+                self.data_train = pd.read_csv(
+                    DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS
+                )
+                self.preprocess_data(self.data_train)
+                self.embeddings_index = self.get_glove_embeddings()
+                embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
+            except Exception as e:
+                print(&#34;Error loading model: &#34;, e)
         return
+
+    def read_and_train_data(
+        self,
+        filepath: str,
+        top_features: list = None,
+        labels: list = None,
+        model_base: object = None,
+        outputpath: str = DEFAULT_MODEL_PATH,
+        save_model: bool = False,
+    ):
+        &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
+        self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
+        self.X = self.X.filter(top_features)
+        # Get rid of the classification / class column since that&#39;s not a feature
+        self.feature_keys = self._get_feature_keys(filepath, top_features=top_features)
+        self.preprocess_data(self.X)
+        self.embeddings_index = self.get_glove_embeddings()
+        embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
+        model = self.build_network_and_train_model(
+            embeddings_matrix, labels=labels, model_base=model_base
+        )
+        self.model = model
+        outputpath = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, &#34;model.p&#34;))
+        if save_model:
+            self.save_model(model, outputpath)
+        return model
+
+    def preprocess_data(self, data_train: object, feature_keys: dict = None):
+        &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
+        self.data = np.zeros(
+            (len(self.X), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
+        )
+        self.labels_matrix = np.zeros((self.num_classes,), dtype=&#34;int32&#34;)
+        if feature_keys is None:
+            if self.feature_keys is None or len(self.feature_keys) is 0:
+                self.feature_keys = self._get_feature_keys()
+            feature_keys = self.feature_keys
+        else:
+            self.feature_keys = feature_keys
+        self.feature_vecs = self.build_features_vecs_from_data(data_train, feature_keys)
+        print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
+        print(&#34;Shape of data tensor: &#34;, self.data, self.data.shape)
+        return self.data
 
     def load_model(self, filepath: str):
         &#34;&#34;&#34;Loads a model with a custom AttentionLayer property.&#34;&#34;&#34;
-        model = load_model(
-            filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
-        )
+        # model = load_model(
+        #  filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
+        # )
         if model:
             self.model = model
             return model
         else:
             return None
 
-    def read_and_train_data(self, filepath: str):
-        &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
-        data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
-        # data_train = data_train.drop_duplicates()
-        self.preprocess_data(data_train)
-        self.embeddings_index = self.get_glove_embeddings()
-        embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
-        model = self.build_network_and_train_model(embeddings_matrix)
-        return model
-
-    def preprocess_data(self, data_train: object, feature_keys: dict = None):
-        &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
-        if feature_keys is None:
-            feature_keys = self.feature_keys
-        self.feature_vecs = self.build_features_vecs_from_data(
-            data_train, feature_keys
-        )
-        print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
-        print(&#34;Shape of data tensor before: &#34;, self.data)
-        return self.data
+    def save_model(self, model: object, fp: str) -&gt; bool:
+        &#34;&#34;&#34;
+        Saves a model to a given filepath.
+        &#34;&#34;&#34;
+        try:
+            model.save(fp)
+            return True
+        except:
+            return False
 
     def get_glove_embeddings(self, glove_data_path: str = None):
-        &#34;&#34;&#34;Use pre-trained GloVe embeddings so we don&#39;t have to make our own word embeddings.&#34;&#34;&#34;
+        &#34;&#34;&#34;Use pre-trained GloVe embeddings so we don&#39;t have to
+           make our own for the model.
+        &#34;&#34;&#34;
         embeddings_index = {}
         f = None
         if not glove_data_path:
@@ -837,8 +962,9 @@ to match that input shape provided.</p>
         return embeddings_matrix
 
     def create_model_base(self, embeddings_matrix):
-        &#34;&#34;&#34;Creates the base hierarchical attention network with multiclass or binary tuning.
-           If doing non-binary classification, set self.num_classes to number of classes.
+        &#34;&#34;&#34;Creates the base hierarchical attention network with multiclass
+           or binary tuning. If doing non-binary classification, set
+           self.num_classes to number of classes.
         &#34;&#34;&#34;
         embedding_layer = Embedding(
             len(self.word_index) + 1,
@@ -865,83 +991,151 @@ to match that input shape provided.</p>
         )
         l_att_sent = AttentionLayer(ATTENTION_DIM)(l_lstm_sent)
         if self.num_classes &gt; 2:
+            # multi-class classifier
             preds = Dense(self.num_classes, activation=&#34;softmax&#34;)(l_att_sent)
             model = Model(input_layer, preds)
-            model.compile(loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics)
+            model.compile(
+                loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics
+            )
         else:
+            # binary classifier
             preds = Dense(2, activation=&#34;sigmoid&#34;)(l_att_sent)
             model = Model(input_layer, preds)
-            model.compile(loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics)
+            model.compile(
+                loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics
+            )
         return model
 
     def build_network_and_train_model(
-        self, embeddings_matrix, model_filepath: str = None
+        self,
+        embeddings_matrix,
+        model_base: object = None,
+        model_filepath: str = None,
+        labels: list = [&#34;0&#34;, &#34;1&#34;],
+        save_metrics_results: bool = False,
     ):
         &#34;&#34;&#34;Trains a model and saves to a given filepath (will default
            to a filename).&#34;&#34;&#34;
-        model = self.create_model_base(embeddings_matrix)
-        k_ct = 1 # Which k-index are we on in kfold val
-        # Metrics
-        losses = []
-        accs = []
-        precisions = []
-        recalls = []
-        f1s = []
-        kappas = []
-        aucs = []
+        if not model_base:
+            model = self.create_model_base(embeddings_matrix)
+            print(&#34;Creating HANN architecture with Keras - {}.&#34;.format(model))
+        else:
+            print(&#34;Creating non-HANN model base {}.&#34;.format(model_base))
+            model = model_base
+        k_ct = 1  # Which k-index are we on in kfold val
+        metrics_arr = []
+        models = []  # store all our models and we&#39;ll save the best performing one
         # Kfold validation
-        for train_index,test_index in kf.split(self.X, self.Y):
-            x_train,x_val=self.X[train_index],self.X[test_index]
-            y_train,y_val=self.Y[train_index],self.Y[test_index]
-            print(&#34;Creating HANN model now, with K-Fold cross-validation. K=&#34;, k_ct,
-                   &#34;and length: &#34;, len(x_train), len(x_val), &#34;for training / validation.&#34;)
-            model.fit(
-                x_train,
-                y_train,
-                validation_data=(x_val, y_val),
-                epochs=3,
-                batch_size=BATCH_SIZE,
-                verbose=2
-                # steps_per_epoch=compute_steps_per_epoch(len(x_train)),
-                # validation_steps=compute_steps_per_epoch(len(x_val))
-            )
+        for train_index, test_index in kf.split(self.X, self.Y):
+            x_train, x_val = self.X[train_index], self.X[test_index]
+            y_train, y_val = self.Y[train_index], self.Y[test_index]
+            if not model_base:
+                # We&#39;re creating a HANN model using Keras
+                print(
+                    &#34;Creating HANN model now, with K-Fold cross-validation. K=&#34;,
+                    k_ct,
+                    &#34;and length: &#34;,
+                    len(x_train),
+                    len(x_val),
+                    &#34;for training / validation.&#34;,
+                )
+                model.fit(
+                    x_train,
+                    y_train,
+                    validation_data=(x_val, y_val),
+                    epochs=EPOCH_NUM,
+                    batch_size=BATCH_SIZE,
+                    verbose=2,
+                )
+            else:
+                # If we&#39;re given a model base, then we&#39;re probably
+                # not building a HANN model, but this class is being
+                # used to create baseline models for comparison with HANN.
+                # This really should be refactored out into another class, but
+                # for now this is clean enough.
+
+                # Reshape the data from 3D to 2D (for non-HANN models)
+                x_val = x_val.reshape(len(x_val), -1)
+                x_train = x_train.reshape(len(x_train), -1)
+                x_train = scaler.fit_transform(x_train)
+                x_val = scaler.fit_transform(x_val)
+                y_train = np.argmax(y_train, axis=1)
+                print(
+                    &#34;Creating baseline model now, with K-Fold cross-validation. K=&#34;,
+                    k_ct,
+                    &#34;and length: &#34;,
+                    len(x_train),
+                    len(x_val),
+                    &#34;for training / validation.&#34;,
+                )
+                model.fit(x_train, y_train)
+            models.append(model)
+            # f_importances(model.coef_, feature_keys_list)
             k_ct += 1
-            loss, acc = model.evaluate(x_val, y_val)
-            print(&#34;Model evaluation: loss - {}\t acc - {}&#34;.format(str(loss), str(acc)))
-            losses.append(loss)
-            accs.append(acc)
             y_pred = model.predict(x_val)
             # Reverse one-hot encoding
             _y_val = np.argmax(y_val, axis=1)
-            _x_val = np.argmax(x_val, axis=1)
-            _y_pred = np.argmax(y_pred, axis=1)
-            # Calculate metrics
-            cm = confusion_matrix(_y_val, _y_pred, [0, 1])
-            print(&#34;Confusion matrix:&#34;)
-            self._p_print_cm(cm, [&#39;benign&#39;, &#39;malicious&#39;])
-            accuracy = accuracy_score(_y_pred, _y_val)
-            print(&#39;Accuracy: {}&#39;.format(str(accuracy)))
-            precision = precision_score(_y_pred, _y_val)
-            print(&#39;Precision: {}&#39;.format(str(precision)))
-            precisions.append(precision)
-            recall = recall_score(_y_pred, _y_val)
-            print(&#39;Recall: {}&#39;.format(str(recall)))
-            recalls.append(recall)
-            f1 = f1_score(_y_pred, _y_val)
-            print(&#39;F1 score: {}&#39;.format(str(f1)))
-            f1s.append(f1)
-            kappa = cohen_kappa_score(_y_pred, _y_val)
-            print(&#39;Cohens kappa: {}&#39;.format(str(kappa)))
-            kappas.append(kappa)
-            auc = roc_auc_score(_y_pred, _y_val)
-            print(&#39;ROC AUC: {}&#39;.format(str(auc)))
-            aucs.append(auc)
-        print(&#34;Average loss in {}kfold: {}&#34;.format(K_NUM, str(sum(losses) / len(losses))))
-        print(&#34;Average accuracy in {}kfold: {}&#34;.format(K_NUM, str(sum(accs) / len(accs))))
-        # model.save(model_filepath)
-        self.model = model
-        # return model_filepath
+            if not model_base:
+                _y_pred = np.argmax(y_pred, axis=1)
+            else:
+                _y_pred = y_pred
+            # Model evaluation / metrics
+            metrics = stats.get_model_metrics(
+                _y_val, _y_pred, labels, print_output=True
+            )
+            metrics_arr.append(metrics)
+        # Drop confusion matrices from our summed metrics since we can&#39;t average those easily
+        filtered_metrics_arr = [
+            {k: v for k, v in d.items() if k != &#34;cm&#34;} for d in metrics_arr
+        ]
+        metrics_summed = stats.get_metrics_averages(filtered_metrics_arr)
+        print(&#34;Metrics summed and averaged: &#34;, metrics_summed)
+        top_score = 0
+        index = 1
+        for i, metrics in enumerate(metrics_arr):
+            # We&#39;ll save the model with the best performing metric (F1 score)
+            if metrics[&#34;f1&#34;] &gt; top_score:
+                top_score = metrics[&#34;f1&#34;]
+                if i is 0:
+                    index = i + 1
+                else:
+                    index = i
+        best_model = models[index]
+        model = best_model
+        print(
+            &#34;The best performing model (based on F1 score) was number {}. That is the model that will be returned.&#34;.format(
+                index
+            )
+        )
+        if save_metrics_results:
+            pass
         return model
+
+    def _get_feature_keys(
+        self, filepath: str = DEFAULT_TRAINING_DATA_PATH, top_features: list = None
+    ) -&gt; list:
+        if self.feature_keys is None or len(self.feature_keys) is 0:
+            df = pd.read_csv(filepath, nrows=MAX_DOCS)
+            if top_features is not None and len(top_features) is not 0:
+                feature_keys = [
+                    key
+                    for key in list(df.columns)
+                    if key != &#34;classification&#34; and key in top_features
+                ]
+            else:
+                feature_keys = [
+                    key for key in list(df.columns) if key != &#34;classification&#34;
+                ]
+            # Map feature keys with their indices (since eventually we may want to eliminate features
+            # from being trained, without modifiying the original dataset, so order of indices may not
+            # be continuous. Also, we can define a tokenization level in these mappings.
+            feature_keys = [
+                {&#34;name&#34;: feature_key, &#34;index&#34;: i}
+                for i, feature_key in enumerate(feature_keys)
+            ]
+            return feature_keys
+        else:
+            return self.feature_keys
 
     def _fill_feature_vec(self, texts_features: list, feature_vector):
         &#34;&#34;&#34;Helper function to build feature vector for HANN to classify.&#34;&#34;&#34;
@@ -956,11 +1150,7 @@ to match that input shape provided.</p>
                     for _, word in enumerate(wordTokens):
                         if type(word) is list:
                             word = &#34;&#34;.join(word)
-                        if (
-                          k &lt; MAX_SENTENCE_LENGTH
-                          and
-                          _ &lt; VOCABULARY_SIZE
-                        ):
+                        if k &lt; MAX_SENTENCE_LENGTH and _ &lt; VOCABULARY_SIZE:
                             try:
                                 feature_vector[i, j, k] = self.word_index[word]
                             except:
@@ -970,124 +1160,99 @@ to match that input shape provided.</p>
                             break
         return feature_vector
 
-    def build_features_vecs_from_data(self, data_train, feature_keys: dict):
+    def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
         &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
+        if feature_keys is None:
+            if self.feature_keys is None or len(self.feature_keys) is 0:
+                self.feature_keys = self._get_feature_keys()
+            feature_keys = self.feature_keys
+        else:
+            self.feature_keys = feature_keys
         results = []
-        _data_train = data_train.to_dict()
+        data_train_dict = data_train.to_dict()
         self.tokenizer = Tokenizer()
-        self.texts = []
-        self.texts_features = []
+        texts = []
+        texts_features = []
+        self.labels = []
         for idx in range(
             data_train.shape[0]
         ):  # doesn&#39;t matter we&#39;re just getting count here
             sentences = []
             for dict in feature_keys:
                 key = dict[&#34;name&#34;]
-                sentence = str(_data_train[key][idx])
-                sentence = text_normalizer.normalize_text(
-                    sentence,
-                    lowercase=True,
-                    strip_punct=True,
-                    # remove_stopwords=True,
-                    lemmatize_text=True,
-                    # stem_text=True
-                )
-                if dict[&#34;tokenize&#34;] is &#34;char&#34;:
+                sentence = str(data_train[key][idx])
+                sentence = text_normalizer.normalize_text_defaults(sentence)
+                if &#34;tokenize&#34; in dict and dict[&#34;tokenize&#34;] is &#34;char&#34;:
                     sentence = [char for char in sentence]
                 sentences.append(sentence)
-            self.texts.extend(sentences)
-            self.texts_features.append(sentences)
+            texts.extend(sentences)
+            texts_features.append(sentences)
         self.tokenizer = Tokenizer(nb_words=VOCABULARY_SIZE)
         _texts = []
-        self.labels = []
-        for i, each in enumerate(self.texts):
+        for i, each in enumerate(texts):
             if type(each) is list:
                 each = &#34;&#34;.join(each)
             _texts.append(str(each))
         for i in range(len(self.records)):
             self.labels.append(self.records[i][&#34;classification&#34;])
-        self.texts = _texts
-        self.tokenizer.fit_on_texts(self.texts)
+        texts = _texts
+        self.tokenizer.fit_on_texts(texts)
         self.word_index = self.tokenizer.word_index
-        self.data = self._fill_feature_vec(self.texts_features, self.data)
-        self.labels_matrix = to_categorical(self.labels)
+        self.data = self._fill_feature_vec(texts_features, self.data)
+        # Get unique classes from labels (in same order of occurence)
+        classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
+        self.num_classes = len(classes)
+        # Shuffle data
+        # indices = np.arange(self.data.shape[0])
+        # np.random.shuffle(indices)
+        # self.data = self.data[indices]
+        # self.labels = self.labels[indices]
+        self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
+        print(self.labels_matrix, self.labels_matrix.shape)
         self.Y = self.labels_matrix
         self.X = self.data
-        # Shuffle data
-        indices = np.arange(self.data.shape[0])
-        np.random.shuffle(indices)
-        self.data = self.data[indices]
-        self.labels_matrix = self.labels_matrix[indices]
         return self.data
 
-    def build_features_vecs_from_input(
-        self, input_features, feature_keys
-    ):
+    def build_features_vecs_from_input(self, input_features, feature_keys: dict = None):
         &#34;&#34;&#34;Vectorizes a feature matrix from extracted PE data for HANN classification.&#34;&#34;&#34;
         results = []
-        self.texts_features = []
+        texts_features = []
+        if feature_keys is None:
+            if self.feature_keys is None or len(self.feature_keys) is 0:
+                self.feature_keys = self._get_feature_keys()
+            feature_keys = self.feature_keys
+        else:
+            self.feature_keys = feature_keys
         for idx in range(len(input_features)):
             sentences = []
             for dict in self.feature_keys:
                 val = dict[&#34;index&#34;]
                 sentence = str(input_features[val])
-                sentence = text_normalizer.normalize_text(
-                    sentence,
-                    lowercase=True,
-                    strip_punct=True,
-                    # remove_stopwords=True,
-                    lemmatize_text=True,
-                    # stem_text=True
-                )
-                if dict[&#34;tokenize&#34;] is &#34;char&#34;:
+                sentence = text_normalizer.normalize_text(sentence)
+                if &#34;tokenize&#34; in dict and dict[&#34;tokenize&#34;] is &#34;char&#34;:
                     sentence = [char for char in sentence]
                 sentences.append(sentence)
-            self.texts_features.append(sentences)
+            texts_features.append(sentences)
         feature_vector = np.zeros(
             (len(input_features), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
             dtype=&#34;int32&#34;,
         )
-        feature_vector = self._fill_feature_vec(self.texts_features, feature_vector)
+        feature_vector = self._fill_feature_vec(texts_features, feature_vector)
+        # feature_vector = feature_vector.reshape(len(feature_vector), -1)
         return feature_vector
 
     def predict(self, data):
         &#34;&#34;&#34;Predicts binary classification of classes with probabilities given a feature matrix.&#34;&#34;&#34;
         res = self.model.predict(data)
-        classes = to_categorical(res)
         probs = res[0]
         malicious = probs[1]
         benign = probs[0]
-        return (benign, malicious)
-
-    def _p_print_cm(self, cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None):
-        &#34;&#34;&#34;pretty print for confusion matrixes
-           https://gist.github.com/zachguo/10296432
-        &#34;&#34;&#34;
-        columnwidth = max([len(x) for x in labels] + [5])  # 5 is value length
-        empty_cell = &#34; &#34; * columnwidth
-        # Print header
-        print(&#34;    &#34; + empty_cell, end=&#34; &#34;)
-        for label in labels:
-            print(&#34;%{0}s&#34;.format(columnwidth) % label, end=&#34; &#34;)
-        print()
-        # Print rows
-        for i, label1 in enumerate(labels):
-            print(&#34;    %{0}s&#34;.format(columnwidth) % label1, end=&#34; &#34;)
-            for j in range(len(labels)):
-                cell = &#34;%{0}.1f&#34;.format(columnwidth) % cm[i, j]
-                if hide_zeroes:
-                    cell = cell if float(cm[i, j]) != 0 else empty_cell
-                if hide_diagonal:
-                    cell = cell if i != j else empty_cell
-                if hide_threshold:
-                    cell = cell if cm[i, j] &gt; hide_threshold else empty_cell
-                print(cell, end=&#34; &#34;)
-            print()</code></pre>
+        return (benign, malicious)</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data"><code class="name flex">
-<span>def <span class="ident">build_features_vecs_from_data</span></span>(<span>self, data_train, feature_keys)</span>
+<span>def <span class="ident">build_features_vecs_from_data</span></span>(<span>self, data_train, feature_keys=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Vectorizes the training dataset for HANN.</p></section>
@@ -1095,59 +1260,62 @@ to match that input shape provided.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def build_features_vecs_from_data(self, data_train, feature_keys: dict):
+<pre><code class="python">def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
     &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
+    if feature_keys is None:
+        if self.feature_keys is None or len(self.feature_keys) is 0:
+            self.feature_keys = self._get_feature_keys()
+        feature_keys = self.feature_keys
+    else:
+        self.feature_keys = feature_keys
     results = []
-    _data_train = data_train.to_dict()
+    data_train_dict = data_train.to_dict()
     self.tokenizer = Tokenizer()
-    self.texts = []
-    self.texts_features = []
+    texts = []
+    texts_features = []
+    self.labels = []
     for idx in range(
         data_train.shape[0]
     ):  # doesn&#39;t matter we&#39;re just getting count here
         sentences = []
         for dict in feature_keys:
             key = dict[&#34;name&#34;]
-            sentence = str(_data_train[key][idx])
-            sentence = text_normalizer.normalize_text(
-                sentence,
-                lowercase=True,
-                strip_punct=True,
-                # remove_stopwords=True,
-                lemmatize_text=True,
-                # stem_text=True
-            )
-            if dict[&#34;tokenize&#34;] is &#34;char&#34;:
+            sentence = str(data_train[key][idx])
+            sentence = text_normalizer.normalize_text_defaults(sentence)
+            if &#34;tokenize&#34; in dict and dict[&#34;tokenize&#34;] is &#34;char&#34;:
                 sentence = [char for char in sentence]
             sentences.append(sentence)
-        self.texts.extend(sentences)
-        self.texts_features.append(sentences)
+        texts.extend(sentences)
+        texts_features.append(sentences)
     self.tokenizer = Tokenizer(nb_words=VOCABULARY_SIZE)
     _texts = []
-    self.labels = []
-    for i, each in enumerate(self.texts):
+    for i, each in enumerate(texts):
         if type(each) is list:
             each = &#34;&#34;.join(each)
         _texts.append(str(each))
     for i in range(len(self.records)):
         self.labels.append(self.records[i][&#34;classification&#34;])
-    self.texts = _texts
-    self.tokenizer.fit_on_texts(self.texts)
+    texts = _texts
+    self.tokenizer.fit_on_texts(texts)
     self.word_index = self.tokenizer.word_index
-    self.data = self._fill_feature_vec(self.texts_features, self.data)
-    self.labels_matrix = to_categorical(self.labels)
+    self.data = self._fill_feature_vec(texts_features, self.data)
+    # Get unique classes from labels (in same order of occurence)
+    classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
+    self.num_classes = len(classes)
+    # Shuffle data
+    # indices = np.arange(self.data.shape[0])
+    # np.random.shuffle(indices)
+    # self.data = self.data[indices]
+    # self.labels = self.labels[indices]
+    self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
+    print(self.labels_matrix, self.labels_matrix.shape)
     self.Y = self.labels_matrix
     self.X = self.data
-    # Shuffle data
-    indices = np.arange(self.data.shape[0])
-    np.random.shuffle(indices)
-    self.data = self.data[indices]
-    self.labels_matrix = self.labels_matrix[indices]
     return self.data</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_input"><code class="name flex">
-<span>def <span class="ident">build_features_vecs_from_input</span></span>(<span>self, input_features, feature_keys)</span>
+<span>def <span class="ident">build_features_vecs_from_input</span></span>(<span>self, input_features, feature_keys=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Vectorizes a feature matrix from extracted PE data for HANN classification.</p></section>
@@ -1155,39 +1323,37 @@ to match that input shape provided.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def build_features_vecs_from_input(
-    self, input_features, feature_keys
-):
+<pre><code class="python">def build_features_vecs_from_input(self, input_features, feature_keys: dict = None):
     &#34;&#34;&#34;Vectorizes a feature matrix from extracted PE data for HANN classification.&#34;&#34;&#34;
     results = []
-    self.texts_features = []
+    texts_features = []
+    if feature_keys is None:
+        if self.feature_keys is None or len(self.feature_keys) is 0:
+            self.feature_keys = self._get_feature_keys()
+        feature_keys = self.feature_keys
+    else:
+        self.feature_keys = feature_keys
     for idx in range(len(input_features)):
         sentences = []
         for dict in self.feature_keys:
             val = dict[&#34;index&#34;]
             sentence = str(input_features[val])
-            sentence = text_normalizer.normalize_text(
-                sentence,
-                lowercase=True,
-                strip_punct=True,
-                # remove_stopwords=True,
-                lemmatize_text=True,
-                # stem_text=True
-            )
-            if dict[&#34;tokenize&#34;] is &#34;char&#34;:
+            sentence = text_normalizer.normalize_text(sentence)
+            if &#34;tokenize&#34; in dict and dict[&#34;tokenize&#34;] is &#34;char&#34;:
                 sentence = [char for char in sentence]
             sentences.append(sentence)
-        self.texts_features.append(sentences)
+        texts_features.append(sentences)
     feature_vector = np.zeros(
         (len(input_features), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
         dtype=&#34;int32&#34;,
     )
-    feature_vector = self._fill_feature_vec(self.texts_features, feature_vector)
+    feature_vector = self._fill_feature_vec(texts_features, feature_vector)
+    # feature_vector = feature_vector.reshape(len(feature_vector), -1)
     return feature_vector</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_network_and_train_model"><code class="name flex">
-<span>def <span class="ident">build_network_and_train_model</span></span>(<span>self, embeddings_matrix, model_filepath=None)</span>
+<span>def <span class="ident">build_network_and_train_model</span></span>(<span>self, embeddings_matrix, model_base=None, model_filepath=None, labels=['0', '1'], save_metrics_results=False)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Trains a model and saves to a given filepath (will default
@@ -1197,72 +1363,108 @@ to a filename).</p></section>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def build_network_and_train_model(
-    self, embeddings_matrix, model_filepath: str = None
+    self,
+    embeddings_matrix,
+    model_base: object = None,
+    model_filepath: str = None,
+    labels: list = [&#34;0&#34;, &#34;1&#34;],
+    save_metrics_results: bool = False,
 ):
     &#34;&#34;&#34;Trains a model and saves to a given filepath (will default
        to a filename).&#34;&#34;&#34;
-    model = self.create_model_base(embeddings_matrix)
-    k_ct = 1 # Which k-index are we on in kfold val
-    # Metrics
-    losses = []
-    accs = []
-    precisions = []
-    recalls = []
-    f1s = []
-    kappas = []
-    aucs = []
+    if not model_base:
+        model = self.create_model_base(embeddings_matrix)
+        print(&#34;Creating HANN architecture with Keras - {}.&#34;.format(model))
+    else:
+        print(&#34;Creating non-HANN model base {}.&#34;.format(model_base))
+        model = model_base
+    k_ct = 1  # Which k-index are we on in kfold val
+    metrics_arr = []
+    models = []  # store all our models and we&#39;ll save the best performing one
     # Kfold validation
-    for train_index,test_index in kf.split(self.X, self.Y):
-        x_train,x_val=self.X[train_index],self.X[test_index]
-        y_train,y_val=self.Y[train_index],self.Y[test_index]
-        print(&#34;Creating HANN model now, with K-Fold cross-validation. K=&#34;, k_ct,
-               &#34;and length: &#34;, len(x_train), len(x_val), &#34;for training / validation.&#34;)
-        model.fit(
-            x_train,
-            y_train,
-            validation_data=(x_val, y_val),
-            epochs=3,
-            batch_size=BATCH_SIZE,
-            verbose=2
-            # steps_per_epoch=compute_steps_per_epoch(len(x_train)),
-            # validation_steps=compute_steps_per_epoch(len(x_val))
-        )
+    for train_index, test_index in kf.split(self.X, self.Y):
+        x_train, x_val = self.X[train_index], self.X[test_index]
+        y_train, y_val = self.Y[train_index], self.Y[test_index]
+        if not model_base:
+            # We&#39;re creating a HANN model using Keras
+            print(
+                &#34;Creating HANN model now, with K-Fold cross-validation. K=&#34;,
+                k_ct,
+                &#34;and length: &#34;,
+                len(x_train),
+                len(x_val),
+                &#34;for training / validation.&#34;,
+            )
+            model.fit(
+                x_train,
+                y_train,
+                validation_data=(x_val, y_val),
+                epochs=EPOCH_NUM,
+                batch_size=BATCH_SIZE,
+                verbose=2,
+            )
+        else:
+            # If we&#39;re given a model base, then we&#39;re probably
+            # not building a HANN model, but this class is being
+            # used to create baseline models for comparison with HANN.
+            # This really should be refactored out into another class, but
+            # for now this is clean enough.
+
+            # Reshape the data from 3D to 2D (for non-HANN models)
+            x_val = x_val.reshape(len(x_val), -1)
+            x_train = x_train.reshape(len(x_train), -1)
+            x_train = scaler.fit_transform(x_train)
+            x_val = scaler.fit_transform(x_val)
+            y_train = np.argmax(y_train, axis=1)
+            print(
+                &#34;Creating baseline model now, with K-Fold cross-validation. K=&#34;,
+                k_ct,
+                &#34;and length: &#34;,
+                len(x_train),
+                len(x_val),
+                &#34;for training / validation.&#34;,
+            )
+            model.fit(x_train, y_train)
+        models.append(model)
+        # f_importances(model.coef_, feature_keys_list)
         k_ct += 1
-        loss, acc = model.evaluate(x_val, y_val)
-        print(&#34;Model evaluation: loss - {}\t acc - {}&#34;.format(str(loss), str(acc)))
-        losses.append(loss)
-        accs.append(acc)
         y_pred = model.predict(x_val)
         # Reverse one-hot encoding
         _y_val = np.argmax(y_val, axis=1)
-        _x_val = np.argmax(x_val, axis=1)
-        _y_pred = np.argmax(y_pred, axis=1)
-        # Calculate metrics
-        cm = confusion_matrix(_y_val, _y_pred, [0, 1])
-        print(&#34;Confusion matrix:&#34;)
-        self._p_print_cm(cm, [&#39;benign&#39;, &#39;malicious&#39;])
-        accuracy = accuracy_score(_y_pred, _y_val)
-        print(&#39;Accuracy: {}&#39;.format(str(accuracy)))
-        precision = precision_score(_y_pred, _y_val)
-        print(&#39;Precision: {}&#39;.format(str(precision)))
-        precisions.append(precision)
-        recall = recall_score(_y_pred, _y_val)
-        print(&#39;Recall: {}&#39;.format(str(recall)))
-        recalls.append(recall)
-        f1 = f1_score(_y_pred, _y_val)
-        print(&#39;F1 score: {}&#39;.format(str(f1)))
-        f1s.append(f1)
-        kappa = cohen_kappa_score(_y_pred, _y_val)
-        print(&#39;Cohens kappa: {}&#39;.format(str(kappa)))
-        kappas.append(kappa)
-        auc = roc_auc_score(_y_pred, _y_val)
-        print(&#39;ROC AUC: {}&#39;.format(str(auc)))
-        aucs.append(auc)
-    print(&#34;Average loss in {}kfold: {}&#34;.format(K_NUM, str(sum(losses) / len(losses))))
-    print(&#34;Average accuracy in {}kfold: {}&#34;.format(K_NUM, str(sum(accs) / len(accs))))
-    # model.save(model_filepath)
-    self.model = model
-    # return model_filepath
+        if not model_base:
+            _y_pred = np.argmax(y_pred, axis=1)
+        else:
+            _y_pred = y_pred
+        # Model evaluation / metrics
+        metrics = stats.get_model_metrics(
+            _y_val, _y_pred, labels, print_output=True
+        )
+        metrics_arr.append(metrics)
+    # Drop confusion matrices from our summed metrics since we can&#39;t average those easily
+    filtered_metrics_arr = [
+        {k: v for k, v in d.items() if k != &#34;cm&#34;} for d in metrics_arr
+    ]
+    metrics_summed = stats.get_metrics_averages(filtered_metrics_arr)
+    print(&#34;Metrics summed and averaged: &#34;, metrics_summed)
+    top_score = 0
+    index = 1
+    for i, metrics in enumerate(metrics_arr):
+        # We&#39;ll save the model with the best performing metric (F1 score)
+        if metrics[&#34;f1&#34;] &gt; top_score:
+            top_score = metrics[&#34;f1&#34;]
+            if i is 0:
+                index = i + 1
+            else:
+                index = i
+    best_model = models[index]
+    model = best_model
+    print(
+        &#34;The best performing model (based on F1 score) was number {}. That is the model that will be returned.&#34;.format(
+            index
+        )
+    )
+    if save_metrics_results:
+        pass
     return model</code></pre>
 </details>
 </dd>
@@ -1270,15 +1472,17 @@ to a filename).</p></section>
 <span>def <span class="ident">create_model_base</span></span>(<span>self, embeddings_matrix)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>Creates the base hierarchical attention network with multiclass or binary tuning.
-If doing non-binary classification, set self.num_classes to number of classes.</p></section>
+<section class="desc"><p>Creates the base hierarchical attention network with multiclass
+or binary tuning. If doing non-binary classification, set
+self.num_classes to number of classes.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def create_model_base(self, embeddings_matrix):
-    &#34;&#34;&#34;Creates the base hierarchical attention network with multiclass or binary tuning.
-       If doing non-binary classification, set self.num_classes to number of classes.
+    &#34;&#34;&#34;Creates the base hierarchical attention network with multiclass
+       or binary tuning. If doing non-binary classification, set
+       self.num_classes to number of classes.
     &#34;&#34;&#34;
     embedding_layer = Embedding(
         len(self.word_index) + 1,
@@ -1305,13 +1509,19 @@ If doing non-binary classification, set self.num_classes to number of classes.</
     )
     l_att_sent = AttentionLayer(ATTENTION_DIM)(l_lstm_sent)
     if self.num_classes &gt; 2:
+        # multi-class classifier
         preds = Dense(self.num_classes, activation=&#34;softmax&#34;)(l_att_sent)
         model = Model(input_layer, preds)
-        model.compile(loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics)
+        model.compile(
+            loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics
+        )
     else:
+        # binary classifier
         preds = Dense(2, activation=&#34;sigmoid&#34;)(l_att_sent)
         model = Model(input_layer, preds)
-        model.compile(loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics)
+        model.compile(
+            loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics
+        )
     return model</code></pre>
 </details>
 </dd>
@@ -1319,13 +1529,16 @@ If doing non-binary classification, set self.num_classes to number of classes.</
 <span>def <span class="ident">get_glove_embeddings</span></span>(<span>self, glove_data_path=None)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>Use pre-trained GloVe embeddings so we don't have to make our own word embeddings.</p></section>
+<section class="desc"><p>Use pre-trained GloVe embeddings so we don't have to
+make our own for the model.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def get_glove_embeddings(self, glove_data_path: str = None):
-    &#34;&#34;&#34;Use pre-trained GloVe embeddings so we don&#39;t have to make our own word embeddings.&#34;&#34;&#34;
+    &#34;&#34;&#34;Use pre-trained GloVe embeddings so we don&#39;t have to
+       make our own for the model.
+    &#34;&#34;&#34;
     embeddings_index = {}
     f = None
     if not glove_data_path:
@@ -1352,9 +1565,9 @@ If doing non-binary classification, set self.num_classes to number of classes.</
 </summary>
 <pre><code class="python">def load_model(self, filepath: str):
     &#34;&#34;&#34;Loads a model with a custom AttentionLayer property.&#34;&#34;&#34;
-    model = load_model(
-        filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
-    )
+    # model = load_model(
+    #  filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
+    # )
     if model:
         self.model = model
         return model
@@ -1398,7 +1611,6 @@ If doing non-binary classification, set self.num_classes to number of classes.</
 <pre><code class="python">def predict(self, data):
     &#34;&#34;&#34;Predicts binary classification of classes with probabilities given a feature matrix.&#34;&#34;&#34;
     res = self.model.predict(data)
-    classes = to_categorical(res)
     probs = res[0]
     malicious = probs[1]
     benign = probs[0]
@@ -1416,18 +1628,24 @@ If doing non-binary classification, set self.num_classes to number of classes.</
 </summary>
 <pre><code class="python">def preprocess_data(self, data_train: object, feature_keys: dict = None):
     &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
-    if feature_keys is None:
-        feature_keys = self.feature_keys
-    self.feature_vecs = self.build_features_vecs_from_data(
-        data_train, feature_keys
+    self.data = np.zeros(
+        (len(self.X), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
     )
+    self.labels_matrix = np.zeros((self.num_classes,), dtype=&#34;int32&#34;)
+    if feature_keys is None:
+        if self.feature_keys is None or len(self.feature_keys) is 0:
+            self.feature_keys = self._get_feature_keys()
+        feature_keys = self.feature_keys
+    else:
+        self.feature_keys = feature_keys
+    self.feature_vecs = self.build_features_vecs_from_data(data_train, feature_keys)
     print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
-    print(&#34;Shape of data tensor before: &#34;, self.data)
+    print(&#34;Shape of data tensor: &#34;, self.data, self.data.shape)
     return self.data</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.read_and_train_data"><code class="name flex">
-<span>def <span class="ident">read_and_train_data</span></span>(<span>self, filepath)</span>
+<span>def <span class="ident">read_and_train_data</span></span>(<span>self, filepath, top_features=None, labels=None, model_base=None, outputpath='/home/ubuntu/restless/restless/data/models/default.h5', save_model=False)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Reads a CSV file into training data and trains network.</p></section>
@@ -1435,15 +1653,51 @@ If doing non-binary classification, set self.num_classes to number of classes.</
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def read_and_train_data(self, filepath: str):
+<pre><code class="python">def read_and_train_data(
+    self,
+    filepath: str,
+    top_features: list = None,
+    labels: list = None,
+    model_base: object = None,
+    outputpath: str = DEFAULT_MODEL_PATH,
+    save_model: bool = False,
+):
     &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
-    data_train = pd.read_csv(filepath, nrows=MAX_DOCS)
-    # data_train = data_train.drop_duplicates()
-    self.preprocess_data(data_train)
+    self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
+    self.X = self.X.filter(top_features)
+    # Get rid of the classification / class column since that&#39;s not a feature
+    self.feature_keys = self._get_feature_keys(filepath, top_features=top_features)
+    self.preprocess_data(self.X)
     self.embeddings_index = self.get_glove_embeddings()
     embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
-    model = self.build_network_and_train_model(embeddings_matrix)
+    model = self.build_network_and_train_model(
+        embeddings_matrix, labels=labels, model_base=model_base
+    )
+    self.model = model
+    outputpath = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, &#34;model.p&#34;))
+    if save_model:
+        self.save_model(model, outputpath)
     return model</code></pre>
+</details>
+</dd>
+<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.save_model"><code class="name flex">
+<span>def <span class="ident">save_model</span></span>(<span>self, model, fp)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Saves a model to a given filepath.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def save_model(self, model: object, fp: str) -&gt; bool:
+    &#34;&#34;&#34;
+    Saves a model to a given filepath.
+    &#34;&#34;&#34;
+    try:
+        model.save(fp)
+        return True
+    except:
+        return False</code></pre>
 </details>
 </dd>
 </dl>
@@ -1491,6 +1745,7 @@ If doing non-binary classification, set self.num_classes to number of classes.</
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.predict" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.predict">predict</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.preprocess_data" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.preprocess_data">preprocess_data</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.read_and_train_data" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.read_and_train_data">read_and_train_data</a></code></li>
+<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.save_model" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.save_model">save_model</a></code></li>
 </ul>
 </li>
 </ul>

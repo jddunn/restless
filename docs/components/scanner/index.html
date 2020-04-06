@@ -24,7 +24,11 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">from .scanner import Scanner</code></pre>
+<pre><code class="python">import os, sys
+
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+
+from .scanner import Scanner</code></pre>
 </details>
 </section>
 <section>
