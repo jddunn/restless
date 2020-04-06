@@ -35,11 +35,62 @@ stats = utils.stats
 stats_vis = utils.stats_vis
 scaler = RobustScaler()
 
+MAX_N_FEATURES = None  # If none we have no limit
+CORR_THRESHOLD = 0.05  # minimum val to consider meaningful linear correlation
+
+
+def transform_df_with_top_features_for_hann(
+    df,
+    corr,
+    features_list: list,
+    target_feature: str,
+    n_features: int = MAX_N_FEATURES,
+    threshold=CORR_THRESHOLD,
+) -> pd.DataFrame:
+    """
+    Given a dataframe and the correlation of the df, get the top number of features
+    that correlate with the target feature / label (e.g. classification), and return
+    a new dataframe containing only those top features and the target feature.
+
+    The reasoning for this function is interesting. We will not be dropping features
+    in the typical way that's done for feature selection (which is removing features
+    that are highly correlated with each other to prevent collinearity). Actually,
+    for this architecture some collinearity will be desirable.
+
+    Since we plan to use a Hierarchical Attention Network for our classifier (in which
+    we build representations of malicious / benign files using the structure of text
+    documents), it is desirable to create that feature representation with features
+    that have some correlation (either positive or negative) with our target feature,
+    which in this case, is our file classification.
+    """
+    # _corr = corr.values
+    _corr = corr.values
+    to_filter = []
+    top_features = []
+    for i in range(len(features_list) - 1):
+        # Since we're not doing regression but classification, we can consider any indepedent X vars
+        # that have a negative or positive correlation.
+        try:
+            if abs(_corr[i]) < threshold:
+                to_filter.append(features_list[i])
+            else:
+                if MAX_N_FEATURES is not None and len(top_features) < MAX_N_FEATURES:
+                    top_features.append(features_list[i])
+                elif MAX_N_FEATURES is not None and len(top_features) >= MAX_N_FEATURES:
+                    break
+                else:
+                    top_features.append(features_list[i])
+        except Exception as e:
+            break
+    new_df = df.drop(to_filter, axis=1)
+    return new_df, top_features
+
 
 def get_features_corr(
-    training_filepath: str,
+    df: pd.DataFrame,
     features: list,
     target_feature: str = None,
+    get_corr_with_target_feature_only: bool = False,
     correlation="pearson",
 ) -> list:
     """
@@ -47,10 +98,13 @@ def get_features_corr(
     probability of the model.
 
     Args:
-        training_filepath (str): Filepath to read data from (should be CSV or txt)
+        df (pd.DataFrame): DataFrrame with features (columns) to process.
         features (list): List of features to get correlations with
         target_feature (str, optional): If specified, will return correlation
-            values for every
+            values for features with target_feature only (if
+            $get_corr_with_target_feature_only is True).
+        get_corr_with_target_feature_only (bool, optional): If specified,
+            then only correlations with the $target_feature will be returned.
         correlation (str, optional): Type of correlation metric to classify;
             defaults to "jaccard".
 
@@ -59,19 +113,26 @@ def get_features_corr(
             list will only contain one result, with all the feature correlations.
     """
     results = []
-    df = pd.read_csv(training_filepath)
+    df = pd.read_csv(training_fp)
     if target_feature:
-        for feature in features:
-            feature = [feature]
-            result = {}
-            corr = stats.get_correlation_for_features(
-                df, feature, target_feature, correlation
+        result = {}
+        corr = stats.get_correlation_for_features(
+            df,
+            features,
+            target_feature=target_feature,
+            get_corr_with_target_feature_only=get_corr_with_target_feature_only,
+            correlation=correlation,
+        )
+        print(
+            "Getting correlation for features {} with target feature {}.".format(
+                features, target_feature
             )
-            # print("\tCorrelation for {} is {}.".format(feature, corr))
-            result["feature"] = feature
-            result["target_feature"] = target_feature
-            result["corr"] = corr
-            results.append(result)
+        )
+        result["features"] = features
+        result["target_feature"] = target_feature
+        result["corr"] = corr
+        print("\t", corr)
+        results.append(result)
     else:
         result = {}
         print("Getting correlation for all features {}.".format(features))
@@ -86,6 +147,7 @@ def get_features_corr(
 def train_model(
     training_fp: str,
     feature_keys: dict,
+    top_features: list = None,
     labels: list = None,
     model_base: object = None,
     model_save: bool = True,
@@ -96,9 +158,11 @@ def train_model(
 
     Args:
         training_fp (str): Filepath to read dataset from into df;
-             must be CSV or text.
+            must be CSV or text.
         feature_keys (dict): Dictionary containing features and their
             properties mapped from the training file.
+        top_features (list, optional): List of top features (all other features will
+            be dropped from df to train); optional.
         labels (list, optional): List of labels (used for labelling charts
             and model metrics).
         model_base (object, optional): If specified, train a classifier with
@@ -116,7 +180,9 @@ def train_model(
     hann = HierarchicalAttentionNetwork()
     # hann.feature_keys = feature_keys
     print("Training file {}.".format(training_fp))
-    model = hann.read_and_train_data(training_fp, model_base=model_base, labels=labels)
+    model = hann.read_and_train_data(
+        training_fp, top_features=top_features, model_base=model_base, labels=labels
+    )
     print("Training successful.")
     if model_save:
         hann.save_model(model, model_fp)
@@ -127,43 +193,71 @@ def train_model(
 if __name__ == "__main__":
     labels = ["benign", "malicious"]
     training_fp = DEFAULT_TRAINING_DATA_PATH
-    # feature_keys = pe_headers_feature_keys
-    # feature_keys_list = [dict["name"] for dict in pe_headers_feature_keys]
-    feature_keys_list = list(pd.read_csv(training_fp).columns)
+    df = pd.read_csv(training_fp)
+    feature_keys_list = list(df.columns)
     # Classification label can't be considered a feature (for training the model
     # at least), so we'll filter that out
     feature_keys_filtered = [
-        key for key in feature_keys_list if key is not "classification" or "class"
+        key for key in feature_keys_list if key != "classification"
     ]
-    # feature_keys_list.append("classification")
     target_feature = "classification"
     # Get our most important features from the training data
     # Using Pearson correlation is appropriate because we only have
     # two categories (point-biserial correlation).
-    # If we had multi-class dataset there'd need to be
-    # additional preprocessing done.
-    corr = get_features_corr(training_fp, feature_keys_list)[0]["corr"]
+    corr = get_features_corr(df, feature_keys_list, target_feature=target_feature)[0][
+        "corr"
+    ]
     stats_vis.visualize_correlation_matrix(
         corr,
+        feature_keys_list,
         annot=False,
-        plot_title="Features Correlation for PE Header Data",
+        plot_title="Features Correlation Matrix for PE Header Data",
         save_image=True,
         show=True,
     )
     # Now out of those, let's get the top N features
+    target_feature = "classification"
+    print(
+        "Transforming df into df with top extracted features from list: {}.".format(
+            feature_keys_filtered
+        )
+    )
+    target_corr = get_features_corr(
+        df,
+        feature_keys_list,
+        target_feature=target_feature,
+        get_corr_with_target_feature_only=True,
+    )[0]["corr"]
+    top_df, top_features = transform_df_with_top_features_for_hann(
+        df, target_corr, feature_keys_list, target_feature
+    )
+    _top_features = top_features
+    _top_features.append("classification")  # For our labels
+    top_corr = get_features_corr(
+        top_df,
+        _top_features,
+        target_feature=target_feature,
+        get_corr_with_target_feature_only=False,
+    )[0]["corr"]
     stats_vis.visualize_correlation_matrix(
-        corr,
+        top_corr,
+        _top_features,
         annot=True,
-        plot_title="Features Correlation for PE Header Data",
+        plot_title="Top Features Correlation Matrix for PE Header Data (Minimum threshold of "
+        + str(CORR_THRESHOLD)
+        + ")",
         save_image=True,
         show=True,
     )
-    results = get_features_corr(training_fp, feature_keys_list, target_feature)
     # Let's make a LogisticRegression model first, to use as a baseline comparison
     # model_base = LogisticRegression(random_state=1618)
     # If we don't pass a model_base, will train HANN architecture by default.
     model_base = None
     model_results = train_model(
-        training_fp, feature_keys_filtered, labels=labels, model_base=model_base
+        training_fp,
+        feature_keys=feature_keys_filtered,
+        top_features=top_features,
+        labels=labels,
+        model_base=model_base,
     )
     model = model_results[0]

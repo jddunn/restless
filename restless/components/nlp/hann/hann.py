@@ -75,13 +75,13 @@ except:
 
 # Hyperparams
 MAX_SENTENCE_LENGTH = 100
-MAX_SENTENCE_COUNT = 32
+MAX_SENTENCE_COUNT = 48
 VOCABULARY_SIZE = 100
 ATTENTION_DIM = 50
 GLOVE_DIMENSION_SIZE = ATTENTION_DIM  # needs same dimension
 MAX_DOCS = 1000000  # Limit number of records to train for speed if needed
 BATCH_SIZE = 32
-EPOCH_NUM = 10
+EPOCH_NUM = 3
 
 K_NUM = 5  # Number of KFold validation groups
 
@@ -160,6 +160,7 @@ class HierarchicalAttentionNetwork:
     def read_and_train_data(
         self,
         filepath: str,
+        top_features: list = None,
         labels: list = None,
         model_base: object = None,
         outputpath: str = DEFAULT_MODEL_PATH,
@@ -167,8 +168,9 @@ class HierarchicalAttentionNetwork:
     ):
         """Reads a CSV file into training data and trains network."""
         self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
+        self.X = self.X.filter(top_features)
         # Get rid of the classification / class column since that's not a feature
-        self.feature_keys = self._get_feature_keys(filepath)
+        self.feature_keys = self._get_feature_keys(filepath, top_features=top_features)
         self.preprocess_data(self.X)
         self.embeddings_index = self.get_glove_embeddings()
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
@@ -315,9 +317,6 @@ class HierarchicalAttentionNetwork:
         k_ct = 1  # Which k-index are we on in kfold val
         metrics_arr = []
         models = []  # store all our models and we'll save the best performing one
-        if labels is ["0", "1"]:
-            # Will be used for labelling metrics
-            labels = ["benign", "malicious"]
         # Kfold validation
         for train_index, test_index in kf.split(self.X, self.Y):
             x_train, x_val = self.X[train_index], self.X[test_index]
@@ -336,7 +335,7 @@ class HierarchicalAttentionNetwork:
                     x_train,
                     y_train,
                     validation_data=(x_val, y_val),
-                    epochs=1,
+                    epochs=EPOCH_NUM,
                     batch_size=BATCH_SIZE,
                     verbose=2,
                 )
@@ -404,14 +403,21 @@ class HierarchicalAttentionNetwork:
             pass
         return model
 
-    def _get_feature_keys(self, filepath: str = DEFAULT_TRAINING_DATA_PATH) -> list:
+    def _get_feature_keys(
+        self, filepath: str = DEFAULT_TRAINING_DATA_PATH, top_features: list = None
+    ) -> list:
         if self.feature_keys is None or len(self.feature_keys) is 0:
             df = pd.read_csv(filepath, nrows=MAX_DOCS)
-            feature_keys = [
-                key
-                for key in list(df.columns)
-                if key is not "class" or "classification"
-            ]
+            if top_features is not None and len(top_features) is not 0:
+                feature_keys = [
+                    key
+                    for key in list(df.columns)
+                    if key != "classification" and key in top_features
+                ]
+            else:
+                feature_keys = [
+                    key for key in list(df.columns) if key != "classification"
+                ]
             # Map feature keys with their indices (since eventually we may want to eliminate features
             # from being trained, without modifiying the original dataset, so order of indices may not
             # be continuous. Also, we can define a tokenization level in these mappings.

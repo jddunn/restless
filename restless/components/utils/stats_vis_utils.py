@@ -26,6 +26,7 @@ class StatsVisUtils:
     def visualize_correlation_matrix(
         self,
         corr,
+        features_list: list,
         annot: bool = False,
         plot_title: str = None,
         save_image: bool = False,
@@ -39,8 +40,8 @@ class StatsVisUtils:
         https://seaborn.pydata.org/examples/many_pairwise_correlations.html
         """
         # Generate a mask for the upper triangle
-        # mask = np.triu(np.ones_like(corr, dtype=np.float32))
-        mask = np.zeros_like(corr, dtype=np.bool)
+        # mask = np.triu(np.ones_like(corr, dtype=np.bool))
+        mask = np.zeros_like(corr)
         mask[np.triu_indices_from(mask)] = True
         # Set up the matplotlib figure
         f, ax = plt.subplots(figsize=(11, 9))
@@ -53,8 +54,8 @@ class StatsVisUtils:
             vmax=1,
             vmin=-1,
             center=0,
-            xticklabels=corr.columns,
-            yticklabels=corr.columns,
+            xticklabels=features_list,
+            yticklabels=features_list,
             square=True,
             fmt=".2g",
             linewidths=0.5,

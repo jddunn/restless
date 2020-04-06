@@ -35,7 +35,8 @@ class StatsUtils:
         data_train: DataFrame,
         features_to_compare: list = [],
         target_feature: str = None,
-        correlation_method: str = "pearson",
+        get_corr_with_target_feature_only: bool = False,
+        correlation: str = "pearson",
         print_output: bool = False,
     ):
         """
@@ -44,18 +45,29 @@ class StatsUtils:
 
         Args:
             data_train (DataFrame): Pandas df for data
-            target_feature (str, optional): Name of feature (column)
-                to get correlation values with (e.g. classification)
             features_to_compare (list, optional): Optional; if set,
                 function will get the correlation values for
                 just the specified features.
-            correlation_method (str, optional): Type of correlation
+            target_feature (str, optional): Name of feature (column)
+                to get correlation values with (e.g. classification)
+            get_corr_with_target_feature_only (bool, optional): Whether
+                to get feature correlations with just the target feature.
+            correlation (str, optional): Type of correlation
                 metric to use; defaults to "pearson."
             print_output (bool, optional): Whether to output of results.
         """
-        features_to_compare.append(target_feature)
-        data_train = data_train.filter(features_to_compare)
-        corr = data_train.corr(method=correlation_method)
+        # if not get_corr_with_target_feature_only:
+        #  features_to_compare.append(target_feature)
+        # data_train = data_train.filter(features_to_compare)
+        index = len(features_to_compare)
+        if not get_corr_with_target_feature_only:
+            corr = data_train[features_to_compare].corr(method=correlation)
+        else:
+            # corr = data_train[data_train.columns[:index]].corr(method=correlation)[target_feature]
+            corr = data_train[data_train.columns].corr(method=correlation)[
+                target_feature
+            ][:]
+            # corr = data_train[features_to_compare].corr(method=correlation_method)[target_feature][:]
         if print_output:
             print(
                 "Correlation for features: {} is {}".format(features_to_compare, corr)
