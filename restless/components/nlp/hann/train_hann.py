@@ -1,66 +1,169 @@
-import sys
+import os, sys
+import pandas as pd
+import numpy as np
+from sklearn.feature_selection import RFECV
+from sklearn.model_selection import StratifiedKFold
+from sklearn.preprocessing import RobustScaler
 
-# make dep imports work when running as lib / in high-levels scripts
-sys.path.append("..")
-sys.path.append("../..")
-sys.path.append("../../../..")
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import LinearSVC
 
+# make dep imports work when running in dir and in outside scripts
+PACKAGE_PARENT = "../../../.."
+SCRIPT_DIR = os.path.dirname(
+    os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__)))
+)
+sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 try:
-    from restless.components.nlp.hann import HierarchicalAttentionNetwork
-    from restless.components.nlp.hann import (
+    from restless.components.nlp.hann.hann import HierarchicalAttentionNetwork
+    from restless.components.nlp.hann.hann import (
         DEFAULT_DATA_PATH,
         DEFAULT_TRAINING_DATA_PATH,
         DEFAULT_MODEL_PATH,
     )
+    from restless.components.utils import utils
 except:
     from hann import HierarchicalAttentionNetwork
-    from hann import DEFAULT_DATA_PATH, DEFAULT_TRAINING_DATA_PATH, DEFAULT_MODEL_PATH
+    from hann import (
+        DEFAULT_DATA_PATH,
+        DEFAULT_TRAINING_DATA_PATH,
+        DEFAULT_MODEL_PATH,
+    )
+    from ...utils import utils
 
-# Maps features names to the column numbers from the dataset (CSV format)
-# Also sets how much tokenizing we should do (if tokenizing is anything but none,
-# then the feature value will be a vector not scalar
-pe_headers_feature_keys = [
-    # {"name": "e_magic", "index": 0, "tokenize": "char"},
-    # {"name": "e_cblp", "index": 1, "tokenize": "char"},
-    # {"name": "e_cp", "index": 2, "tokenize": "none"},
-    # {"name": "e_crlc", "index": 3, "tokenize": "none"},
-    # {"name": "e_cparhdr", "index": 4, "tokenize": "none"},
-    {"name": "e_minalloc", "index": 5, "tokenize": "none"},
-    {"name": "e_maxalloc", "index": 6, "tokenize": "none"},
-    # {"name": "e_ss", "index": 7, "tokenize": "none"},
-    # {"name": "e_sp", "index": 8, "tokenize": "none"},
-    # {"name": "e_csum", "index": 9, "tokenize": "none"},
-    {"name": "e_ip", "index": 10, "tokenize": "none"},
-    # {"name": "e_cs", "index": 11, "tokenize": "none"},
-    # {"name": "e_lfarlc", "index": 12, "tokenize": "none"},
-    # {"name": "e_ovno", "index": 13, "tokenize": "none"},
-    # {"name": "e_res", "index": 14, "tokenize": "none"},
-    # {"name": "e_oemid", "index": 15, "tokenize": "char"},
-    # {"name": "e_oeminfo", "index": 16, "tokenize": "char"},
-    # {"name": "e_res2", "index": 17, "tokenize": "none"},
-    # {"name": "e_lfanew", "index": 18, "tokenize": "none"},
-    {"name": "Machine", "index": 19, "tokenize": "none"},
-    {"name": "NumberOfSections", "index": 20, "tokenize": "none"},
-    {"name": "PointerToSymbolTable", "index": 22, "tokenize": "none"},
-    {"name": "NumberOfSymbols", "index": 23, "tokenize": "none"},
-    {"name": "AddressOfEntryPoint", "index": 32, "tokenize": "none"},
-    {"name": "CheckSum", "index": 46, "tokenize": "none"},
-]
+stats = utils.stats
+stats_vis = utils.stats_vis
+scaler = RobustScaler()
 
 
-def train_hann(
-    feature_keys: dict, training_fp: str, model_fp: str = DEFAULT_MODEL_PATH
-):
+def get_features_corr(
+    training_filepath: str,
+    features: list,
+    target_feature: str = None,
+    correlation="pearson",
+) -> list:
+    """
+    Gets correlation of each feature in a list compared to the classification
+    probability of the model.
+
+    Args:
+        training_filepath (str): Filepath to read data from (should be CSV or txt)
+        features (list): List of features to get correlations with
+        target_feature (str, optional): If specified, will return correlation
+            values for every
+        correlation (str, optional): Type of correlation metric to classify;
+            defaults to "jaccard".
+
+    Returns:
+        list: List of correlations; if no $target_feature param is specified, the
+            list will only contain one result, with all the feature correlations.
+    """
+    results = []
+    df = pd.read_csv(training_filepath)
+    if target_feature:
+        for feature in features:
+            feature = [feature]
+            result = {}
+            corr = stats.get_correlation_for_features(
+                df, feature, target_feature, correlation
+            )
+            # print("\tCorrelation for {} is {}.".format(feature, corr))
+            result["feature"] = feature
+            result["target_feature"] = target_feature
+            result["corr"] = corr
+            results.append(result)
+    else:
+        result = {}
+        print("Getting correlation for all features {}.".format(features))
+        corr = stats.get_correlation_for_features(df, features, correlation)
+        result["features"] = features
+        result["corr"] = corr
+        results.append(result)
+        print("\t", corr)
+    return results
+
+
+def train_model(
+    training_fp: str,
+    feature_keys: dict,
+    labels: list = None,
+    model_base: object = None,
+    model_save: bool = True,
+    model_fp: str = DEFAULT_MODEL_PATH,
+) -> object:
+    """
+    Trains a hierarchical attention network model from a CSV or text file.
+
+    Args:
+        training_fp (str): Filepath to read dataset from into df;
+             must be CSV or text.
+        feature_keys (dict): Dictionary containing features and their
+            properties mapped from the training file.
+        labels (list, optional): List of labels (used for labelling charts
+            and model metrics).
+        model_base (object, optional): If specified, train a classifier with
+           given model (instead of default HANN). Should be used to test
+           trained model with various baselines.
+        model_save (bool, optional): Whether to save trained model to disk.
+        model_fp (str, optional): Filepath to save the model to, if
+            model_save is set to True. Will default if not specified.
+
+    Returns:
+        object: Trained model.
+    """
     # For now the PE header / metadata model will be our default one
     # but eventually we'll have multiple classifiers built using the HANN model
     hann = HierarchicalAttentionNetwork()
-    hann.feature_keys = feature_keys
-    print("Feature keys: ", hann.feature_keys)
-    print("Training fp: ", training_fp)
-    model = hann.read_and_train_data(training_fp)
-    model.save(model_fp)
-    return
+    # hann.feature_keys = feature_keys
+    print("Training file {}.".format(training_fp))
+    model = hann.read_and_train_data(training_fp, model_base=model_base, labels=labels)
+    print("Training successful.")
+    if model_save:
+        hann.save_model(model, model_fp)
+        print("Saving model to {}.".format(model_fp))
+    return (model, (hann.X, hann.Y))
 
 
 if __name__ == "__main__":
-    train_hann(pe_headers_feature_keys, DEFAULT_TRAINING_DATA_PATH)
+    labels = ["benign", "malicious"]
+    training_fp = DEFAULT_TRAINING_DATA_PATH
+    # feature_keys = pe_headers_feature_keys
+    # feature_keys_list = [dict["name"] for dict in pe_headers_feature_keys]
+    feature_keys_list = list(pd.read_csv(training_fp).columns)
+    # Classification label can't be considered a feature (for training the model
+    # at least), so we'll filter that out
+    feature_keys_filtered = [
+        key for key in feature_keys_list if key is not "classification" or "class"
+    ]
+    # feature_keys_list.append("classification")
+    target_feature = "classification"
+    # Get our most important features from the training data
+    # Using Pearson correlation is appropriate because we only have
+    # two categories (point-biserial correlation).
+    # If we had multi-class dataset there'd need to be
+    # additional preprocessing done.
+    corr = get_features_corr(training_fp, feature_keys_list)[0]["corr"]
+    stats_vis.visualize_correlation_matrix(
+        corr,
+        annot=False,
+        plot_title="Features Correlation for PE Header Data",
+        save_image=True,
+        show=True,
+    )
+    # Now out of those, let's get the top N features
+    stats_vis.visualize_correlation_matrix(
+        corr,
+        annot=True,
+        plot_title="Features Correlation for PE Header Data",
+        save_image=True,
+        show=True,
+    )
+    results = get_features_corr(training_fp, feature_keys_list, target_feature)
+    # Let's make a LogisticRegression model first, to use as a baseline comparison
+    # model_base = LogisticRegression(random_state=1618)
+    # If we don't pass a model_base, will train HANN architecture by default.
+    model_base = None
+    model_results = train_model(
+        training_fp, feature_keys_filtered, labels=labels, model_base=model_base
+    )
+    model = model_results[0]

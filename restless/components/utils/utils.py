@@ -1,11 +1,15 @@
 import os
 import subprocess
 
-from .logger import Logger
+from .logger_utils import LoggerUtils
+from .stats_utils import StatsUtils
+from .stats_vis_utils import StatsVisUtils
 
 # from .db_caller import DB_Caller
 
-logger = Logger()
+logger = LoggerUtils()
+stats = StatsUtils()
+stats_vis = StatsVisUtils()
 # db = DB_Caller()
 
 DEFAULT_LOG_DIR = "./logs"
@@ -18,11 +22,13 @@ class Utils:
 
     def __init__(self):
         self.logger = logger
+        self.stats = stats
+        self.stats_vis = stats_vis
         # self.db = db
         # self.print_logm("Initializing db: " + str(self.db.context))
         pass
 
-    def print_logm(self, message: str):
+    def print_logm(self, message: str) -> None:
         """
         Prints a log to sys output, by default to `INFO` level. Accepts a str message as only param.
 
@@ -32,7 +38,7 @@ class Utils:
         self.logger._print_log({"message": message})
         return
 
-    def print_log(self, data: dict):
+    def print_log(self, data: dict) -> None:
         """
         Prints a log to sys output.
 
@@ -43,7 +49,7 @@ class Utils:
         self.logger._print_log(data)
         return
 
-    def write_log(self, data: dict, filepath: str = DEFAULT_LOG_DIR):
+    def write_log(self, data: dict, filepath: str = DEFAULT_LOG_DIR) -> bool:
         """
         Prints and writes a log to disk.
 
@@ -53,7 +59,7 @@ class Utils:
         """
         return
 
-    def check_if_in_docker_container(self):
+    def check_if_in_docker_container(self) -> bool:
         """
         Check to see if we're running inside a Docker container (via checking env var `APP_ENV`).
         """
