@@ -15,14 +15,18 @@ DEFAULT_SCREENSHOTS_PATH = os.path.abspath(
     )
 )
 
+# Generate a custom diverging colormap
+cmap = sbn.diverging_palette(220, 10, as_cmap=True)
+
 
 class StatsVisUtils:
     def __init__(self):
         return
 
-    def visualize_correlation_diagonal_matrix(
+    def visualize_correlation_matrix(
         self,
         corr,
+        annot: bool = False,
         plot_title: str = None,
         save_image: bool = False,
         output_fp: str = None,
@@ -35,24 +39,24 @@ class StatsVisUtils:
         https://seaborn.pydata.org/examples/many_pairwise_correlations.html
         """
         # Generate a mask for the upper triangle
-        mask = np.triu(np.ones_like(corr, dtype=np.float32))
-        # mask = np.zeros_like(corr, dtype=np.bool)
-        # mask[np.triu_indices_from(mask)] = True
+        # mask = np.triu(np.ones_like(corr, dtype=np.float32))
+        mask = np.zeros_like(corr, dtype=np.bool)
+        mask[np.triu_indices_from(mask)] = True
         # Set up the matplotlib figure
         f, ax = plt.subplots(figsize=(11, 9))
-        # Generate a custom diverging colormap
-        cmap = sbn.diverging_palette(220, 10, as_cmap=True)
         # Draw the heatmap with the mask and correct aspect ratio
         hmap = sbn.heatmap(
             corr,
+            annot=annot,
             mask=mask,
             cmap=cmap,
-            vmax=0.3,
+            vmax=1,
+            vmin=-1,
             center=0,
             xticklabels=corr.columns,
             yticklabels=corr.columns,
-            # cmap="RdBu_r",
             square=True,
+            fmt=".2g",
             linewidths=0.5,
             cbar_kws={"shrink": 0.5},
         )
@@ -65,7 +69,9 @@ class StatsVisUtils:
             if not output_fp:
                 if plot_title:
                     output_fp = os.path.abspath(
-                        os.path.join(DEFAULT_SCREENSHOTS_PATH, plot_title + " " + str(now))
+                        os.path.join(
+                            DEFAULT_SCREENSHOTS_PATH, plot_title + " " + str(now)
+                        )
                     )
                 else:
                     output_fp = os.path.abspath(
@@ -78,50 +84,17 @@ class StatsVisUtils:
             plt.savefig(output_fp + ".png", dpi=300)
         return hmap
 
-    def visualize_correlation(
-        self,
-        corr,
-        plot_title: str = None,
-        save_image: bool = False,
-        output_fp: str = None,
-        show: bool = True,
-    ) -> object:
-        """
-        Graphs df correlation with heatmap and annotated values.
-        Optionally saves output to image.
-        """
-        hmap = sbn.heatmap(
-            corr,
-            xticklabels=corr.columns,
-            yticklabels=corr.columns,
-            cmap="RdBu_r",
-            annot=True,
-            linewidth=0.5,
-        )
-        if plot_title:
-            plt.title(plot_title)
-        if show:
-            plt.show()
-        if save_image:
-            now = datetime.now().replace(microsecond=0)
-            if not output_fp:
-                if plot_title:
-                    output_fp = os.path.abspath(
-                        os.path.join(DEFAULT_SCREENSHOTS_PATH, plot_title + " " + str(now))
-                    )
-                else:
-                    output_fp = os.path.abspath(
-                        os.path.join(DEFAULT_SCREENSHOTS_PATH, str(now))
-                    )
-            if plot_title:
-                print("Saving plot {} to {}.".format(plot_title, output_fp))
-            else:
-                print("Saving plot to {}.".format(output_fp))
-            plt.savefig(output_fp + ".png", dpi=300)
-        return hmap
-
-    def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None,
-                        n_jobs=None, train_sizes=np.linspace(.1, 1.0, 5)):
+    def plot_learning_curve(
+        estimator,
+        title,
+        X,
+        y,
+        axes=None,
+        ylim=None,
+        cv=None,
+        n_jobs=None,
+        train_sizes=np.linspace(0.1, 1.0, 5),
+    ):
         """
         From https://scikit-learn.org/stable/auto_examples/model_selection/plot_learning_curve.html
 
@@ -190,10 +163,15 @@ class StatsVisUtils:
         axes[0].set_xlabel("Training examples")
         axes[0].set_ylabel("Score")
 
-        train_sizes, train_scores, test_scores, fit_times, _ = \
-            learning_curve(estimator, X, y, cv=cv, n_jobs=n_jobs,
-                           train_sizes=train_sizes,
-                           return_times=True)
+        train_sizes, train_scores, test_scores, fit_times, _ = learning_curve(
+            estimator,
+            X,
+            y,
+            cv=cv,
+            n_jobs=n_jobs,
+            train_sizes=train_sizes,
+            return_times=True,
+        )
         train_scores_mean = np.mean(train_scores, axis=1)
         train_scores_std = np.std(train_scores, axis=1)
         test_scores_mean = np.mean(test_scores, axis=1)
@@ -203,32 +181,54 @@ class StatsVisUtils:
 
         # Plot learning curve
         axes[0].grid()
-        axes[0].fill_between(train_sizes, train_scores_mean - train_scores_std,
-                             train_scores_mean + train_scores_std, alpha=0.1,
-                             color="r")
-        axes[0].fill_between(train_sizes, test_scores_mean - test_scores_std,
-                             test_scores_mean + test_scores_std, alpha=0.1,
-                             color="g")
-        axes[0].plot(train_sizes, train_scores_mean, 'o-', color="r",
-                     label="Training score")
-        axes[0].plot(train_sizes, test_scores_mean, 'o-', color="g",
-                     label="Cross-validation score")
+        axes[0].fill_between(
+            train_sizes,
+            train_scores_mean - train_scores_std,
+            train_scores_mean + train_scores_std,
+            alpha=0.1,
+            color="r",
+        )
+        axes[0].fill_between(
+            train_sizes,
+            test_scores_mean - test_scores_std,
+            test_scores_mean + test_scores_std,
+            alpha=0.1,
+            color="g",
+        )
+        axes[0].plot(
+            train_sizes, train_scores_mean, "o-", color="r", label="Training score"
+        )
+        axes[0].plot(
+            train_sizes,
+            test_scores_mean,
+            "o-",
+            color="g",
+            label="Cross-validation score",
+        )
         axes[0].legend(loc="best")
 
         # Plot n_samples vs fit_times
         axes[1].grid()
-        axes[1].plot(train_sizes, fit_times_mean, 'o-')
-        axes[1].fill_between(train_sizes, fit_times_mean - fit_times_std,
-                             fit_times_mean + fit_times_std, alpha=0.1)
+        axes[1].plot(train_sizes, fit_times_mean, "o-")
+        axes[1].fill_between(
+            train_sizes,
+            fit_times_mean - fit_times_std,
+            fit_times_mean + fit_times_std,
+            alpha=0.1,
+        )
         axes[1].set_xlabel("Training examples")
         axes[1].set_ylabel("fit_times")
         axes[1].set_title("Scalability of the model")
 
         # Plot fit_time vs score
         axes[2].grid()
-        axes[2].plot(fit_times_mean, test_scores_mean, 'o-')
-        axes[2].fill_between(fit_times_mean, test_scores_mean - test_scores_std,
-                             test_scores_mean + test_scores_std, alpha=0.1)
+        axes[2].plot(fit_times_mean, test_scores_mean, "o-")
+        axes[2].fill_between(
+            fit_times_mean,
+            test_scores_mean - test_scores_std,
+            test_scores_mean + test_scores_std,
+            alpha=0.1,
+        )
         axes[2].set_xlabel("fit_times")
         axes[2].set_ylabel("Score")
         axes[2].set_title("Performance of the model")

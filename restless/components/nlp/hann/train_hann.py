@@ -162,5 +162,7 @@ if __name__ == "__main__":
     results = get_features_corr(training_fp, feature_keys_list, target_feature)
     # Let's make a LogisticRegression model first, to use as a baseline comparison
     model_base = LogisticRegression(random_state=1618)
-    model_results = train_model(training_fp, feature_keys_filtered, labels=labels, model_base=model_base)
+    model_results = train_model(
+        training_fp, feature_keys_filtered, labels=labels, model_base=model_base
+    )
     model = model_results[0]
