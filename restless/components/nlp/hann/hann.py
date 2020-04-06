@@ -404,7 +404,7 @@ class HierarchicalAttentionNetwork:
             pass
         return model
 
-    def _get_feature_keys(self, filepath:str=DEFAULT_TRAINING_DATA_PATH) -> list:
+    def _get_feature_keys(self, filepath: str = DEFAULT_TRAINING_DATA_PATH) -> list:
         if self.feature_keys is None or len(self.feature_keys) is 0:
             df = pd.read_csv(filepath, nrows=MAX_DOCS)
             feature_keys = [

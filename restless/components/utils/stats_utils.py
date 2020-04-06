@@ -63,11 +63,7 @@ class StatsUtils:
         return corr
 
     def get_model_metrics(
-        self,
-        y,
-        y_pred,
-        labels: list = ["0", "1"],
-        print_output: bool = False,
+        self, y, y_pred, labels: list = ["0", "1"], print_output: bool = False,
     ) -> dict:
         """
         Gets metrics from evaluated model and input data, including
