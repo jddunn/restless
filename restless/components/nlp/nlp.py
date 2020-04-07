@@ -31,6 +31,7 @@ top_df, top_features = stats.transform_df_with_top_features_for_hann(
     df, corr, features, target_feature, threshold=0.1
 )
 
+
 class NLP:
     """
     Module with all NLP and text processing related features.

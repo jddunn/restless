@@ -63,7 +63,7 @@ Currently, there is no REST API functionality besides serving the documentation;
 </div>
 
 ---------------------------------------------------
-### Training Hierarchical Attention Network Model with extracted PE features (CheckSum, AddressOfEntryPoint, e_minalloc, e_maxalloc, etc.):
+### Training Hierarchical Attention Network Model with extracted PE top features:
 
 ```
 cd restless/components/nlp/hann
@@ -148,7 +148,7 @@ The incorporation of machine learning (usually, natural langauge processing tech
 * K-means clustering for learning unsupervised patterns of abnormal / deviant logs (planned)
 ..
 
-Restless's current classifications are implemented through a [hierarchical attention network](https://www.cs.cmu.edu/~./hovy/papers/16HLT-hierarchical-atten$), a type of recurrent neural network with an attention layer that can find the most important words and sentences to represent a document, as it is able to read the data in a bidirectional way to learn context.
+Restless's current classifications are implemented through a [hierarchical attention network](https://www.cs.cmu.edu/~./hovy/papers/16HLT-hierarchical-attention-networks.pdf), a type of recurrent neural network with an attention layer that can find the most important words and sentences to represent a document, as it is able to read the data in a bidirectional way to learn context.
 
 The architecture from the paper has been modified in Restless's implenetation of HAN, in that a vector (array of features) is now acceptable (as well as scalars) for both "sentences" and "words" that build up the vocabulary.  
 

@@ -65,53 +65,6 @@ MAX_N_FEATURES = None  # If none we have no limit
 CORR_THRESHOLD = 0.1  # minimum val to consider meaningful linear correlation
 
 
-def transform_df_with_top_features_for_hann(
-    df,
-    corr,
-    features_list: list,
-    target_feature: str,
-    n_features: int = MAX_N_FEATURES,
-    threshold=CORR_THRESHOLD,
-) -&gt; pd.DataFrame:
-    &#34;&#34;&#34;
-    Given a dataframe and the correlation of the df, get the top number of features
-    that correlate with the target feature / label (e.g. classification), and return
-    a new dataframe containing only those top features and the target feature.
-
-    The reasoning for this function is interesting. We will not be dropping features
-    in the typical way that&#39;s done for feature selection (which is removing features
-    that are highly correlated with each other to prevent collinearity). Actually,
-    for this architecture some collinearity will be desirable.
-
-    Since we plan to use a Hierarchical Attention Network for our classifier (in which
-    we build representations of malicious / benign files using the structure of text
-    documents), it is desirable to create that feature representation with features
-    that have some correlation (either positive or negative) with our target feature,
-    which in this case, is our file classification.
-    &#34;&#34;&#34;
-    # _corr = corr.values
-    _corr = corr.values
-    to_filter = []
-    top_features = []
-    for i in range(len(features_list) - 1):
-        # Since we&#39;re not doing regression but classification, we can consider any indepedent X vars
-        # that have a negative or positive correlation.
-        try:
-            if abs(_corr[i]) &lt; threshold:
-                to_filter.append(features_list[i])
-            else:
-                if MAX_N_FEATURES is not None and len(top_features) &lt; MAX_N_FEATURES:
-                    top_features.append(features_list[i])
-                elif MAX_N_FEATURES is not None and len(top_features) &gt;= MAX_N_FEATURES:
-                    break
-                else:
-                    top_features.append(features_list[i])
-        except Exception as e:
-            break
-    new_df = df.drop(to_filter, axis=1)
-    return new_df, top_features
-
-
 def get_features_corr(
     df: pd.DataFrame,
     features: list,
@@ -254,8 +207,8 @@ if __name__ == &#34;__main__&#34;:
         target_feature=target_feature,
         get_corr_with_target_feature_only=True,
     )[0][&#34;corr&#34;]
-    top_df, top_features = transform_df_with_top_features_for_hann(
-        df, target_corr, feature_keys_list, target_feature
+    top_df, top_features = stats.transform_df_with_top_features_for_hann(
+        df, target_corr, feature_keys_list, target_feature, threshold=CORR_THRESHOLD
     )
     _top_features = top_features
     _top_features.append(&#34;classification&#34;)  # For our labels
@@ -471,73 +424,6 @@ model_save is set to True. Will default if not specified.</dd>
     return (model, (hann.X, hann.Y))</code></pre>
 </details>
 </dd>
-<dt id="restless.components.nlp.hann.train_hann.transform_df_with_top_features_for_hann"><code class="name flex">
-<span>def <span class="ident">transform_df_with_top_features_for_hann</span></span>(<span>df, corr, features_list, target_feature, n_features=None, threshold=0.1)</span>
-</code></dt>
-<dd>
-<section class="desc"><p>Given a dataframe and the correlation of the df, get the top number of features
-that correlate with the target feature / label (e.g. classification), and return
-a new dataframe containing only those top features and the target feature.</p>
-<p>The reasoning for this function is interesting. We will not be dropping features
-in the typical way that's done for feature selection (which is removing features
-that are highly correlated with each other to prevent collinearity). Actually,
-for this architecture some collinearity will be desirable.</p>
-<p>Since we plan to use a Hierarchical Attention Network for our classifier (in which
-we build representations of malicious / benign files using the structure of text
-documents), it is desirable to create that feature representation with features
-that have some correlation (either positive or negative) with our target feature,
-which in this case, is our file classification.</p></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def transform_df_with_top_features_for_hann(
-    df,
-    corr,
-    features_list: list,
-    target_feature: str,
-    n_features: int = MAX_N_FEATURES,
-    threshold=CORR_THRESHOLD,
-) -&gt; pd.DataFrame:
-    &#34;&#34;&#34;
-    Given a dataframe and the correlation of the df, get the top number of features
-    that correlate with the target feature / label (e.g. classification), and return
-    a new dataframe containing only those top features and the target feature.
-
-    The reasoning for this function is interesting. We will not be dropping features
-    in the typical way that&#39;s done for feature selection (which is removing features
-    that are highly correlated with each other to prevent collinearity). Actually,
-    for this architecture some collinearity will be desirable.
-
-    Since we plan to use a Hierarchical Attention Network for our classifier (in which
-    we build representations of malicious / benign files using the structure of text
-    documents), it is desirable to create that feature representation with features
-    that have some correlation (either positive or negative) with our target feature,
-    which in this case, is our file classification.
-    &#34;&#34;&#34;
-    # _corr = corr.values
-    _corr = corr.values
-    to_filter = []
-    top_features = []
-    for i in range(len(features_list) - 1):
-        # Since we&#39;re not doing regression but classification, we can consider any indepedent X vars
-        # that have a negative or positive correlation.
-        try:
-            if abs(_corr[i]) &lt; threshold:
-                to_filter.append(features_list[i])
-            else:
-                if MAX_N_FEATURES is not None and len(top_features) &lt; MAX_N_FEATURES:
-                    top_features.append(features_list[i])
-                elif MAX_N_FEATURES is not None and len(top_features) &gt;= MAX_N_FEATURES:
-                    break
-                else:
-                    top_features.append(features_list[i])
-        except Exception as e:
-            break
-    new_df = df.drop(to_filter, axis=1)
-    return new_df, top_features</code></pre>
-</details>
-</dd>
 </dl>
 </section>
 <section>
@@ -558,7 +444,6 @@ which in this case, is our file classification.</p></section>
 <ul class="">
 <li><code><a title="restless.components.nlp.hann.train_hann.get_features_corr" href="#restless.components.nlp.hann.train_hann.get_features_corr">get_features_corr</a></code></li>
 <li><code><a title="restless.components.nlp.hann.train_hann.train_model" href="#restless.components.nlp.hann.train_hann.train_model">train_model</a></code></li>
-<li><code><a title="restless.components.nlp.hann.train_hann.transform_df_with_top_features_for_hann" href="#restless.components.nlp.hann.train_hann.transform_df_with_top_features_for_hann">transform_df_with_top_features_for_hann</a></code></li>
 </ul>
 </li>
 </ul>

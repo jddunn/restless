@@ -100,6 +100,53 @@ class StatsUtils:
             )
         return corr
 
+    def transform_df_with_top_features_for_hann(
+        self,
+        df: DataFrame,
+        corr,
+        features_list: list,
+        target_feature: str,
+        threshold: float = 0.01,
+        n_features: int = 1000,
+    ) -&gt; tuple:
+        &#34;&#34;&#34;
+        Given a dataframe and the correlation of the df, get the top number of features
+        that correlate with the target feature / label (e.g. classification), and return
+        a new dataframe containing only those top features and the target feature.
+
+        The reasoning for this function is interesting. We will not be dropping features
+        in the typical way that&#39;s done for feature selection (which is removing features
+        that are highly correlated with each other to prevent collinearity). Actually,
+        for this architecture some collinearity will be desirable.
+
+        Since we plan to use a Hierarchical Attention Network for our classifier (in which
+        we build representations of malicious / benign files using the structure of text
+        documents), it is desirable to create that feature representation with features
+        that have some correlation (either positive or negative) with our target feature,
+        which in this case, is our file classification.
+        &#34;&#34;&#34;
+        # _corr = corr.values
+        _corr = corr.values
+        to_filter = []
+        top_features = []
+        for i in range(len(features_list) - 1):
+            # Since we&#39;re not doing regression but classification, we can consider any indepedent X vars
+            # that have a negative or positive correlation.
+            try:
+                if abs(_corr[i]) &lt; threshold:
+                    to_filter.append(features_list[i])
+                else:
+                    if n_features is not None and len(top_features) &lt; n_features:
+                        top_features.append(features_list[i])
+                    elif n_features is not None and len(top_features) &gt;= n_features:
+                        break
+                    else:
+                        top_features.append(features_list[i])
+            except Exception as e:
+                break
+        new_df = df.drop(to_filter, axis=1)
+        return (new_df, top_features)
+
     def get_model_metrics(
         self, y, y_pred, labels: list = [&#34;0&#34;, &#34;1&#34;], print_output: bool = False,
     ) -&gt; dict:
@@ -273,6 +320,53 @@ and ML processing.</p></section>
                 &#34;Correlation for features: {} is {}&#34;.format(features_to_compare, corr)
             )
         return corr
+
+    def transform_df_with_top_features_for_hann(
+        self,
+        df: DataFrame,
+        corr,
+        features_list: list,
+        target_feature: str,
+        threshold: float = 0.01,
+        n_features: int = 1000,
+    ) -&gt; tuple:
+        &#34;&#34;&#34;
+        Given a dataframe and the correlation of the df, get the top number of features
+        that correlate with the target feature / label (e.g. classification), and return
+        a new dataframe containing only those top features and the target feature.
+
+        The reasoning for this function is interesting. We will not be dropping features
+        in the typical way that&#39;s done for feature selection (which is removing features
+        that are highly correlated with each other to prevent collinearity). Actually,
+        for this architecture some collinearity will be desirable.
+
+        Since we plan to use a Hierarchical Attention Network for our classifier (in which
+        we build representations of malicious / benign files using the structure of text
+        documents), it is desirable to create that feature representation with features
+        that have some correlation (either positive or negative) with our target feature,
+        which in this case, is our file classification.
+        &#34;&#34;&#34;
+        # _corr = corr.values
+        _corr = corr.values
+        to_filter = []
+        top_features = []
+        for i in range(len(features_list) - 1):
+            # Since we&#39;re not doing regression but classification, we can consider any indepedent X vars
+            # that have a negative or positive correlation.
+            try:
+                if abs(_corr[i]) &lt; threshold:
+                    to_filter.append(features_list[i])
+                else:
+                    if n_features is not None and len(top_features) &lt; n_features:
+                        top_features.append(features_list[i])
+                    elif n_features is not None and len(top_features) &gt;= n_features:
+                        break
+                    else:
+                        top_features.append(features_list[i])
+            except Exception as e:
+                break
+        new_df = df.drop(to_filter, axis=1)
+        return (new_df, top_features)
 
     def get_model_metrics(
         self, y, y_pred, labels: list = [&#34;0&#34;, &#34;1&#34;], print_output: bool = False,
@@ -598,6 +692,74 @@ etc.</p></section>
     return</code></pre>
 </details>
 </dd>
+<dt id="restless.components.utils.stats_utils.StatsUtils.transform_df_with_top_features_for_hann"><code class="name flex">
+<span>def <span class="ident">transform_df_with_top_features_for_hann</span></span>(<span>self, df, corr, features_list, target_feature, threshold=0.01, n_features=1000)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Given a dataframe and the correlation of the df, get the top number of features
+that correlate with the target feature / label (e.g. classification), and return
+a new dataframe containing only those top features and the target feature.</p>
+<p>The reasoning for this function is interesting. We will not be dropping features
+in the typical way that's done for feature selection (which is removing features
+that are highly correlated with each other to prevent collinearity). Actually,
+for this architecture some collinearity will be desirable.</p>
+<p>Since we plan to use a Hierarchical Attention Network for our classifier (in which
+we build representations of malicious / benign files using the structure of text
+documents), it is desirable to create that feature representation with features
+that have some correlation (either positive or negative) with our target feature,
+which in this case, is our file classification.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def transform_df_with_top_features_for_hann(
+    self,
+    df: DataFrame,
+    corr,
+    features_list: list,
+    target_feature: str,
+    threshold: float = 0.01,
+    n_features: int = 1000,
+) -&gt; tuple:
+    &#34;&#34;&#34;
+    Given a dataframe and the correlation of the df, get the top number of features
+    that correlate with the target feature / label (e.g. classification), and return
+    a new dataframe containing only those top features and the target feature.
+
+    The reasoning for this function is interesting. We will not be dropping features
+    in the typical way that&#39;s done for feature selection (which is removing features
+    that are highly correlated with each other to prevent collinearity). Actually,
+    for this architecture some collinearity will be desirable.
+
+    Since we plan to use a Hierarchical Attention Network for our classifier (in which
+    we build representations of malicious / benign files using the structure of text
+    documents), it is desirable to create that feature representation with features
+    that have some correlation (either positive or negative) with our target feature,
+    which in this case, is our file classification.
+    &#34;&#34;&#34;
+    # _corr = corr.values
+    _corr = corr.values
+    to_filter = []
+    top_features = []
+    for i in range(len(features_list) - 1):
+        # Since we&#39;re not doing regression but classification, we can consider any indepedent X vars
+        # that have a negative or positive correlation.
+        try:
+            if abs(_corr[i]) &lt; threshold:
+                to_filter.append(features_list[i])
+            else:
+                if n_features is not None and len(top_features) &lt; n_features:
+                    top_features.append(features_list[i])
+                elif n_features is not None and len(top_features) &gt;= n_features:
+                    break
+                else:
+                    top_features.append(features_list[i])
+        except Exception as e:
+            break
+    new_df = df.drop(to_filter, axis=1)
+    return (new_df, top_features)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 </dl>
@@ -623,6 +785,7 @@ etc.</p></section>
 <li><code><a title="restless.components.utils.stats_utils.StatsUtils.get_metrics_averages" href="#restless.components.utils.stats_utils.StatsUtils.get_metrics_averages">get_metrics_averages</a></code></li>
 <li><code><a title="restless.components.utils.stats_utils.StatsUtils.get_model_metrics" href="#restless.components.utils.stats_utils.StatsUtils.get_model_metrics">get_model_metrics</a></code></li>
 <li><code><a title="restless.components.utils.stats_utils.StatsUtils.pretty_print_cm" href="#restless.components.utils.stats_utils.StatsUtils.pretty_print_cm">pretty_print_cm</a></code></li>
+<li><code><a title="restless.components.utils.stats_utils.StatsUtils.transform_df_with_top_features_for_hann" href="#restless.components.utils.stats_utils.StatsUtils.transform_df_with_top_features_for_hann">transform_df_with_top_features_for_hann</a></code></li>
 </ul>
 </li>
 </ul>

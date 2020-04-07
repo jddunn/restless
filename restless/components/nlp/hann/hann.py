@@ -144,13 +144,10 @@ class HierarchicalAttentionNetwork:
         if load_default_model:
             # try:
             self.model = load_model(
-                DEFAULT_MODEL_PATH,
-                custom_objects={"AttentionLayer": AttentionLayer},
+                DEFAULT_MODEL_PATH, custom_objects={"AttentionLayer": AttentionLayer},
             )
             # self.model.load_weights(DEFAULT_MODEL_PATH)
-            self.data_train = pd.read_csv(
-                DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS
-            )
+            self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
             if len(self.feature_keys) is 0:
                 self.feature_keys = self._get_feature_keys(
                     DEFAULT_TRAINING_DATA_PATH, top_features=self.features
@@ -159,10 +156,10 @@ class HierarchicalAttentionNetwork:
             print(
                 "Successfully loaded default HANN model - {} - {}.".format(
                     DEFAULT_MODEL_PATH, self.model
-                 )
+                )
             )
-           #  except Exception as e:
-             #   print("Error loading model: ", e)
+        #  except Exception as e:
+        #   print("Error loading model: ", e)
         return
 
     def read_and_train_data(
@@ -414,20 +411,21 @@ class HierarchicalAttentionNetwork:
     def _get_feature_keys(
         self, filepath: str = DEFAULT_TRAINING_DATA_PATH, top_features: list = []
     ) -> list:
-        print("TOP FEATURES PASSED: ", top_features)
         df = pd.read_csv(filepath, nrows=MAX_DOCS)
         feature_keys = []
         if len(top_features) > 0:
             feature_keys = [
-                key for key in list(df.columns) if key != "classification" and key in top_features
+                key
+                for key in list(df.columns)
+                if key != "classification" and key in top_features
             ]
-            print("THESE ARE FEATURE KEYS NOW BOY: ", feature_keys)
         else:
-            print("WE AINT GOT NO TOP FEATURES")
             if len(self.feature_keys) is 0:
                 if len(self.features) > 0:
                     feature_keys = [
-                        key for key in list(df.columns) if key != "classification" and key in self.features
+                        key
+                        for key in list(df.columns)
+                        if key != "classification" and key in self.features
                     ]
                 else:
                     feature_keys = [
@@ -439,11 +437,10 @@ class HierarchicalAttentionNetwork:
             # from being trained, without modifiying the original dataset, so order of indices may not
             # be continuous. Also, we can define a tokenization level in these mappings.
         feature_keys = [
-           {"name": feature_key, "index": i}
-            for i, feature_key in enumerate(feature_keys)]
-        print("WE RETURN FEATURE KEYS: ", feature_keys)
+            {"name": feature_key, "index": i}
+            for i, feature_key in enumerate(feature_keys)
+        ]
         return feature_keys
-
 
     def _fill_feature_vec(self, texts_features: list, feature_vector):
         """Helper function to build feature vector for HANN to classify."""

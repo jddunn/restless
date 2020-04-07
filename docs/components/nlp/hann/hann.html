@@ -92,20 +92,18 @@ sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
 try:
     from restless.components.utils import utils
-except:
-    from utils import utils
-try:
     from restless.components.nlp.text_normalizer import text_normalizer
 except:
+    from utils import utils
     from text_normalizer import text_normalizer
 
 # Hyperparams
 MAX_SENTENCE_LENGTH = 100
 MAX_SENTENCE_COUNT = 48
-VOCABULARY_SIZE = 100
 ATTENTION_DIM = 50
 GLOVE_DIMENSION_SIZE = ATTENTION_DIM  # needs same dimension
 MAX_DOCS = 1000000  # Limit number of records to train for speed if needed
+MAX_WORDS = 100000  # Max number of words for our corpus
 BATCH_SIZE = 32
 EPOCH_NUM = 3
 
@@ -143,7 +141,7 @@ class HierarchicalAttentionNetwork:
     Hierarchical Attention Network implementation.
     &#34;&#34;&#34;
 
-    def __init__(self, load_default_model: bool = False, **kwargs):
+    def __init__(self, load_default_model: bool = False, features: list = [], **kwargs):
         self.model = None
 
         self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
@@ -154,33 +152,40 @@ class HierarchicalAttentionNetwork:
         self.labels = None
         self.labels_matrix = None  # Map labels into matrix for prediction
 
-        self.feature_keys = None  # Mappings of feature indices from dataset
+        self.feature_keys = []  # Mappings of feature indices from dataset
 
         self.word_index = None
         self.embeddings_index = None
         self.word_embedding = None
         self.word_attention_model = None
         self.tokenizer = None
+        self.vocab_size = None
 
         self.X = None
         self.Y = None
 
+        self.texts = None
+        self.features = features  # List of features to extract
         self.num_classes = 2  # number of classes in our model; default is binary model
         if load_default_model:
-            try:
-                self.model = load_model(
-                    DEFAULT_MODEL_PATH,
-                    custom_objects={&#34;AttentionLayer&#34;: AttentionLayer},
+            # try:
+            self.model = load_model(
+                DEFAULT_MODEL_PATH, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer},
+            )
+            # self.model.load_weights(DEFAULT_MODEL_PATH)
+            self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
+            if len(self.feature_keys) is 0:
+                self.feature_keys = self._get_feature_keys(
+                    DEFAULT_TRAINING_DATA_PATH, top_features=self.features
                 )
-                self.model.load_weights(DEFAULT_MODEL_PATH)
-                self.data_train = pd.read_csv(
-                    DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS
+            self.preprocess_data(self.data_train, self.feature_keys)
+            print(
+                &#34;Successfully loaded default HANN model - {} - {}.&#34;.format(
+                    DEFAULT_MODEL_PATH, self.model
                 )
-                self.preprocess_data(self.data_train)
-                self.embeddings_index = self.get_glove_embeddings()
-                embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
-            except Exception as e:
-                print(&#34;Error loading model: &#34;, e)
+            )
+        #  except Exception as e:
+        #   print(&#34;Error loading model: &#34;, e)
         return
 
     def read_and_train_data(
@@ -194,10 +199,14 @@ class HierarchicalAttentionNetwork:
     ):
         &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
         self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
-        self.X = self.X.filter(top_features)
-        # Get rid of the classification / class column since that&#39;s not a feature
+        if top_features is not None:
+            self.X = self.X.filter(top_features)
+        else:
+            if len(self.features) &gt; 0:
+                top_features = self.features
+                self.X = self.X.filter(self.features)
         self.feature_keys = self._get_feature_keys(filepath, top_features=top_features)
-        self.preprocess_data(self.X)
+        self.preprocess_data(self.X, self.feature_keys)
         self.embeddings_index = self.get_glove_embeddings()
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
         model = self.build_network_and_train_model(
@@ -209,28 +218,24 @@ class HierarchicalAttentionNetwork:
             self.save_model(model, outputpath)
         return model
 
-    def preprocess_data(self, data_train: object, feature_keys: dict = None):
+    def preprocess_data(self, data_train: object, feature_keys):
         &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
         self.data = np.zeros(
-            (len(self.X), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
+            (len(data_train), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype=&#34;int32&#34;)
-        if feature_keys is None:
-            if self.feature_keys is None or len(self.feature_keys) is 0:
-                self.feature_keys = self._get_feature_keys()
-            feature_keys = self.feature_keys
-        else:
-            self.feature_keys = feature_keys
-        self.feature_vecs = self.build_features_vecs_from_data(data_train, feature_keys)
+        self.build_corpus(data_train, feature_keys)
+        self.build_features_vecs_from_data(data_train, feature_keys)
         print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
         print(&#34;Shape of data tensor: &#34;, self.data, self.data.shape)
+        print(&#34;Finished preprocessing data.&#34;)
         return self.data
 
     def load_model(self, filepath: str):
         &#34;&#34;&#34;Loads a model with a custom AttentionLayer property.&#34;&#34;&#34;
-        # model = load_model(
-        #  filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
-        # )
+        model = load_model(
+            filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
+        )
         if model:
             self.model = model
             return model
@@ -262,7 +267,7 @@ class HierarchicalAttentionNetwork:
             coefs = np.asarray(values[1:], dtype=&#34;float32&#34;)
             embeddings_index[word] = coefs
         f.close()
-        print(&#34;Total %s word vectors.&#34; % len(embeddings_index))
+        print(&#34;Total %s word vectors from GloVe.&#34; % len(embeddings_index))
         return embeddings_index
 
     def make_embeddings_matrix(self, embeddings_index):
@@ -430,33 +435,54 @@ class HierarchicalAttentionNetwork:
         return model
 
     def _get_feature_keys(
-        self, filepath: str = DEFAULT_TRAINING_DATA_PATH, top_features: list = None
+        self, filepath: str = DEFAULT_TRAINING_DATA_PATH, top_features: list = []
     ) -&gt; list:
-        if self.feature_keys is None or len(self.feature_keys) is 0:
-            df = pd.read_csv(filepath, nrows=MAX_DOCS)
-            if top_features is not None and len(top_features) is not 0:
-                feature_keys = [
-                    key
-                    for key in list(df.columns)
-                    if key != &#34;classification&#34; and key in top_features
-                ]
+        df = pd.read_csv(filepath, nrows=MAX_DOCS)
+        feature_keys = []
+        if len(top_features) &gt; 0:
+            feature_keys = [
+                key
+                for key in list(df.columns)
+                if key != &#34;classification&#34; and key in top_features
+            ]
+        else:
+            if len(self.feature_keys) is 0:
+                if len(self.features) &gt; 0:
+                    feature_keys = [
+                        key
+                        for key in list(df.columns)
+                        if key != &#34;classification&#34; and key in self.features
+                    ]
+                else:
+                    feature_keys = [
+                        key for key in list(df.columns) if key != &#34;classification&#34;
+                    ]
             else:
-                feature_keys = [
-                    key for key in list(df.columns) if key != &#34;classification&#34;
-                ]
+                return self.feature_keys
             # Map feature keys with their indices (since eventually we may want to eliminate features
             # from being trained, without modifiying the original dataset, so order of indices may not
             # be continuous. Also, we can define a tokenization level in these mappings.
-            feature_keys = [
-                {&#34;name&#34;: feature_key, &#34;index&#34;: i}
-                for i, feature_key in enumerate(feature_keys)
-            ]
-            return feature_keys
-        else:
-            return self.feature_keys
+        feature_keys = [
+            {&#34;name&#34;: feature_key, &#34;index&#34;: i}
+            for i, feature_key in enumerate(feature_keys)
+        ]
+        return feature_keys
 
     def _fill_feature_vec(self, texts_features: list, feature_vector):
         &#34;&#34;&#34;Helper function to build feature vector for HANN to classify.&#34;&#34;&#34;
+        self.tokenizer = Tokenizer()
+        _texts = []
+        for i, each in enumerate(self.texts):
+            if type(each) is list:
+                each = &#34;&#34;.join(each)
+            _texts.append(str(each))
+        for i in range(len(self.records)):
+            self.labels.append(self.records[i][&#34;classification&#34;])
+        texts = _texts
+        self.texts = _texts
+        self.tokenizer.fit_on_texts(texts)
+        self.word_index = self.tokenizer.word_index
+        self.vocab_size = len(self.word_index)
         for i, sentences in enumerate(texts_features):
             for j, sentence in enumerate(sentences):
                 if j &lt; MAX_SENTENCE_COUNT:
@@ -468,27 +494,18 @@ class HierarchicalAttentionNetwork:
                     for _, word in enumerate(wordTokens):
                         if type(word) is list:
                             word = &#34;&#34;.join(word)
-                        if k &lt; MAX_SENTENCE_LENGTH and _ &lt; VOCABULARY_SIZE:
+                        if k &lt; MAX_SENTENCE_LENGTH and _ &lt; MAX_WORDS:
                             try:
                                 feature_vector[i, j, k] = self.word_index[word]
-                            except:
+                            except Exception as e:
                                 feature_vector[i, j, k] = 0
                             k = k + 1
                         else:
                             break
         return feature_vector
 
-    def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
-        &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
-        if feature_keys is None:
-            if self.feature_keys is None or len(self.feature_keys) is 0:
-                self.feature_keys = self._get_feature_keys()
-            feature_keys = self.feature_keys
-        else:
-            self.feature_keys = feature_keys
-        results = []
+    def build_corpus(self, data_train, feature_keys):
         data_train_dict = data_train.to_dict()
-        self.tokenizer = Tokenizer()
         texts = []
         texts_features = []
         self.labels = []
@@ -505,28 +522,18 @@ class HierarchicalAttentionNetwork:
                 sentences.append(sentence)
             texts.extend(sentences)
             texts_features.append(sentences)
-        self.tokenizer = Tokenizer(nb_words=VOCABULARY_SIZE)
-        _texts = []
-        for i, each in enumerate(texts):
-            if type(each) is list:
-                each = &#34;&#34;.join(each)
-            _texts.append(str(each))
-        for i in range(len(self.records)):
-            self.labels.append(self.records[i][&#34;classification&#34;])
-        texts = _texts
-        self.tokenizer.fit_on_texts(texts)
-        self.word_index = self.tokenizer.word_index
+        self.texts = texts
+        return (texts, texts_features)
+
+    def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
+        &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
+        results = []
+        self.texts, texts_features = self.build_corpus(data_train, feature_keys)
         self.data = self._fill_feature_vec(texts_features, self.data)
         # Get unique classes from labels (in same order of occurence)
         classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
         self.num_classes = len(classes)
-        # Shuffle data
-        # indices = np.arange(self.data.shape[0])
-        # np.random.shuffle(indices)
-        # self.data = self.data[indices]
-        # self.labels = self.labels[indices]
         self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
-        print(self.labels_matrix, self.labels_matrix.shape)
         self.Y = self.labels_matrix
         self.X = self.data
         return self.data
@@ -536,7 +543,7 @@ class HierarchicalAttentionNetwork:
         results = []
         texts_features = []
         if feature_keys is None:
-            if self.feature_keys is None or len(self.feature_keys) is 0:
+            if self.feature_keys is None:
                 self.feature_keys = self._get_feature_keys()
             feature_keys = self.feature_keys
         else:
@@ -556,7 +563,6 @@ class HierarchicalAttentionNetwork:
             dtype=&#34;int32&#34;,
         )
         feature_vector = self._fill_feature_vec(texts_features, feature_vector)
-        # feature_vector = feature_vector.reshape(len(feature_vector), -1)
         return feature_vector
 
     def predict(self, data):
@@ -812,7 +818,7 @@ to match that input shape provided.</p>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork"><code class="flex name class">
 <span>class <span class="ident">HierarchicalAttentionNetwork</span></span>
-<span>(</span><span>load_default_model=False, **kwargs)</span>
+<span>(</span><span>load_default_model=False, features=[], **kwargs)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Hierarchical Attention Network implementation.</p></section>
@@ -825,7 +831,7 @@ to match that input shape provided.</p>
     Hierarchical Attention Network implementation.
     &#34;&#34;&#34;
 
-    def __init__(self, load_default_model: bool = False, **kwargs):
+    def __init__(self, load_default_model: bool = False, features: list = [], **kwargs):
         self.model = None
 
         self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
@@ -836,33 +842,40 @@ to match that input shape provided.</p>
         self.labels = None
         self.labels_matrix = None  # Map labels into matrix for prediction
 
-        self.feature_keys = None  # Mappings of feature indices from dataset
+        self.feature_keys = []  # Mappings of feature indices from dataset
 
         self.word_index = None
         self.embeddings_index = None
         self.word_embedding = None
         self.word_attention_model = None
         self.tokenizer = None
+        self.vocab_size = None
 
         self.X = None
         self.Y = None
 
+        self.texts = None
+        self.features = features  # List of features to extract
         self.num_classes = 2  # number of classes in our model; default is binary model
         if load_default_model:
-            try:
-                self.model = load_model(
-                    DEFAULT_MODEL_PATH,
-                    custom_objects={&#34;AttentionLayer&#34;: AttentionLayer},
+            # try:
+            self.model = load_model(
+                DEFAULT_MODEL_PATH, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer},
+            )
+            # self.model.load_weights(DEFAULT_MODEL_PATH)
+            self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
+            if len(self.feature_keys) is 0:
+                self.feature_keys = self._get_feature_keys(
+                    DEFAULT_TRAINING_DATA_PATH, top_features=self.features
                 )
-                self.model.load_weights(DEFAULT_MODEL_PATH)
-                self.data_train = pd.read_csv(
-                    DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS
+            self.preprocess_data(self.data_train, self.feature_keys)
+            print(
+                &#34;Successfully loaded default HANN model - {} - {}.&#34;.format(
+                    DEFAULT_MODEL_PATH, self.model
                 )
-                self.preprocess_data(self.data_train)
-                self.embeddings_index = self.get_glove_embeddings()
-                embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
-            except Exception as e:
-                print(&#34;Error loading model: &#34;, e)
+            )
+        #  except Exception as e:
+        #   print(&#34;Error loading model: &#34;, e)
         return
 
     def read_and_train_data(
@@ -876,10 +889,14 @@ to match that input shape provided.</p>
     ):
         &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
         self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
-        self.X = self.X.filter(top_features)
-        # Get rid of the classification / class column since that&#39;s not a feature
+        if top_features is not None:
+            self.X = self.X.filter(top_features)
+        else:
+            if len(self.features) &gt; 0:
+                top_features = self.features
+                self.X = self.X.filter(self.features)
         self.feature_keys = self._get_feature_keys(filepath, top_features=top_features)
-        self.preprocess_data(self.X)
+        self.preprocess_data(self.X, self.feature_keys)
         self.embeddings_index = self.get_glove_embeddings()
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
         model = self.build_network_and_train_model(
@@ -891,28 +908,24 @@ to match that input shape provided.</p>
             self.save_model(model, outputpath)
         return model
 
-    def preprocess_data(self, data_train: object, feature_keys: dict = None):
+    def preprocess_data(self, data_train: object, feature_keys):
         &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
         self.data = np.zeros(
-            (len(self.X), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
+            (len(data_train), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype=&#34;int32&#34;)
-        if feature_keys is None:
-            if self.feature_keys is None or len(self.feature_keys) is 0:
-                self.feature_keys = self._get_feature_keys()
-            feature_keys = self.feature_keys
-        else:
-            self.feature_keys = feature_keys
-        self.feature_vecs = self.build_features_vecs_from_data(data_train, feature_keys)
+        self.build_corpus(data_train, feature_keys)
+        self.build_features_vecs_from_data(data_train, feature_keys)
         print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
         print(&#34;Shape of data tensor: &#34;, self.data, self.data.shape)
+        print(&#34;Finished preprocessing data.&#34;)
         return self.data
 
     def load_model(self, filepath: str):
         &#34;&#34;&#34;Loads a model with a custom AttentionLayer property.&#34;&#34;&#34;
-        # model = load_model(
-        #  filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
-        # )
+        model = load_model(
+            filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
+        )
         if model:
             self.model = model
             return model
@@ -944,7 +957,7 @@ to match that input shape provided.</p>
             coefs = np.asarray(values[1:], dtype=&#34;float32&#34;)
             embeddings_index[word] = coefs
         f.close()
-        print(&#34;Total %s word vectors.&#34; % len(embeddings_index))
+        print(&#34;Total %s word vectors from GloVe.&#34; % len(embeddings_index))
         return embeddings_index
 
     def make_embeddings_matrix(self, embeddings_index):
@@ -1112,33 +1125,54 @@ to match that input shape provided.</p>
         return model
 
     def _get_feature_keys(
-        self, filepath: str = DEFAULT_TRAINING_DATA_PATH, top_features: list = None
+        self, filepath: str = DEFAULT_TRAINING_DATA_PATH, top_features: list = []
     ) -&gt; list:
-        if self.feature_keys is None or len(self.feature_keys) is 0:
-            df = pd.read_csv(filepath, nrows=MAX_DOCS)
-            if top_features is not None and len(top_features) is not 0:
-                feature_keys = [
-                    key
-                    for key in list(df.columns)
-                    if key != &#34;classification&#34; and key in top_features
-                ]
+        df = pd.read_csv(filepath, nrows=MAX_DOCS)
+        feature_keys = []
+        if len(top_features) &gt; 0:
+            feature_keys = [
+                key
+                for key in list(df.columns)
+                if key != &#34;classification&#34; and key in top_features
+            ]
+        else:
+            if len(self.feature_keys) is 0:
+                if len(self.features) &gt; 0:
+                    feature_keys = [
+                        key
+                        for key in list(df.columns)
+                        if key != &#34;classification&#34; and key in self.features
+                    ]
+                else:
+                    feature_keys = [
+                        key for key in list(df.columns) if key != &#34;classification&#34;
+                    ]
             else:
-                feature_keys = [
-                    key for key in list(df.columns) if key != &#34;classification&#34;
-                ]
+                return self.feature_keys
             # Map feature keys with their indices (since eventually we may want to eliminate features
             # from being trained, without modifiying the original dataset, so order of indices may not
             # be continuous. Also, we can define a tokenization level in these mappings.
-            feature_keys = [
-                {&#34;name&#34;: feature_key, &#34;index&#34;: i}
-                for i, feature_key in enumerate(feature_keys)
-            ]
-            return feature_keys
-        else:
-            return self.feature_keys
+        feature_keys = [
+            {&#34;name&#34;: feature_key, &#34;index&#34;: i}
+            for i, feature_key in enumerate(feature_keys)
+        ]
+        return feature_keys
 
     def _fill_feature_vec(self, texts_features: list, feature_vector):
         &#34;&#34;&#34;Helper function to build feature vector for HANN to classify.&#34;&#34;&#34;
+        self.tokenizer = Tokenizer()
+        _texts = []
+        for i, each in enumerate(self.texts):
+            if type(each) is list:
+                each = &#34;&#34;.join(each)
+            _texts.append(str(each))
+        for i in range(len(self.records)):
+            self.labels.append(self.records[i][&#34;classification&#34;])
+        texts = _texts
+        self.texts = _texts
+        self.tokenizer.fit_on_texts(texts)
+        self.word_index = self.tokenizer.word_index
+        self.vocab_size = len(self.word_index)
         for i, sentences in enumerate(texts_features):
             for j, sentence in enumerate(sentences):
                 if j &lt; MAX_SENTENCE_COUNT:
@@ -1150,27 +1184,18 @@ to match that input shape provided.</p>
                     for _, word in enumerate(wordTokens):
                         if type(word) is list:
                             word = &#34;&#34;.join(word)
-                        if k &lt; MAX_SENTENCE_LENGTH and _ &lt; VOCABULARY_SIZE:
+                        if k &lt; MAX_SENTENCE_LENGTH and _ &lt; MAX_WORDS:
                             try:
                                 feature_vector[i, j, k] = self.word_index[word]
-                            except:
+                            except Exception as e:
                                 feature_vector[i, j, k] = 0
                             k = k + 1
                         else:
                             break
         return feature_vector
 
-    def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
-        &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
-        if feature_keys is None:
-            if self.feature_keys is None or len(self.feature_keys) is 0:
-                self.feature_keys = self._get_feature_keys()
-            feature_keys = self.feature_keys
-        else:
-            self.feature_keys = feature_keys
-        results = []
+    def build_corpus(self, data_train, feature_keys):
         data_train_dict = data_train.to_dict()
-        self.tokenizer = Tokenizer()
         texts = []
         texts_features = []
         self.labels = []
@@ -1187,28 +1212,18 @@ to match that input shape provided.</p>
                 sentences.append(sentence)
             texts.extend(sentences)
             texts_features.append(sentences)
-        self.tokenizer = Tokenizer(nb_words=VOCABULARY_SIZE)
-        _texts = []
-        for i, each in enumerate(texts):
-            if type(each) is list:
-                each = &#34;&#34;.join(each)
-            _texts.append(str(each))
-        for i in range(len(self.records)):
-            self.labels.append(self.records[i][&#34;classification&#34;])
-        texts = _texts
-        self.tokenizer.fit_on_texts(texts)
-        self.word_index = self.tokenizer.word_index
+        self.texts = texts
+        return (texts, texts_features)
+
+    def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
+        &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
+        results = []
+        self.texts, texts_features = self.build_corpus(data_train, feature_keys)
         self.data = self._fill_feature_vec(texts_features, self.data)
         # Get unique classes from labels (in same order of occurence)
         classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
         self.num_classes = len(classes)
-        # Shuffle data
-        # indices = np.arange(self.data.shape[0])
-        # np.random.shuffle(indices)
-        # self.data = self.data[indices]
-        # self.labels = self.labels[indices]
         self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
-        print(self.labels_matrix, self.labels_matrix.shape)
         self.Y = self.labels_matrix
         self.X = self.data
         return self.data
@@ -1218,7 +1233,7 @@ to match that input shape provided.</p>
         results = []
         texts_features = []
         if feature_keys is None:
-            if self.feature_keys is None or len(self.feature_keys) is 0:
+            if self.feature_keys is None:
                 self.feature_keys = self._get_feature_keys()
             feature_keys = self.feature_keys
         else:
@@ -1238,7 +1253,6 @@ to match that input shape provided.</p>
             dtype=&#34;int32&#34;,
         )
         feature_vector = self._fill_feature_vec(texts_features, feature_vector)
-        # feature_vector = feature_vector.reshape(len(feature_vector), -1)
         return feature_vector
 
     def predict(self, data):
@@ -1251,26 +1265,17 @@ to match that input shape provided.</p>
 </details>
 <h3>Methods</h3>
 <dl>
-<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data"><code class="name flex">
-<span>def <span class="ident">build_features_vecs_from_data</span></span>(<span>self, data_train, feature_keys=None)</span>
+<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_corpus"><code class="name flex">
+<span>def <span class="ident">build_corpus</span></span>(<span>self, data_train, feature_keys)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>Vectorizes the training dataset for HANN.</p></section>
+<section class="desc"></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
-    &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
-    if feature_keys is None:
-        if self.feature_keys is None or len(self.feature_keys) is 0:
-            self.feature_keys = self._get_feature_keys()
-        feature_keys = self.feature_keys
-    else:
-        self.feature_keys = feature_keys
-    results = []
+<pre><code class="python">def build_corpus(self, data_train, feature_keys):
     data_train_dict = data_train.to_dict()
-    self.tokenizer = Tokenizer()
     texts = []
     texts_features = []
     self.labels = []
@@ -1287,28 +1292,28 @@ to match that input shape provided.</p>
             sentences.append(sentence)
         texts.extend(sentences)
         texts_features.append(sentences)
-    self.tokenizer = Tokenizer(nb_words=VOCABULARY_SIZE)
-    _texts = []
-    for i, each in enumerate(texts):
-        if type(each) is list:
-            each = &#34;&#34;.join(each)
-        _texts.append(str(each))
-    for i in range(len(self.records)):
-        self.labels.append(self.records[i][&#34;classification&#34;])
-    texts = _texts
-    self.tokenizer.fit_on_texts(texts)
-    self.word_index = self.tokenizer.word_index
+    self.texts = texts
+    return (texts, texts_features)</code></pre>
+</details>
+</dd>
+<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data"><code class="name flex">
+<span>def <span class="ident">build_features_vecs_from_data</span></span>(<span>self, data_train, feature_keys=None)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Vectorizes the training dataset for HANN.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
+    &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
+    results = []
+    self.texts, texts_features = self.build_corpus(data_train, feature_keys)
     self.data = self._fill_feature_vec(texts_features, self.data)
     # Get unique classes from labels (in same order of occurence)
     classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
     self.num_classes = len(classes)
-    # Shuffle data
-    # indices = np.arange(self.data.shape[0])
-    # np.random.shuffle(indices)
-    # self.data = self.data[indices]
-    # self.labels = self.labels[indices]
     self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
-    print(self.labels_matrix, self.labels_matrix.shape)
     self.Y = self.labels_matrix
     self.X = self.data
     return self.data</code></pre>
@@ -1328,7 +1333,7 @@ to match that input shape provided.</p>
     results = []
     texts_features = []
     if feature_keys is None:
-        if self.feature_keys is None or len(self.feature_keys) is 0:
+        if self.feature_keys is None:
             self.feature_keys = self._get_feature_keys()
         feature_keys = self.feature_keys
     else:
@@ -1348,7 +1353,6 @@ to match that input shape provided.</p>
         dtype=&#34;int32&#34;,
     )
     feature_vector = self._fill_feature_vec(texts_features, feature_vector)
-    # feature_vector = feature_vector.reshape(len(feature_vector), -1)
     return feature_vector</code></pre>
 </details>
 </dd>
@@ -1550,7 +1554,7 @@ make our own for the model.</p></section>
         coefs = np.asarray(values[1:], dtype=&#34;float32&#34;)
         embeddings_index[word] = coefs
     f.close()
-    print(&#34;Total %s word vectors.&#34; % len(embeddings_index))
+    print(&#34;Total %s word vectors from GloVe.&#34; % len(embeddings_index))
     return embeddings_index</code></pre>
 </details>
 </dd>
@@ -1565,9 +1569,9 @@ make our own for the model.</p></section>
 </summary>
 <pre><code class="python">def load_model(self, filepath: str):
     &#34;&#34;&#34;Loads a model with a custom AttentionLayer property.&#34;&#34;&#34;
-    # model = load_model(
-    #  filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
-    # )
+    model = load_model(
+        filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
+    )
     if model:
         self.model = model
         return model
@@ -1618,7 +1622,7 @@ make our own for the model.</p></section>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.preprocess_data"><code class="name flex">
-<span>def <span class="ident">preprocess_data</span></span>(<span>self, data_train, feature_keys=None)</span>
+<span>def <span class="ident">preprocess_data</span></span>(<span>self, data_train, feature_keys)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Preprocesses data given a df object.</p></section>
@@ -1626,21 +1630,17 @@ make our own for the model.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def preprocess_data(self, data_train: object, feature_keys: dict = None):
+<pre><code class="python">def preprocess_data(self, data_train: object, feature_keys):
     &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
     self.data = np.zeros(
-        (len(self.X), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
+        (len(data_train), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
     )
     self.labels_matrix = np.zeros((self.num_classes,), dtype=&#34;int32&#34;)
-    if feature_keys is None:
-        if self.feature_keys is None or len(self.feature_keys) is 0:
-            self.feature_keys = self._get_feature_keys()
-        feature_keys = self.feature_keys
-    else:
-        self.feature_keys = feature_keys
-    self.feature_vecs = self.build_features_vecs_from_data(data_train, feature_keys)
+    self.build_corpus(data_train, feature_keys)
+    self.build_features_vecs_from_data(data_train, feature_keys)
     print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
     print(&#34;Shape of data tensor: &#34;, self.data, self.data.shape)
+    print(&#34;Finished preprocessing data.&#34;)
     return self.data</code></pre>
 </details>
 </dd>
@@ -1664,10 +1664,14 @@ make our own for the model.</p></section>
 ):
     &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
     self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
-    self.X = self.X.filter(top_features)
-    # Get rid of the classification / class column since that&#39;s not a feature
+    if top_features is not None:
+        self.X = self.X.filter(top_features)
+    else:
+        if len(self.features) &gt; 0:
+            top_features = self.features
+            self.X = self.X.filter(self.features)
     self.feature_keys = self._get_feature_keys(filepath, top_features=top_features)
-    self.preprocess_data(self.X)
+    self.preprocess_data(self.X, self.feature_keys)
     self.embeddings_index = self.get_glove_embeddings()
     embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
     model = self.build_network_and_train_model(
@@ -1735,6 +1739,7 @@ make our own for the model.</p></section>
 <li>
 <h4><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork">HierarchicalAttentionNetwork</a></code></h4>
 <ul class="">
+<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_corpus" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_corpus">build_corpus</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data">build_features_vecs_from_data</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_input" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_input">build_features_vecs_from_input</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_network_and_train_model" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_network_and_train_model">build_network_and_train_model</a></code></li>
