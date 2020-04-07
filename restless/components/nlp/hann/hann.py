@@ -215,13 +215,12 @@ class HierarchicalAttentionNetwork:
         print("Finished preprocessing data.")
         return self.data
 
-
     def predict(self, data):
         """Predicts binary classification of classes with probabilities given a feature matrix."""
         res = self.model.predict(data)
         probs = res[0]
-        normal = probs[0] ("0" class)
-        deviant = probs[1] ("1" class)
+        normal = probs[0] # "0" class
+        deviant = probs[1] # "1" class
         return (normal, deviant)
 
     def load_model(self, filepath: str):
