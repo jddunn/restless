@@ -74,6 +74,53 @@ class StatsUtils:
             )
         return corr
 
+    def transform_df_with_top_features_for_hann(
+        self,
+        df: DataFrame,
+        corr,
+        features_list: list,
+        target_feature: str,
+        threshold: float = 0.01,
+        n_features: int = 1000,
+    ) -> tuple:
+        """
+        Given a dataframe and the correlation of the df, get the top number of features
+        that correlate with the target feature / label (e.g. classification), and return
+        a new dataframe containing only those top features and the target feature.
+
+        The reasoning for this function is interesting. We will not be dropping features
+        in the typical way that's done for feature selection (which is removing features
+        that are highly correlated with each other to prevent collinearity). Actually,
+        for this architecture some collinearity will be desirable.
+
+        Since we plan to use a Hierarchical Attention Network for our classifier (in which
+        we build representations of malicious / benign files using the structure of text
+        documents), it is desirable to create that feature representation with features
+        that have some correlation (either positive or negative) with our target feature,
+        which in this case, is our file classification.
+        """
+        # _corr = corr.values
+        _corr = corr.values
+        to_filter = []
+        top_features = []
+        for i in range(len(features_list) - 1):
+            # Since we're not doing regression but classification, we can consider any indepedent X vars
+            # that have a negative or positive correlation.
+            try:
+                if abs(_corr[i]) < threshold:
+                    to_filter.append(features_list[i])
+                else:
+                    if n_features is not None and len(top_features) < n_features:
+                        top_features.append(features_list[i])
+                    elif n_features is not None and len(top_features) >= n_features:
+                        break
+                    else:
+                        top_features.append(features_list[i])
+            except Exception as e:
+                break
+        new_df = df.drop(to_filter, axis=1)
+        return (new_df, top_features)
+
     def get_model_metrics(
         self, y, y_pred, labels: list = ["0", "1"], print_output: bool = False,
     ) -> dict:

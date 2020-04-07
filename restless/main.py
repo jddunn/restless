@@ -11,7 +11,7 @@ sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 from components.utils import utils
 from components.watcher import Watcher
 from components.scanner import Scanner
-from components.nlp import nlp
+from components.nlp import NLP
 
 
 class Restless(object):
@@ -32,6 +32,7 @@ class Restless(object):
             self.scanner.scan_full_system()
         else:
             self.watcher = Watcher()
+        nlp = NLP(load_default_hann_model=True)
         self.nlp = nlp
         return
 
@@ -45,9 +46,7 @@ class Restless(object):
         for file_result in file_results:
             fname = file_result[0]
             features = file_result[1]
-            matrix_results = self.nlp.hann.build_features_vecs_from_input(
-                features, pe_headers_feature_keys
-            )
+            matrix_results = self.nlp.hann.build_features_vecs_from_input(features)
             res = (fname, self.nlp.hann.predict(matrix_results))
             results.append(res)
             utils.print_logm(

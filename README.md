@@ -49,16 +49,16 @@ Restless aims to be fast and fully functional offline. The current configuration
 
 Currently, there is no REST API functionality besides serving the documentation; only the CLI and library is functional.
 
-## Screenshots and Rxamples 
+## Screenshots and Results
 <div>
   <h4>Feature Selection</h4>
   <p>We use Pearson coefficient to see how our features correlate with each other, and since we're doing binary classification, we can get the point-biserial correlation for each feature compared to our target feature (classification of "benign" or "malicious").</p>
   <p>Unlike conventional feature selection for regression, our model (HANN) takes a representation of documents as features (features ~= document sentences in this context). For HANN, we care about <b>any</b> feature that has some linear correlation, positive or negative.</p>
-  <a href="./screenshots/model_results/Features Correlation Matrix for PE Header Data 2020-04-06 19:19:16.png" style="left">
-    <img src="./screenshots/model_results/Features Correlation Matrix for PE Header Data 2020-04-06 19:19:16.png" alt="Features Correlaton Matrix for PE Header Data" width="450">
+  <a href="./screenshots/model_results/Features Correlation Matrix for PE Header Data 2020-04-07 03:57:48.png" style="left">
+    <img src="./screenshots/model_results/Features Correlation Matrix for PE Header Data 2020-04-07 03:57:48.png" alt="Features Correlaton Matrix for PE Header Data" width="450">
   </a>
-  <a href="./screenshots/model_results/Top Features Correlation Matrix for PE Header Data (Minimum threshold of 0.1) 2020-04-06 19:19:18.png" style="right">
-    <img src="./screenshots/model_results/Top Features Correlation Matrix for PE Header Data (Minimum threshold of 0.1) 2020-04-06 19:19:18.png" alt="Top Features Correlaton Matrix for PE Header Data" width="450">
+  <a href="./screenshots/model_results/Top Features Correlation Matrix for PE Header Data (Minimum threshold of 0.1) 2020-04-07 03:57:50.png" style="right">
+    <img src="./screenshots/model_results/Top Features Correlation Matrix for PE Header Data (Minimum threshold of 0.1) 2020-04-07 03:57:50.png" alt="Top Features Correlaton Matrix for PE Header Data" width="450">
   </a>
 </div>
 
@@ -67,64 +67,68 @@ Currently, there is no REST API functionality besides serving the documentation;
 
 ```
 cd restless/components/nlp/hann
-python hann.py
+python train_hann.py
 Training HANN model now..
-Train on 4148 samples, validate on 1036 samples
-Epoch 1/10
-4148/4148 [==============================] - 63s 15ms/step - loss: 0.6262 - acc: 0.6427 - val_loss: 0.5322 - val_acc: 0.7471
-Epoch 2/10
-4148/4148 [==============================] - 59s 14ms/step - loss: 0.5063 - acc: 0.7686 - val_loss: 0.4292 - val_acc: 0.8234
-Epoch 3/10
-4148/4148 [==============================] - 59s 14ms/step - loss: 0.4505 - acc: 0.8018 - val_loss: 0.4157 - val_acc: 0.8292
-Epoch 4/10
-4148/4148 [==============================] - 59s 14ms/step - loss: 0.4377 - acc: 0.8117 - val_loss: 0.4014 - val_acc: 0.8398
-Epoch 5/10
-4148/4148 [==============================] - 59s 14ms/step - loss: 0.4247 - acc: 0.8165 - val_loss: 0.4434 - val_acc: 0.7847
-Epoch 6/10
-4148/4148 [==============================] - 59s 14ms/step - loss: 0.4127 - acc: 0.8209 - val_loss: 0.4590 - val_acc: 0.7973
-Epoch 7/10
-4148/4148 [==============================] - 59s 14ms/step - loss: 0.4041 - acc: 0.8286 - val_loss: 0.4200 - val_acc: 0.8098
-Epoch 8/10
-4148/4148 [==============================] - 59s 14ms/step - loss: 0.3940 - acc: 0.8259 - val_loss: 0.3874 - val_acc: 0.8330
-Epoch 9/10
-4148/4148 [==============================] - 59s 14ms/step - loss: 0.3921 - acc: 0.8281 - val_loss: 0.4038 - val_acc: 0.8214
-Epoch 10/10
-4148/4148 [==============================] - 59s 14ms/step - loss: 0.3846 - acc: 0.8329 - val_loss: 0.3819 - val_acc: 0.8349
+Creating HANN model now, with K-Fold cross-validation. K= 1 and length:  4147 1037 for training / validation.
+Train on 4147 samples, validate on 1037 samples
+Epoch 1/3
+ - 123s - loss: 0.3684 - accuracy: 0.8375 - val_loss: 0.2548 - val_accuracy: 0.9190
+Epoch 2/3
+ - 120s - loss: 0.2091 - accuracy: 0.9280 - val_loss: 0.2200 - val_accuracy: 0.9219
+Epoch 3/3
+ - 119s - loss: 0.1777 - accuracy: 0.9378 - val_loss: 0.2060 - val_accuracy: 0.9272
+..
+Metrics summed and averaged:  {'accuracy': 0.9486916521149886, 'loss': 1.7721489931601824, 'precision': 0.9523880705481174, 'recall': 0.9491701254870464, 'f1': 0.9499961372374752, 'kappa': 0.8971714579760806, 'auc': 0.9501432171274349}
+The best performing model (based on F1 score) was number 4. That is the model that will be returned.
+Training successful.
 ```
 ---------------------------------------------------
-After 10 epochs, we have a loss of `0.3846` in testing vs `0.3819` in validation (so we're not overfitting or underfitting the model), and end with a final accuracy of `0.8329` and `0.8349`.
-
+Stats of our best performing model (highest F1 score):
+```
+Model evaluation metrics: 
+        Confusion matrix:
+                 benign malicious 
+       benign     481.0      31.0 
+    malicious       4.0     521.0 
+        Accuracy: 0.9662487945998072    Loss: 1.165749239481399
+        Precision: 0.9923809523809524
+        Recall: 0.9438405797101449
+        F1 score: 0.967502321262767
+        Cohens kappa score: 0.9324428709965026
+        ROC AUC score: 0.9677965785148663
+```
+This is the current default model for HANN in this repo.
 ---------------------------------------------------
 ### Example CLI Usage
 -i = file or folder to scan recursively
 ```
 cd restless
-python cli.py -i data/
+python cli.py -i test_exes/
 Using TensorFlow backend.
 Succesfully loaded HANN model:  /home/ubuntu/restless/restless/components/nlp/hann/default.h5
 Total 6766 unique tokens.
 ..
-2020-03-26 18:01:42 INFO Restless initializing. Running system-wide scan: False
-2020-03-26 18:01:42 INFO Initializing Restless.Scanner with PE Analyzer: <pe_analyzer.pe_analyzer.PE_Analyzer object at 0x7f473e5ce650>
-2020-03-26 18:01:42 INFO Restless.Watcher is now watching over system and scanning new incoming files.
-PEAnalyzer scanning:  data/test_exes/
-2020-03-26 18:01:47 INFO Scanned data/test_exes/benign/CuteWriter.exe - predicted: 30.45530915260315% benign and 69.54469084739685% malicious
-2020-03-26 18:01:47 INFO Scanned data/test_exes/benign/7z1900-x64.exe - predicted: 7.776062935590744% benign and 92.2239363193512% malicious
-2020-03-26 18:01:48 INFO Scanned data/test_exes/benign/Explorer++.exe - predicted: 96.72235250473022% benign and 3.277643397450447% malicious
-2020-03-26 18:01:48 INFO Scanned data/test_exes/benign/setup-lightshot.exe - predicted: 35.37960648536682% benign and 64.6203875541687% malicious
-2020-03-26 18:01:49 INFO Scanned data/test_exes/benign/WinCDEmu-4.1.exe - predicted: 90.02159237861633% benign and 9.978403896093369% malicious
-2020-03-26 18:01:49 INFO Scanned data/test_exes/benign/putty.exe - predicted: 46.1917370557785% benign and 53.80825996398926% malicious
-2020-03-26 18:01:50 INFO Scanned data/test_exes/benign/peazip-7.1.1.WIN64.exe - predicted: 60.47333478927612% benign and 39.5266592502594% malicious
-2020-03-26 18:01:50 INFO Scanned data/test_exes/malicious/bx89.exe - predicted: 10.457248985767365% benign and 89.54275846481323% malicious
-2020-03-26 18:01:51 INFO Scanned data/test_exes/malicious/Bombermania.exe - predicted: 5.942464619874954% benign and 94.0575361251831% malicious
-2020-03-26 18:01:51 INFO Scanned data/test_exes/malicious/ransomware.exe - predicted: 4.4291239231824875% benign and 95.57086825370789% malicious
-2020-03-26 18:01:51 INFO Scanned data/test_exes/malicious/7z1900-x64.exe - predicted: 7.776062935590744% benign and 92.2239363193512% malicious
-2020-03-26 18:01:52 INFO Scanned data/test_exes/malicious/newbos2.exe - predicted: 70.36948204040527% benign and 29.630514979362488% malicious
-2020-03-26 18:01:52 INFO Scanned data/test_exes/malicious/0.exe - predicted: 45.57652175426483% benign and 54.42348122596741% malicious
-2020-03-26 18:01:53 INFO Scanned data/test_exes/malicious/mcpatcher.exe - predicted: 2.5933679193258286% benign and 97.40663766860962% malicious
-2020-03-26 18:01:53 INFO Scanned data/test_exes/malicious/TekDefense.exe - predicted: 4.581990465521812% benign and 95.41800618171692% malicious
-2020-03-26 18:01:54 INFO Scanned data/test_exes/malicious/tekdefense.dll - predicted: 9.366271644830704% benign and 90.63372611999512% malicious
-2020-03-26 18:01:54 INFO Scanned data/test_exes/malicious/Google_Adobe_FlashPlayer.exe - predicted: 3.3955805003643036% benign and 96.60441875457764% malicious
+2020-04-07 06:10:23 INFO Initializing HANN module.
+2020-04-07 06:10:23 INFO Restless initializing. Running system-wide scan: False
+2020-04-07 06:10:23 INFO Restless.Watcher is now watching over system and scanning new incoming files.
+PEAnalyzer scanning:  ../test_exes/
+Error while saving features:  'Structure' object has no attribute 'BaseOfData'
+2020-04-07 06:11:39 INFO Scanned ../test_exes/benign/CuteWriter.exe - predicted: 26.8862247467041% benign and 72.2758412361145% malicious
+2020-04-07 06:11:41 INFO Scanned ../test_exes/benign/7z1900-x64.exe - predicted: 32.600608468055725% benign and 55.8910608291626% malicious
+2020-04-07 06:11:42 INFO Scanned ../test_exes/benign/Explorer++_1.exe - predicted: 8.707889914512634% benign and 86.38086318969727% malicious
+2020-04-07 06:11:44 INFO Scanned ../test_exes/benign/setup-lightshot.exe - predicted: 26.8862247467041% benign and 72.2758412361145% malicious
+2020-04-07 06:11:46 INFO Scanned ../test_exes/benign/WinCDEmu-4.1.exe - predicted: 98.88728857040405% benign and 1.0872036218643188% malicious
+2020-04-07 06:11:47 INFO Scanned ../test_exes/benign/putty.exe - predicted: 99.82845187187195% benign and 0.12594759464263916% malicious
+2020-04-07 06:11:48 INFO Scanned ../test_exes/benign/peazip-7.1.1.WIN64.exe - predicted: 26.8862247467041% benign and 72.2758412361145% malicious
+2020-04-07 06:11:50 INFO Scanned ../test_exes/malicious/bx89.exe - predicted: 13.227593898773193% benign and 81.54139518737793% malicious
+2020-04-07 06:11:51 INFO Scanned ../test_exes/malicious/Bombermania.exe - predicted: 62.76884078979492% benign and 31.845125555992126% malicious
+2020-04-07 06:11:56 INFO Scanned ../test_exes/malicious/3.exe - predicted: 8.707889914512634% benign and 86.38086318969727% malicious
+2020-04-07 06:11:57 INFO Scanned ../test_exes/malicious/711.exe - predicted: 8.707889914512634% benign and 86.38086318969727% malicious
+2020-04-07 06:12:01 INFO Scanned ../test_exes/malicious/microsoft office 2007 service pack 2.exe - predicted: 1.6987472772598267% benign and 98.32490682601929% malicious
+2020-04-07 06:12:05 INFO Scanned ../test_exes/malicious/se.exe - predicted: 18.145954608917236% benign and 78.49445343017578% malicious
+2020-04-07 06:12:07 INFO Scanned ../test_exes/malicious/mcpatcher.exe - predicted: 1.6987472772598267% benign and 98.32490682601929% malicious
+2020-04-07 06:12:08 INFO Scanned ../test_exes/malicious/tekdefense.dll - predicted: 56.837183237075806% benign and 38.82768452167511% malicious
+2020-04-07 06:12:11 INFO Scanned ../test_exes/malicious/25000.exe - predicted: 1.8150955438613892% benign and 97.06166982650757% malicious
 ```
 ---------------------------------------------------
 Malicious executables obtained from [http://www.tekdefense.com/downloads/malware-samples/](http://www.tekdefense.com/downloads/malware-samples/). Training dataset taken from [https://github.com/urwithajit9/ClaMP](https://github.com/urwithajit9/ClaMP). 

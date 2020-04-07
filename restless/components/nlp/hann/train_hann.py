@@ -39,53 +39,6 @@ MAX_N_FEATURES = None  # If none we have no limit
 CORR_THRESHOLD = 0.1  # minimum val to consider meaningful linear correlation
 
 
-def transform_df_with_top_features_for_hann(
-    df,
-    corr,
-    features_list: list,
-    target_feature: str,
-    n_features: int = MAX_N_FEATURES,
-    threshold=CORR_THRESHOLD,
-) -> pd.DataFrame:
-    """
-    Given a dataframe and the correlation of the df, get the top number of features
-    that correlate with the target feature / label (e.g. classification), and return
-    a new dataframe containing only those top features and the target feature.
-
-    The reasoning for this function is interesting. We will not be dropping features
-    in the typical way that's done for feature selection (which is removing features
-    that are highly correlated with each other to prevent collinearity). Actually,
-    for this architecture some collinearity will be desirable.
-
-    Since we plan to use a Hierarchical Attention Network for our classifier (in which
-    we build representations of malicious / benign files using the structure of text
-    documents), it is desirable to create that feature representation with features
-    that have some correlation (either positive or negative) with our target feature,
-    which in this case, is our file classification.
-    """
-    # _corr = corr.values
-    _corr = corr.values
-    to_filter = []
-    top_features = []
-    for i in range(len(features_list) - 1):
-        # Since we're not doing regression but classification, we can consider any indepedent X vars
-        # that have a negative or positive correlation.
-        try:
-            if abs(_corr[i]) < threshold:
-                to_filter.append(features_list[i])
-            else:
-                if MAX_N_FEATURES is not None and len(top_features) < MAX_N_FEATURES:
-                    top_features.append(features_list[i])
-                elif MAX_N_FEATURES is not None and len(top_features) >= MAX_N_FEATURES:
-                    break
-                else:
-                    top_features.append(features_list[i])
-        except Exception as e:
-            break
-    new_df = df.drop(to_filter, axis=1)
-    return new_df, top_features
-
-
 def get_features_corr(
     df: pd.DataFrame,
     features: list,
@@ -228,8 +181,8 @@ if __name__ == "__main__":
         target_feature=target_feature,
         get_corr_with_target_feature_only=True,
     )[0]["corr"]
-    top_df, top_features = transform_df_with_top_features_for_hann(
-        df, target_corr, feature_keys_list, target_feature
+    top_df, top_features = stats.transform_df_with_top_features_for_hann(
+        df, target_corr, feature_keys_list, target_feature, threshold=CORR_THRESHOLD
     )
     _top_features = top_features
     _top_features.append("classification")  # For our labels
