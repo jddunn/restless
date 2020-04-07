@@ -39,7 +39,7 @@
 
 **Restless** is (or will be) a suite of security tools with these key features:
 
-* Analysis of files for malware probabilty based on comparing the extracted metadata and file contents with trained Portable Executable data *(completed model with almost a dozen extracted PE header features with **~83% accuracy**)*
+* Analysis of files for malware probabilty based on comparing the extracted metadata and file contents with trained Portable Executable data *(completed model with around 20 extracted PE header features with **~93% average accuracy in cross-validation training**)
 * Analysis of system logs for abnormal activities / deviations *(not started)*
 * Constant, efficient and ongoing analysis of system files / logs *(in-progress)*
 
@@ -63,8 +63,8 @@ Currently, there is no REST API functionality besides serving the documentation;
 </div>
 
 ---------------------------------------------------
-### Training Hierarchical Attention Network Model with extracted PE top features:
-
+### Training Hierarchical Attention Network Model
+(With top extracted PE features correlated with class target, and 5KFold validation)
 ```
 cd restless/components/nlp/hann
 python train_hann.py
@@ -97,7 +97,7 @@ Model evaluation metrics:
         Cohens kappa score: 0.9324428709965026
         ROC AUC score: 0.9677965785148663
 ```
-This is the current default model for HANN in this repo.
+(This is the current default model for HANN in this repo).
 ---------------------------------------------------
 ### Example CLI Usage
 -i = file or folder to scan recursively
