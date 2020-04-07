@@ -43,11 +43,9 @@
 * Analysis of system logs for abnormal activities / deviations *(not started)*
 * Constant, efficient and ongoing analysis of system files / logs *(in-progress)*
 
-All analyses will be constantly ongoing, occur in real-time, and performed through machine learning models (using both supervised and unsupervised training techniques). No database is currently integrated with the code, but Spark clusters will be used along with Ray for distributed processing (eventually).
+No database is currently integrated with the code, but Spark clusters will be used along with Ray for distributed processing (eventually).
 
-Restless aims to be fast and fully functional offline. The current configuration is for Ubuntu-based machines, but can be modified for other platforms by editing the `Dockerfile` and `docker-compose.yml` (eventually, Docker images will be built for Mac and Windows and linked here for download).
-
-Currently, there is no REST API functionality besides serving the documentation; only the CLI and library is functional.
+Restless aims to be fast and fully functional offline. The current Docker config is for Ubuntu-based machines, but can be modified for other platforms by editing the `Dockerfile` and `docker-compose.yml` (eventually, Docker images will be built for Mac and Windows and linked here for download).
 
 ## Screenshots and Results
 <div>
@@ -112,7 +110,6 @@ Total 6766 unique tokens.
 2020-04-07 06:10:23 INFO Restless initializing. Running system-wide scan: False
 2020-04-07 06:10:23 INFO Restless.Watcher is now watching over system and scanning new incoming files.
 PEAnalyzer scanning:  ../test_exes/
-Error while saving features:  'Structure' object has no attribute 'BaseOfData'
 2020-04-07 06:11:39 INFO Scanned ../test_exes/benign/CuteWriter.exe - predicted: 26.8862247467041% benign and 72.2758412361145% malicious
 2020-04-07 06:11:41 INFO Scanned ../test_exes/benign/7z1900-x64.exe - predicted: 32.600608468055725% benign and 55.8910608291626% malicious
 2020-04-07 06:11:42 INFO Scanned ../test_exes/benign/Explorer++_1.exe - predicted: 8.707889914512634% benign and 86.38086318969727% malicious
@@ -182,8 +179,6 @@ or
 pip install -r requirements.txt
 ```
 
-then:
-
 Starts ASGI server wth reload (recommended to use a virtualenv with all the dependencies installed):
 
 ```sh
@@ -204,30 +199,21 @@ docker build -t restless .
 
 The example command will mount all the files in a Ubuntu machine into the container, so a full system scan of the host machine can be performed through the dockerized service.
 
-(Although the training data consists of malware that targets Windows OSes, research has shown that antivirus programs designed for Windows works on average 95% of the time in detecting Linux-based malware, see references at the bottom).
-
-The container also adds an extra barrier of attack for potential bad agents, but keep in mind, is still not completely secure or sandboxed away from the host environment.
-
 ```sh
 docker run -p 4712:4712 -e APP_ENV=docker --mount source=home,target=/home/ubuntu/restless restless
 ```
-^ When running the Docker container, an env var `APP_ENV` should be set to `docker` (this var only needs to be set if using Docker). The param `source` would ideally be set to the home / root dir of the host drive (for full protection) or is whatever dir you want to be scanning,  and`target` must always point to the dir containing the Dockerfile and app files.
-
-This will also be useful for eventual dynamic analysis of files, when they will need to be tested in an isolated place).
-
+^ When running the Docker container, an env var `APP_ENV` should be set to `docker` (this var only needs to be set if using Docker). The param `source` would ideally be set to the home / root dir of the host drive (for full protection) or is whatever dir you want to be scanning, and `target` must always point to the dir containing the Dockerfile and app files.
 
 ### Using Docker-Compose
 
 (See the explanation above ^ to see how Docker will be mounting and communicating with your machine drive. If you're not using Ubuntu or a Debian-based Linux distro, then you'll need to edit `docker-compose.yml` to change the `source` and `target` paths under the `volume` key to reflect your OS's filepaths).
 
-When using Docker-Compose, you won't need to build the image, or fiddle with parameters (unless you need to edit the Dockerfile or docker-compose.yml file).
-
-Just run
 ```sh
 docker-compose up
 ```
 
 and the app will be live at:
+
 ```sh
 http://localhost:4712
 ```
@@ -243,7 +229,6 @@ python cli.py -i /home/ubuntu/
 
 ### API usage
 
-The API will be up at:
 ```
 http://localhost:4712
 ````
@@ -268,17 +253,17 @@ http://localhost:4712/api_docs
 ### App docs 
 Lib / app docs (uses `pdoc` for autogeneration); the below command generates docs and creates a reasonable folder structure
 ```sh
+cd .
+cd restless
 pdoc --html restless --force; rm -rf docs; mv html docs; cd docs; cd restless; mv * .[^.]* ..; cd ..; rm -rf restless; cd ..
 ```
 
-You can then browse the documentation web files or run a web server.
-
-If you're using Docker, the app docs will be accessible (served statically) here:
+The docs will be stored in /docs in HTML, and will be accessible (served statically) here:
 ```
 http://localhost:4712/app_docs/index.html
 ```
 
-They'll look like this:
+Example screenshot:
 
 ![Restless app docs screenshot](/screenshots/restless-app-docs-screenshot.png?raw=true)
 
@@ -301,9 +286,8 @@ python -m unittest discover
 ## Roadmap
 In order of desirability
 
+* Add file classifier using same HANN model (extract strings, including obfuscated ones from file contents)
 * Add analyzing system logs in real-time (will use k-means clustering to find logs with lots of deviation, or abnormal logs)
-* Add analyzing browser URLs (detect clicks and listen for address changes in browser API) for malicious websites
-* Train new model on Mac malware dataset, and load model dynamically based on OS / filetype found (better cross-platform compatability)
 * Add dynamic analysis of executables by executing / testing files inside an isolated sandbox environmnet.
 * Add generating MD5 hashes for new files and checking against known malware databases (like VirusTotal) - this might be the most important actually
 
@@ -317,5 +301,3 @@ In order of desirability
 * [Hierarchical Attention Networks for Document Classification](https://www.cs.cmu.edu/~./hovy/papers/16HLT-hierarchical-attention-networks.pdf)
 * [ClaMP (Classification of Malware with PE headers)](https://github.com/urwithajit9/ClaMP)
 * [Detecting Malware Across Operating Systems](https://www.opswat.com/blog/detecting-malware-across-operating-systems)
-
-
