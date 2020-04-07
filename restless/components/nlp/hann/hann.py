@@ -53,8 +53,6 @@ from sklearn.utils.multiclass import type_of_target
 
 scaler = RobustScaler()
 
-from sklearn.feature_extraction.text import CountVectorizer
-
 import nltk
 
 # make dep imports work when running as lib / in high-levels scripts
@@ -105,10 +103,6 @@ kf = KFold(n_splits=K_NUM, shuffle=True, random_state=1618)
 
 metrics = ["accuracy"]
 
-cv = CountVectorizer()
-
-import pickle
-
 
 class HierarchicalAttentionNetwork:
     """
@@ -142,11 +136,9 @@ class HierarchicalAttentionNetwork:
         self.features = features  # List of features to extract
         self.num_classes = 2  # number of classes in our model; default is binary model
         if load_default_model:
-            # try:
             self.model = load_model(
                 DEFAULT_MODEL_PATH, custom_objects={"AttentionLayer": AttentionLayer},
             )
-            # self.model.load_weights(DEFAULT_MODEL_PATH)
             self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
             if len(self.feature_keys) is 0:
                 self.feature_keys = self._get_feature_keys(
@@ -158,8 +150,6 @@ class HierarchicalAttentionNetwork:
                     DEFAULT_MODEL_PATH, self.model
                 )
             )
-        #  except Exception as e:
-        #   print("Error loading model: ", e)
         return
 
     def read_and_train_data(
@@ -192,6 +182,26 @@ class HierarchicalAttentionNetwork:
             self.save_model(model, outputpath)
         return model
 
+    def build_corpus(self, data_train, feature_keys):
+        data_train_dict = data_train.to_dict()
+        texts = []
+        texts_features = []
+        for idx in range(
+            data_train.shape[0]
+        ):  # doesn't matter we're just getting count here
+            sentences = []
+            for dict in feature_keys:
+                key = dict["name"]
+                sentence = str(data_train[key][idx])
+                sentence = text_normalizer.normalize_text_defaults(sentence)
+                if "tokenize" in dict and dict["tokenize"] is "char":
+                    sentence = [char for char in sentence]
+                sentences.append(sentence)
+            texts.extend(sentences)
+            texts_features.append(sentences)
+        self.texts = texts
+        return (texts, texts_features)
+
     def preprocess_data(self, data_train: object, feature_keys):
         """Preprocesses data given a df object."""
         self.data = np.zeros(
@@ -204,6 +214,15 @@ class HierarchicalAttentionNetwork:
         print("Shape of data tensor: ", self.data, self.data.shape)
         print("Finished preprocessing data.")
         return self.data
+
+
+    def predict(self, data):
+        """Predicts binary classification of classes with probabilities given a feature matrix."""
+        res = self.model.predict(data)
+        probs = res[0]
+        normal = probs[0] ("0" class)
+        deviant = probs[1] ("1" class)
+        return (normal, deviant)
 
     def load_model(self, filepath: str):
         """Loads a model with a custom AttentionLayer property."""
@@ -367,7 +386,6 @@ class HierarchicalAttentionNetwork:
                 )
                 model.fit(x_train, y_train)
             models.append(model)
-            # f_importances(model.coef_, feature_keys_list)
             k_ct += 1
             y_pred = model.predict(x_val)
             # Reverse one-hot encoding
@@ -407,6 +425,46 @@ class HierarchicalAttentionNetwork:
         if save_metrics_results:
             pass
         return model
+
+    def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
+        """Vectorizes the training dataset for HANN."""
+        results = []
+        self.texts, texts_features = self.build_corpus(data_train, feature_keys)
+        self.data = self._fill_feature_vec(texts_features, self.data)
+        # Get unique classes from labels (in same order of occurence)
+        classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
+        self.num_classes = len(classes)
+        self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
+        self.Y = self.labels_matrix
+        self.X = self.data
+        return self.data
+
+    def build_features_vecs_from_input(self, input_features, feature_keys: dict = None):
+        """Vectorizes a feature matrix from extracted PE data for HANN classification."""
+        results = []
+        texts_features = []
+        if feature_keys is None:
+            if self.feature_keys is None:
+                self.feature_keys = self._get_feature_keys()
+            feature_keys = self.feature_keys
+        else:
+            self.feature_keys = feature_keys
+        for idx in range(len(input_features)):
+            sentences = []
+            for dict in self.feature_keys:
+                val = dict["index"]
+                sentence = str(input_features[val])
+                sentence = text_normalizer.normalize_text(sentence)
+                if "tokenize" in dict and dict["tokenize"] is "char":
+                    sentence = [char for char in sentence]
+                sentences.append(sentence)
+            texts_features.append(sentences)
+        feature_vector = np.zeros(
+            (len(input_features), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
+            dtype="int32",
+        )
+        feature_vector = self._fill_feature_vec(texts_features, feature_vector)
+        return feature_vector
 
     def _get_feature_keys(
         self, filepath: str = DEFAULT_TRAINING_DATA_PATH, top_features: list = []
@@ -477,75 +535,6 @@ class HierarchicalAttentionNetwork:
                         else:
                             break
         return feature_vector
-
-    def build_corpus(self, data_train, feature_keys):
-        data_train_dict = data_train.to_dict()
-        texts = []
-        texts_features = []
-        self.labels = []
-        for idx in range(
-            data_train.shape[0]
-        ):  # doesn't matter we're just getting count here
-            sentences = []
-            for dict in feature_keys:
-                key = dict["name"]
-                sentence = str(data_train[key][idx])
-                sentence = text_normalizer.normalize_text_defaults(sentence)
-                if "tokenize" in dict and dict["tokenize"] is "char":
-                    sentence = [char for char in sentence]
-                sentences.append(sentence)
-            texts.extend(sentences)
-            texts_features.append(sentences)
-        self.texts = texts
-        return (texts, texts_features)
-
-    def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
-        """Vectorizes the training dataset for HANN."""
-        results = []
-        self.texts, texts_features = self.build_corpus(data_train, feature_keys)
-        self.data = self._fill_feature_vec(texts_features, self.data)
-        # Get unique classes from labels (in same order of occurence)
-        classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
-        self.num_classes = len(classes)
-        self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
-        self.Y = self.labels_matrix
-        self.X = self.data
-        return self.data
-
-    def build_features_vecs_from_input(self, input_features, feature_keys: dict = None):
-        """Vectorizes a feature matrix from extracted PE data for HANN classification."""
-        results = []
-        texts_features = []
-        if feature_keys is None:
-            if self.feature_keys is None:
-                self.feature_keys = self._get_feature_keys()
-            feature_keys = self.feature_keys
-        else:
-            self.feature_keys = feature_keys
-        for idx in range(len(input_features)):
-            sentences = []
-            for dict in self.feature_keys:
-                val = dict["index"]
-                sentence = str(input_features[val])
-                sentence = text_normalizer.normalize_text(sentence)
-                if "tokenize" in dict and dict["tokenize"] is "char":
-                    sentence = [char for char in sentence]
-                sentences.append(sentence)
-            texts_features.append(sentences)
-        feature_vector = np.zeros(
-            (len(input_features), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
-            dtype="int32",
-        )
-        feature_vector = self._fill_feature_vec(texts_features, feature_vector)
-        return feature_vector
-
-    def predict(self, data):
-        """Predicts binary classification of classes with probabilities given a feature matrix."""
-        res = self.model.predict(data)
-        probs = res[0]
-        malicious = probs[1]
-        benign = probs[0]
-        return (benign, malicious)
 
 
 class AttentionLayer(Layer):
