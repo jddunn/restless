@@ -13,6 +13,8 @@ from components.watcher import Watcher
 from components.scanner import Scanner
 from components.nlp import NLP
 
+logger = utils.logger
+
 
 class Restless(object):
     """
@@ -22,7 +24,7 @@ class Restless(object):
     def __init__(self, run_system_scan=False):
         self.run_system_scan = run_system_scan
         # keys of features from pe_analyzer
-        utils.print_logm(
+        logger.print_logm(
             "Restless initializing. Running system-wide scan: "
             + str(self.run_system_scan)
         )
@@ -46,16 +48,16 @@ class Restless(object):
         for file_result in file_results:
             fname = file_result[0]
             features = file_result[1]
-            matrix_results = self.nlp.hann.build_features_vecs_from_input(features)
+            if len(self.nlp.hann.features) > 0:
+                features = [x for x in features if x in self.nlp.hann.features]
+            matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
             res = (fname, self.nlp.hann.predict(matrix_results))
             results.append(res)
-            utils.print_logm(
-                "Scanned "
-                + str(res[0])
-                + " - predicted: "
-                + str(float(res[1][0]) * 100)
-                + "% benign and "
-                + str(float(res[1][1]) * 100)
-                + "% malicious"
+            attention = self.nlp.hann.plot_attention_map(matrix_results)
+            # a_map = self.nlp.hann.attention_map(matrix_results)
+            logger.print_logm(
+                "Scanned {} - predicted: {}% benign and {}% malicious".format(
+                    res[0], res[1][0], res[1][1]
+                )
             )
         return results

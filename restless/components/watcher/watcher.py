@@ -1,5 +1,7 @@
 from ..utils import utils
 
+logger = utils.logger
+
 
 class Watcher:
 
@@ -9,7 +11,7 @@ class Watcher:
     """
 
     def __init__(self):
-        utils.print_logm(
+        logger.print_logm(
             "Restless.Watcher is now watching over system and scanning new incoming files."
         )
         pass

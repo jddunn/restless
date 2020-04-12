@@ -105,7 +105,7 @@ def train_model(
     model_base: object = None,
     model_save: bool = True,
     model_fp: str = DEFAULT_MODEL_PATH,
-) -> object:
+):
     """
     Trains a hierarchical attention network model from a CSV or text file.
 
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     model_results = train_model(
         training_fp,
         feature_keys=feature_keys_filtered,
-        top_features=top_features,
+        top_features=feature_keys_filtered,
         labels=labels,
         model_base=model_base,
     )

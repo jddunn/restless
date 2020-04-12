@@ -16,13 +16,38 @@ class LoggerUtils:
         )
         pass
 
-    def _print_log(self, data: dict):
+    def print_logm(self, message: str) -> None:
+        """
+        Easy prints log.
+
+        Args:
+          message (str): Message to print to `INFO` level.
+        """
+        self.logger._print_log({"message": message})
+        return
+
+    def print_log(self, data: dict):
+        """
+        Prints a log to sys output.
+
+        Args:
+          data (dict): Keys include: `level`, `message`. Timestamp will automatically be included.
+                       `Level` will default to `INFO`.
+        """
         level = data.get("level")
         if level is None:
             level = "INFO"
-        if level is "INFO":
-            self.logging.info(data["message"])
+        self.logging.level(data["message"])
+        # if level is "INFO":
+        #  self.logging.info(data["message"])
         return
 
-    def _write_log(self, fp: str, data: dict):
+    def write_log(self, data: dict, filepath: str) -> bool:
+        """
+        Prints and writes a log to disk.
+
+        Args:
+          filepath (str): Filepath of log to write to. Will default to latest log created in default directory.
+          data (dict): Keys include: `level`, `text`. Timestamp will automatically be included.
+        """
         return

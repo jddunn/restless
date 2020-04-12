@@ -26,16 +26,28 @@ class TextNormalizer:
             "R": wordnet.ADV,
         }
 
-    def tokenize_text(self, text: str) -> list:
+    def tokenize_text(self, text: str, token_level="word") -> list:
         """
-        Tokenizes text.
+        Tokenizes text into a list of sequences. By default
+        does word level tokenization.
 
         Args:
           text (str): Text to tokenize.
+          token_level (str, optional): Level of tokenization. Defaults
+            word tokens.
         Returns:
           list: List of tokens.
         """
-        return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
+        if token_level is "sent":
+            return [s for s in sent_tokenize(text)]
+        elif token_level is "word":
+            return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
+        elif token_level is "char":
+            return [
+                c for c in [w for s in sent_tokenize(text) for w in word_tokenize(s)]
+            ]
+        else:
+            return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
 
     def lemmatize_text(self, text: str, lemmatizer: object = default_lemmatizer) -> str:
         """

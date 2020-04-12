@@ -14,6 +14,7 @@ sys.path.insert(0, parent_dir_path)
 from pe_analyzer import PE_Analyzer
 
 pea = PE_Analyzer()
+logger = utils.logger
 
 
 class Scanner:
@@ -23,7 +24,7 @@ class Scanner:
 
     def __init__(self):
         self.pea = pea
-        utils.print_logm(
+        logger.print_logm(
             "Initializing Restless.Scanner with PE Analyzer: " + str(self.pea)
         )
         pass

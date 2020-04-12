@@ -2,14 +2,32 @@
 # https://github.com/richliao/textClassifier/blob/master/textClassifierHATT.py,
 # which implemented this https://www.cs.cmu.edu/~hovy/papers/16HLT-hierarchical-attention-networks.pdf.
 
-# The architecture from the paper has been modified in this model
-# to accept a vector (array) as well as scalars for both the words / sentences
-# that comprise a document's vocabulary. This allows us to represent any arbitrary set
+# Here we use the HANN model with data that follows a structured format (extracted from a CSV dataset
+# of portable executable header data). If we consider each feature of the dataset to correspond
+# to a `sentence`, and thus the tokens of the features to comprise `words` in our model vocab,
+# can we build arbitrary reprensentations of documents for classification for HANN's architecture?
+# And, if we keep the order of our training and input data consistent, our model should actually learn
+# which features matter the most and focus on those, and also be able to visualize this hierarchy
+# using HANN's attention maps.
+
+# The architecture from the paper has been modified in this model to custom levels of tokenization
+# at the word and sentence level, which allows us to represent any arbitrary set
 # of features as a document that the HAN model can learn from, as GloVe will have
 # have weights for words as well as numbers.
 
+# We can also pass in a list of features to the class instance (that should be mapped to the columns
+# in the training CSV file). If the class is instantiated with features, models will be trained
+# with only those column headers / features, otherwise, all columns will be taken.
+# The $feature_map will be built automatically from $features, but can also be manually passed in.
+# See the example in ".." on the data structure, which follows this form:
+# { "name": "CheckSum", "index": "42", "tokenization": "char" }, where name corresponds to the feature
+# / column name, index with the column index, and tokenization (optional, defaulting to whitespace tokenization)
+# being the custom tokenization level for this feature.
+
 import numpy as np
 import pandas as pd
+
+import matplotlib.pyplot as plt
 
 import sys
 import os
@@ -39,7 +57,7 @@ from keras.layers import (
     Bidirectional,
     TimeDistributed,
 )
-from keras.models import Model, load_model
+from keras.models import Model, load_model, Sequential
 
 from keras import backend as K
 from keras.engine.topology import Layer, InputSpec
@@ -54,6 +72,8 @@ from sklearn.utils.multiclass import type_of_target
 scaler = RobustScaler()
 
 import nltk
+
+from attention import AttentionLayer, ATTENTION_DIM
 
 # make dep imports work when running as lib / in high-levels scripts
 PACKAGE_PARENT = "../../../.."
@@ -72,7 +92,6 @@ except:
 # Hyperparams
 MAX_SENTENCE_LENGTH = 100
 MAX_SENTENCE_COUNT = 48
-ATTENTION_DIM = 50
 GLOVE_DIMENSION_SIZE = ATTENTION_DIM  # needs same dimension
 MAX_DOCS = 1000000  # Limit number of records to train for speed if needed
 MAX_WORDS = 100000  # Max number of words for our corpus
@@ -97,8 +116,6 @@ DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "defau
 stats = utils.stats
 stats_vis = utils.stats_vis
 
-compute_steps_per_epoch = lambda x: int(math.ceil(1.0 * x / BATCH_SIZE))
-
 kf = KFold(n_splits=K_NUM, shuffle=True, random_state=1618)
 
 metrics = ["accuracy"]
@@ -109,18 +126,22 @@ class HierarchicalAttentionNetwork:
     Hierarchical Attention Network implementation.
     """
 
-    def __init__(self, load_default_model: bool = False, features: list = [], **kwargs):
+    def __init__(
+        self,
+        load_default_model: bool = False,
+        features: list = [],  # List of features
+        word_token_level: str = "word",  # Default tokenization level for words
+        sent_token_level: str = "sent",  # Default tokenization level for sentences
+        **kwargs
+    ):
         self.model = None
 
         self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
-        self.records = self.data_train.to_dict("records")
-
         self.data = None
 
-        self.labels = None
+        self.texts = None  # will become X
+        self.labels = []  # will become Y
         self.labels_matrix = None  # Map labels into matrix for prediction
-
-        self.feature_keys = []  # Mappings of feature indices from dataset
 
         self.word_index = None
         self.embeddings_index = None
@@ -132,19 +153,35 @@ class HierarchicalAttentionNetwork:
         self.X = None
         self.Y = None
 
-        self.texts = None
         self.features = features  # List of features to extract
+        self.feature_map = []  # Mappings of feature indices from dataset (will be
+        # automatically done with default indices and
+        # tokenization levels, see docs for more details)
+
         self.num_classes = 2  # number of classes in our model; default is binary model
+
+        # By defining custom tokenizations at the word and sentence level, we can create
+        # arbitrary representations of documents using things like metadata and numbers
+        self.word_token_level = word_token_level
+        self.sent_token_level = sent_token_level
+
         if load_default_model:
             self.model = load_model(
                 DEFAULT_MODEL_PATH, custom_objects={"AttentionLayer": AttentionLayer},
             )
+            # Get the original training vocabulary (should load from file / db later)
             self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
-            if len(self.feature_keys) is 0:
-                self.feature_keys = self._get_feature_keys(
+            if len(self.feature_map) is 0:
+                # Automatically map our features from CSV columns (if not manually specified)
+                self.feature_map = self._get_feature_map(
                     DEFAULT_TRAINING_DATA_PATH, top_features=self.features
                 )
-            self.preprocess_data(self.data_train, self.feature_keys)
+            self.preprocess_data(
+                self.data_train,
+                self.feature_map,
+                word_token_level=self.word_token_level,
+                sent_token_level=self.sent_token_level,
+            )
             print(
                 "Successfully loaded default HANN model - {} - {}.".format(
                     DEFAULT_MODEL_PATH, self.model
@@ -160,6 +197,8 @@ class HierarchicalAttentionNetwork:
         model_base: object = None,
         outputpath: str = DEFAULT_MODEL_PATH,
         save_model: bool = False,
+        word_token_level: str = "word",
+        sent_token_level: str = "sent",
     ):
         """Reads a CSV file into training data and trains network."""
         self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
@@ -169,8 +208,10 @@ class HierarchicalAttentionNetwork:
             if len(self.features) > 0:
                 top_features = self.features
                 self.X = self.X.filter(self.features)
-        self.feature_keys = self._get_feature_keys(filepath, top_features=top_features)
-        self.preprocess_data(self.X, self.feature_keys)
+        self.feature_map = self._get_feature_map(filepath, top_features=top_features)
+        self.preprocess_data(
+            self.X, self.feature_map, word_token_level, sent_token_level
+        )
         self.embeddings_index = self.get_glove_embeddings()
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
         model = self.build_network_and_train_model(
@@ -182,34 +223,81 @@ class HierarchicalAttentionNetwork:
             self.save_model(model, outputpath)
         return model
 
-    def build_corpus(self, data_train, feature_keys):
+    def _build_corpus(
+        self,
+        data_train: pd.DataFrame,
+        feature_map: dict,
+        word_token_level: str,
+        sent_token_level: str,
+    ):
+        """Builds a corpus from a dataframe, given a dictionary of features
+           mapped to their indices and tokenization level. These will be
+           automatically generated if they're not individually specified.
+           This allows arbitrary levels of tokenization, meaning we can
+           consider any feature or sequence of text (even if it's numbers)
+           as a sentence, and then we can take individual chars or groupings
+           of chars to count as words for the vocab.
+
+           Right now, by default we'll tokenize at the char level for words,
+           since our default HANN model will use PE header metadata (numbers).
+           Eventually though, we'll want to manually (or programmatically)
+           analyze and define which metadata features we should tokenize by
+           chars and which ones by other hierustics. For example, let's say
+           we have a rule that states if a sequence of numbers (a "sentence")
+           is divisible by 4, 8, and 16, then we should not tokenize that
+           feature by individual chars, as that number probably is more meaningful
+           as a whole token. Or how about for numbers that correspond to commonly
+           used ports, like 80, and 8069? It may improve our model results to
+           build this into the pre-processing pipeline.
+        """
         data_train_dict = data_train.to_dict()
         texts = []
         texts_features = []
-        for idx in range(
-            data_train.shape[0]
-        ):  # doesn't matter we're just getting count here
+        for idx in range(data_train.shape[0]):
             sentences = []
-            for dict in feature_keys:
-                key = dict["name"]
+            for feature in feature_map:
+                key = feature["name"]
                 sentence = str(data_train[key][idx])
                 sentence = text_normalizer.normalize_text_defaults(sentence)
-                if "tokenize" in dict and dict["tokenize"] is "char":
-                    sentence = [char for char in sentence]
+                if (
+                    "tokenize" in feature and feature["tokenize"] is "sent"
+                ) or sent_token_level is "sent":
+                    sentence = text_normalizer.tokenize_text(
+                        sentence, token_level="sent"
+                    )
+                elif (
+                    "tokenize" in feature and feature["tokenize"] is "char"
+                ) or sent_token_level is "char":
+                    # We don't have "sentences" or "words" for PE header data,
+                    # so tokenize every string into a word
+                    # For example, "4069" will be considered a sentence,
+                    # tokenized as a sequence of words "4", "0", "6", "9".
+                    sentence = text_normalize.tokenize(sentence, token_level="char")
+                else:
+                    # by default we tokenize into sentences
+                    sentence = text_normalizer.tokenize_text(
+                        sentence, token_level="sent"
+                    )
                 sentences.append(sentence)
             texts.extend(sentences)
             texts_features.append(sentences)
         self.texts = texts
         return (texts, texts_features)
 
-    def preprocess_data(self, data_train: object, feature_keys):
+    def preprocess_data(
+        self,
+        data_train: pd.DataFrame,
+        feature_map: dict,
+        word_token_level: str = "word",
+        sent_token_level: str = "sent",
+    ):
         """Preprocesses data given a df object."""
         self.data = np.zeros(
             (len(data_train), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32",
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype="int32")
-        self.build_corpus(data_train, feature_keys)
-        self.build_features_vecs_from_data(data_train, feature_keys)
+        self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)
+        self.build_feature_matrix_from_data(data_train, feature_map)
         print("Total %s unique tokens." % len(self.word_index))
         print("Shape of data tensor: ", self.data, self.data.shape)
         print("Finished preprocessing data.")
@@ -218,9 +306,11 @@ class HierarchicalAttentionNetwork:
     def predict(self, data):
         """Predicts binary classification of classes with probabilities given a feature matrix."""
         res = self.model.predict(data)
+        print("PRINTING RESULT OF RES: ", res)
         probs = res[0]
-        normal = probs[0] # "0" class
-        deviant = probs[1] # "1" class
+        normal = probs[0]  # "0" class
+        deviant = probs[1]  # "1" class
+        attention_vals = res[1]
         return (normal, deviant)
 
     def load_model(self, filepath: str):
@@ -308,16 +398,17 @@ class HierarchicalAttentionNetwork:
         if self.num_classes > 2:
             # multi-class classifier
             preds = Dense(self.num_classes, activation="softmax")(l_att_sent)
+            model = Model(input_layer)
             model = Model(input_layer, preds)
             model.compile(
-                loss="categorical_crossentropy", optimizer="rmsprop", metrics=metrics
+                loss="categorical_crossentropy", optimizer="adadelta", metrics=metrics
             )
         else:
             # binary classifier
-            preds = Dense(2, activation="sigmoid")(l_att_sent)
+            preds = Dense(2, activation="softmax")(l_att_sent)
             model = Model(input_layer, preds)
             model.compile(
-                loss="binary_crossentropy", optimizer="rmsprop", metrics=metrics
+                loss="binary_crossentropy", optimizer="adadelta", metrics=metrics
             )
         return model
 
@@ -425,10 +516,12 @@ class HierarchicalAttentionNetwork:
             pass
         return model
 
-    def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
+    def build_feature_matrix_from_data(
+        self, data_train: pd.DataFrame, feature_map: dict = None
+    ):
         """Vectorizes the training dataset for HANN."""
         results = []
-        self.texts, texts_features = self.build_corpus(data_train, feature_keys)
+        self.texts, texts_features = self._build_corpus(data_train)
         self.data = self._fill_feature_vec(texts_features, self.data)
         # Get unique classes from labels (in same order of occurence)
         classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
@@ -438,19 +531,21 @@ class HierarchicalAttentionNetwork:
         self.X = self.data
         return self.data
 
-    def build_features_vecs_from_input(self, input_features, feature_keys: dict = None):
+    def _build_feature_matrix_from_input_arr(
+        self, input_features, feature_map: dict = None
+    ):
         """Vectorizes a feature matrix from extracted PE data for HANN classification."""
         results = []
         texts_features = []
-        if feature_keys is None:
-            if self.feature_keys is None:
-                self.feature_keys = self._get_feature_keys()
-            feature_keys = self.feature_keys
+        if feature_map is None:
+            if self.feature_map is None:
+                self.feature_map = self._get_feature_map()
+            feature_map = self.feature_map
         else:
-            self.feature_keys = feature_keys
+            self.feature_map = feature_map
         for idx in range(len(input_features)):
             sentences = []
-            for dict in self.feature_keys:
+            for dict in self.feature_map:
                 val = dict["index"]
                 sentence = str(input_features[val])
                 sentence = text_normalizer.normalize_text(sentence)
@@ -465,39 +560,39 @@ class HierarchicalAttentionNetwork:
         feature_vector = self._fill_feature_vec(texts_features, feature_vector)
         return feature_vector
 
-    def _get_feature_keys(
+    def _get_feature_map(
         self, filepath: str = DEFAULT_TRAINING_DATA_PATH, top_features: list = []
     ) -> list:
         df = pd.read_csv(filepath, nrows=MAX_DOCS)
-        feature_keys = []
+        feature_map = []
         if len(top_features) > 0:
-            feature_keys = [
+            feature_map = [
                 key
                 for key in list(df.columns)
                 if key != "classification" and key in top_features
             ]
         else:
-            if len(self.feature_keys) is 0:
+            if len(self.feature_map) is 0:
                 if len(self.features) > 0:
-                    feature_keys = [
+                    feature_map = [
                         key
                         for key in list(df.columns)
                         if key != "classification" and key in self.features
                     ]
                 else:
-                    feature_keys = [
+                    feature_map = [
                         key for key in list(df.columns) if key != "classification"
                     ]
             else:
-                return self.feature_keys
+                return self.feature_map
             # Map feature keys with their indices (since eventually we may want to eliminate features
             # from being trained, without modifiying the original dataset, so order of indices may not
             # be continuous. Also, we can define a tokenization level in these mappings.
-        feature_keys = [
+        feature_map = [
             {"name": feature_key, "index": i}
-            for i, feature_key in enumerate(feature_keys)
+            for i, feature_key in enumerate(feature_map)
         ]
-        return feature_keys
+        return feature_map
 
     def _fill_feature_vec(self, texts_features: list, feature_vector):
         """Helper function to build feature vector for HANN to classify."""
@@ -507,8 +602,8 @@ class HierarchicalAttentionNetwork:
             if type(each) is list:
                 each = "".join(each)
             _texts.append(str(each))
-        for i in range(len(self.records)):
-            self.labels.append(self.records[i]["classification"])
+        for i in range(len(self.data_train)):
+            self.labels.append(self.data_train[i]["classification"])
         texts = _texts
         self.texts = _texts
         self.tokenizer.fit_on_texts(texts)
@@ -535,53 +630,16 @@ class HierarchicalAttentionNetwork:
                             break
         return feature_vector
 
-
-class AttentionLayer(Layer):
-    """
-    Attention layer for Hierarchical Attention Network.
-    """
-
-    def __init__(self, attention_dim=ATTENTION_DIM, **kwargs):
-        self.init = initializers.get("normal")
-        self.supports_masking = False
-        self.attention_dim = attention_dim
-        super(AttentionLayer, self).__init__()
-
-    def build(self, input_shape):
-        assert len(input_shape) == 3
-        self.W = K.variable(self.init((input_shape[-1], self.attention_dim)), name="W")
-        self.b = K.variable(self.init((self.attention_dim,)), name="b")
-        self.u = K.variable(self.init((self.attention_dim, 1)), name="u")
-        self.trainable_weights = [self.W, self.b, self.u]
-        super(AttentionLayer, self).build(input_shape)
-
-    def compute_mask(self, inputs, mask=None):
-        # return mask
-        # Masking layers is no longer supported in newer version of keras
-        return None
-
-    def call(self, x, mask=None):
-        # size of x :[batch_size, sel_len, attention_dim]
-        # size of u :[batch_size, attention_dim]
-        # uit = tanh(xW+b)
-        uit = K.tanh(K.bias_add(K.dot(x, self.W), self.b))
-        ait = K.dot(uit, self.u)
-        ait = K.squeeze(ait, -1)
-        ait = K.exp(ait)
-        if mask is not None:
-            # Cast the mask to floatX to avoid float64 upcasting in theano
-            ait *= K.cast(mask, K.floatx())
-        ait /= K.cast(K.sum(ait, axis=1, keepdims=True) + K.epsilon(), K.floatx())
-        ait = K.expand_dims(ait)
-        weighted_input = x * ait
-        output = K.sum(weighted_input, axis=1)
-        return output
-
-    def compute_output_shape(self, input_shape):
-        return (input_shape[0], input_shape[-1])
+    def get_attention_map(self, input_data):
+        att_model_output = self.model.layers[0:-2]
+        att_model = Model(att_model_output[0].input, att_model_output[-1].output)
+        att_model.compile(
+            optimizer="adam",
+            loss="sparse_categorical_crossentropy",
+            metrics=["accuracy"],
+        )
+        return att_model.predict(input_data)[1]
 
 
 if __name__ == "__main__":
     print("Use train_hann.py to train the HANN network, or import as a module.")
-else:
-    utils.print_logm("Initializing HANN module.")
