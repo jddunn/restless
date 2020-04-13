@@ -1,5 +1,5 @@
 import datetime
-import logging
+import logging as logging
 
 
 class LoggerUtils:
@@ -18,12 +18,12 @@ class LoggerUtils:
 
     def print_logm(self, message: str) -> None:
         """
-        Easy prints log.
+        Easy print log.
 
         Args:
           message (str): Message to print to `INFO` level.
         """
-        self.logger._print_log({"message": message})
+        self.print_log({"message": message})
         return
 
     def print_log(self, data: dict):
@@ -37,9 +37,18 @@ class LoggerUtils:
         level = data.get("level")
         if level is None:
             level = "INFO"
-        self.logging.level(data["message"])
-        # if level is "INFO":
-        #  self.logging.info(data["message"])
+        if level == "info":
+            self.logging.info(data["message"])
+        elif level == "critical":
+            self.logging.critical(data["message"])
+        elif level == "error":
+            self.logging.error(data["message"])
+        elif level == "warning":
+            self.logging.warning(data["message"])
+        elif level =="debug":
+            self.logging.debug(data["message"])
+        else:
+            self.logging.info(data["message"])
         return
 
     def write_log(self, data: dict, filepath: str) -> bool:

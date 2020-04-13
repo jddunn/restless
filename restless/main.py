@@ -53,7 +53,6 @@ class Restless(object):
             matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
             res = (fname, self.nlp.hann.predict(matrix_results))
             results.append(res)
-            attention = self.nlp.hann.plot_attention_map(matrix_results)
             # a_map = self.nlp.hann.attention_map(matrix_results)
             logger.print_logm(
                 "Scanned {} - predicted: {}% benign and {}% malicious".format(

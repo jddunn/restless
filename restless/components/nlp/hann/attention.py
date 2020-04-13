@@ -1,4 +1,6 @@
 from keras.engine.topology import Layer, InputSpec
+from keras import initializers
+from keras import backend as K
 
 ATTENTION_DIM = 50
 

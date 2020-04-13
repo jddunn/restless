@@ -60,8 +60,6 @@ from keras.layers import (
 from keras.models import Model, load_model, Sequential
 
 from keras import backend as K
-from keras.engine.topology import Layer, InputSpec
-from keras import initializers
 
 from sklearn.model_selection import KFold
 
@@ -136,7 +134,12 @@ class HierarchicalAttentionNetwork:
     ):
         self.model = None
 
-        self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
+        self.data_train = pd.read_csv(
+            DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS
+        )  # Training data
+        self.records = self.data_train.to_dict(
+            "records"
+        )  # Same as data_train but in dict
         self.data = None
 
         self.texts = None  # will become X
@@ -227,8 +230,8 @@ class HierarchicalAttentionNetwork:
         self,
         data_train: pd.DataFrame,
         feature_map: dict,
-        word_token_level: str,
-        sent_token_level: str,
+        word_token_level: str = "word",
+        sent_token_level: str = "sent",
     ):
         """Builds a corpus from a dataframe, given a dictionary of features
            mapped to their indices and tokenization level. These will be
@@ -306,7 +309,6 @@ class HierarchicalAttentionNetwork:
     def predict(self, data):
         """Predicts binary classification of classes with probabilities given a feature matrix."""
         res = self.model.predict(data)
-        print("PRINTING RESULT OF RES: ", res)
         probs = res[0]
         normal = probs[0]  # "0" class
         deviant = probs[1]  # "1" class
@@ -560,7 +562,7 @@ class HierarchicalAttentionNetwork:
     ):
         """Vectorizes the training dataset for HANN."""
         results = []
-        self.texts, texts_features = self._build_corpus(data_train)
+        self.texts, texts_features = self._build_corpus(data_train, feature_map)
         self.data = self._fill_feature_vec(texts_features, self.data)
         # Get unique classes from labels (in same order of occurence)
         classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
@@ -612,8 +614,8 @@ class HierarchicalAttentionNetwork:
             if type(each) is list:
                 each = "".join(each)
             _texts.append(str(each))
-        for i in range(len(self.data_train)):
-            self.labels.append(self.data_train[i]["classification"])
+        for i in range(len(self.records)):
+            self.labels.append(self.records[i]["classification"])
         texts = _texts
         self.texts = _texts
         self.tokenizer.fit_on_texts(texts)
@@ -639,6 +641,7 @@ class HierarchicalAttentionNetwork:
                         else:
                             break
         return feature_vector
+
 
 if __name__ == "__main__":
     print("Use train_hann.py to train the HANN network, or import as a module.")

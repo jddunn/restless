@@ -230,7 +230,9 @@ class StatsVisUtils:
             plot_title = plot_title + " " + ts
         return plot_title
 
-    def _make_plot_output_fp(self, ts: str, plot_title:str=None, ts_output_fp: bool=False) -> str:
+    def _make_plot_output_fp(
+        self, ts: str, plot_title: str = None, ts_output_fp: bool = False
+    ) -> str:
         output_fp = ""
         if plot_title:
             if ts_output_fp:
