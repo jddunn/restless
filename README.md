@@ -52,11 +52,11 @@ Restless aims to be fast and fully functional offline. The current Docker config
   <h4>Feature Selection</h4>
   <p>We use Pearson coefficient to see how our features correlate with each other, and since we're doing binary classification, we can get the point-biserial correlation for each feature compared to our target feature (classification of "benign" or "malicious").</p>
   <p>Unlike conventional feature selection for regression, our model (HANN) takes a representation of documents as features (features ~= document sentences in this context). For HANN, we care about <b>any</b> feature that has some linear correlation, positive or negative.</p>
-  <a href="./screenshots/model_results/Features Correlation Matrix for PE Header Data 2020-04-07 03:57:48.png" style="left">
-    <img src="./screenshots/model_results/Features Correlation Matrix for PE Header Data 2020-04-07 03:57:48.png" alt="Features Correlaton Matrix for PE Header Data" width="450">
+  <a href="./screenshots/model_results/Features Correlation Matrix for PE Header Data.png" style="left">
+    <img src="./screenshots/model_results/Features Correlation Matrix for PE Header Data.png" alt="Features Correlaton Matrix for PE Header Data" width="450">
   </a>
-  <a href="./screenshots/model_results/Top Features Correlation Matrix for PE Header Data (Minimum threshold of 0.1) 2020-04-07 03:57:50.png" style="right">
-    <img src="./screenshots/model_results/Top Features Correlation Matrix for PE Header Data (Minimum threshold of 0.1) 2020-04-07 03:57:50.png" alt="Top Features Correlaton Matrix for PE Header Data" width="450">
+  <a href="./screenshots/model_results/Top Features Correlation Matrix for PE Header Data (Minimum threshold of 0.1)" style="right">
+    <img src="./screenshots/model_results/Top Features Correlation Matrix for PE Header Data (Minimum threshold of 0.1)" alt="Top Features Correlaton Matrix for PE Header Data" width="450">
   </a>
 </div>
 
