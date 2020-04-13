@@ -11,9 +11,9 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
 sys.path.insert(0, parent_dir_path)
 
-from pe_analyzer import PE_Analyzer
+from pe_analyzer import PEAnalyzer
 
-pea = PE_Analyzer()
+pea = PEAnalyzer()
 logger = utils.logger
 
 

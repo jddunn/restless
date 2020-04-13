@@ -75,7 +75,7 @@ OPTIONAL_HEADER = [
 ]
 
 
-class PE_Analyzer:
+class PEAnalyzer:
     """
     Contains tools for analyzing and extracting PE file headers and other metadata.
     """
@@ -181,11 +181,11 @@ class PE_Analyzer:
                             result = (fname, features)
                             results.append(result)
                         except Exception as e:
-                            print("Error while saving features: ", e)
+                            # print("Error while saving features: ", e)
                             pass
         return results
 
 
 if __name__ == "__main__":
-    pea = PE_Analyzer()
+    pea = PEAnalyzer()
     pea.send_files_recursive()
