@@ -1,1 +1,1 @@
-from .pe_analyzer import PE_Analyzer
+from .pe_analyzer import PEAnalyzer
