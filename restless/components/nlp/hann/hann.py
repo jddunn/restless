@@ -297,7 +297,7 @@ class HierarchicalAttentionNetwork:
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype="int32")
         self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)
-        self.build_feature_matrix_from_data(data_train, feature_map)
+        self._build_feature_matrix_from_data(data_train, feature_map)
         print("Total %s unique tokens." % len(self.word_index))
         print("Shape of data tensor: ", self.data, self.data.shape)
         print("Finished preprocessing data.")
@@ -516,22 +516,17 @@ class HierarchicalAttentionNetwork:
             pass
         return model
 
-    def build_feature_matrix_from_data(
-        self, data_train: pd.DataFrame, feature_map: dict = None
-    ):
-        """Vectorizes the training dataset for HANN."""
-        results = []
-        self.texts, texts_features = self._build_corpus(data_train)
-        self.data = self._fill_feature_vec(texts_features, self.data)
-        # Get unique classes from labels (in same order of occurence)
-        classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
-        self.num_classes = len(classes)
-        self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
-        self.Y = self.labels_matrix
-        self.X = self.data
-        return self.data
+    def get_attention_map(self, input_data):
+        att_model_output = self.model.layers[0:-2]
+        att_model = Model(att_model_output[0].input, att_model_output[-1].output)
+        att_model.compile(
+            optimizer="adam",
+            loss="sparse_categorical_crossentropy",
+            metrics=["accuracy"],
+        )
+        return att_model.predict(input_data)[1]
 
-    def _build_feature_matrix_from_input_arr(
+    def build_feature_matrix_from_input_arr(
         self, input_features, feature_map: dict = None
     ):
         """Vectorizes a feature matrix from extracted PE data for HANN classification."""
@@ -559,6 +554,21 @@ class HierarchicalAttentionNetwork:
         )
         feature_vector = self._fill_feature_vec(texts_features, feature_vector)
         return feature_vector
+
+    def _build_feature_matrix_from_data(
+        self, data_train: pd.DataFrame, feature_map: dict = None
+    ):
+        """Vectorizes the training dataset for HANN."""
+        results = []
+        self.texts, texts_features = self._build_corpus(data_train)
+        self.data = self._fill_feature_vec(texts_features, self.data)
+        # Get unique classes from labels (in same order of occurence)
+        classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
+        self.num_classes = len(classes)
+        self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
+        self.Y = self.labels_matrix
+        self.X = self.data
+        return self.data
 
     def _get_feature_map(
         self, filepath: str = DEFAULT_TRAINING_DATA_PATH, top_features: list = []
@@ -629,17 +639,6 @@ class HierarchicalAttentionNetwork:
                         else:
                             break
         return feature_vector
-
-    def get_attention_map(self, input_data):
-        att_model_output = self.model.layers[0:-2]
-        att_model = Model(att_model_output[0].input, att_model_output[-1].output)
-        att_model.compile(
-            optimizer="adam",
-            loss="sparse_categorical_crossentropy",
-            metrics=["accuracy"],
-        )
-        return att_model.predict(input_data)[1]
-
 
 if __name__ == "__main__":
     print("Use train_hann.py to train the HANN network, or import as a module.")
