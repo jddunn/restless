@@ -67,7 +67,7 @@ class StatsVisUtils:
             annot_kws={"size": 6},
         )
         ts = misc.make_ts()
-        plot_title = self._make_plot_title(plot_title, ts)
+        plot_title = self._make_plot_title(ts, plot_title, ts_title)
         if save_image:
             self._save_image(ts, output_fp, plot_title, ts_output_fp)
         if show:
@@ -224,12 +224,13 @@ class StatsVisUtils:
         axes[2].set_title("Performance of the model")
         return plt
 
-    def _make_plot_title(self, plot_title: str, ts_title: bool = True) -> str:
-        result = plot_title
-        return result
+    def _make_plot_title(self, ts: str, plot_title: str, ts_title: bool = True) -> str:
+        if ts_title:
+            plot_title = plot_title + " " + ts
+        return plot_title
 
-    def _make_plot_output_fp(self, ts: str, plot_title=None, ts_output_fp: bool=False) -> str:
-        result = ""
+    def _make_plot_output_fp(self, ts: str, plot_title:str=None, ts_output_fp: bool=False) -> str:
+        output_fp = ""
         if plot_title:
             if ts_output_fp:
                 output_fp = os.path.abspath(
@@ -241,7 +242,7 @@ class StatsVisUtils:
                 )
         else:
             output_fp = os.path.abspath(os.path.join(DEFAULT_SCREENSHOTS_PATH, ts))
-        return result
+        return output_fp
 
     def _save_image(
         self,

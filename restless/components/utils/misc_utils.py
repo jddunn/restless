@@ -9,7 +9,7 @@ class MiscUtils:
         return
 
     def make_ts(self) -> str:
-        return datetime.now().replace(microsecond=0)
+        return str(datetime.now().replace(microsecond=0))
 
     def check_if_in_docker_container(self) -> bool:
         """
