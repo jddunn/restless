@@ -67,7 +67,8 @@ class StatsVisUtils:
             annot_kws={"size": 6},
         )
         ts = misc.make_ts()
-        plot_title = self._make_plot_title(ts, plot_title, ts_title)
+        plot_title_to_show = self._make_plot_title(ts, plot_title, ts_title)
+        plt.title(plot_title_to_show)
         if save_image:
             self._save_image(ts, output_fp, plot_title, ts_output_fp)
         if show:
@@ -224,7 +225,7 @@ class StatsVisUtils:
         axes[2].set_title("Performance of the model")
         return plt
 
-    def _make_plot_title(self, ts: str, plot_title: str, ts_title: bool = True) -> str:
+    def _make_plot_title(self, ts: str, plot_title: str, ts_title: bool = False) -> str:
         if ts_title:
             plot_title = plot_title + " " + ts
         return plot_title
