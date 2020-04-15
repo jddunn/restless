@@ -8,7 +8,6 @@ from .misc_utils import MiscUtils
 
 # from .db_caller import DB_Caller
 
-
 logger = LoggerUtils()
 stats = StatsUtils()
 stats_vis = StatsVisUtils()

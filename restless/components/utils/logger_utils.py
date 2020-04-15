@@ -45,7 +45,7 @@ class LoggerUtils:
             self.logging.error(data["message"])
         elif level == "warning":
             self.logging.warning(data["message"])
-        elif level =="debug":
+        elif level == "debug":
             self.logging.debug(data["message"])
         else:
             self.logging.info(data["message"])
