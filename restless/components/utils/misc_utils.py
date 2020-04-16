@@ -44,3 +44,14 @@ class MiscUtils:
         p_child = Path(child_to_check)
         p_parent = Path(parent_to_check)
         return True if p_parent in p_child.parents else False
+
+    @staticmethod
+    def get_os_root_path() -> str:
+        """
+        Returns root path of current machine.
+
+        Returns:
+            str: Root path of current machine
+        """
+        root = ""
+        return root

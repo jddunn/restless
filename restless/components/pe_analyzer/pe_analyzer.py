@@ -80,7 +80,6 @@ class PEAnalyzer:
 
     def __init__(self):
         self.class_label = class_label
-        self.rootdir = rootdir
 
     def file_creation_year(self, seconds):
         return 1970 + ((int(seconds) / 86400) / 365)
@@ -156,11 +155,8 @@ class PEAnalyzer:
         ]
         return IMAGE_DOS_HEADER_data + FILE_HEADER_data + OPTIONAL_HEADER_data
 
-    def send_files_recursive(self, rootdir: str = None):
+    def send_files_recursive(self, rootdir: str):
         results = []
-        if not rootdir:
-            rootdir = self.rootdir
-        print("PEAnalyzer scanning: ", rootdir)
         for dirpath, dirs, files in os.walk(rootdir):
             for filename in files:
                 fname = os.path.join(dirpath, filename)
