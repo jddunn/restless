@@ -1,7 +1,7 @@
 import os, sys
 import asyncio
 import watchdog
-from hachiko.hachiko import AIOWatchdog # Async wrapper for Watchdog
+from hachiko.hachiko import AIOWatchdog  # Async wrapper for Watchdog
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
@@ -29,10 +29,14 @@ class Watcher:
     saved files, sending them to the classification / defense pipeline."
     """
 
-    def __init__(self, watch_pool: list = None):
-        self.watch_pool = watch_pool
-        self.default_evt_handler = AsyncFileClassifyEventHandler # Default event callback
-                                                            # if watched file changes
+    def __init__(
+        self, watch_pool: list, default_evt_handler=AsyncFileClassifyEventHandler
+    ):
+        self.watch_pool = watch_pool  # Array of paths to watch
+        self.default_evt_handler = (
+            default_evt_handler  # Event callback on watch modification signal
+        )
+        # if watched file changes
         if self.watch_pool:
             logger.print_logm(
                 "Restless.Watcher is now watching over system files in dirs: "
@@ -49,7 +53,9 @@ class Watcher:
         self.default_event_cb = evt
         return
 
-    async def constant_scan(self, dirs: list = None, evt_handler: object=None, skip_check=False) -> list:
+    async def constant_scan(
+        self, dirs: list = None, evt_handler: object = None, skip_check=False
+    ) -> list:
         """
         Main Watcher function.
 
