@@ -16,7 +16,7 @@ try:
 except Exception as e:
     from ..utils import utils as utils
 
-from .events import AsyncFileClassifyEventHandler
+from events import AsyncFileClassifyEventHandler
 
 logger = utils.logger
 misc = utils.misc
@@ -43,10 +43,13 @@ class Watcher:
         return
 
     async def change_default_callback_evt(self, evt) -> None:
+        """
+        Changes the default event handler bound.
+        """
         self.default_event_cb = evt
         return
 
-    async def constant_scan(self, dirs: list = None, evt_handler: object = self.default_evt_handler, skip_check=False) -> list:
+    async def constant_scan(self, dirs: list = None, evt_handler: object=None, skip_check=False) -> list:
         """
         Main Watcher function.
 
@@ -61,6 +64,8 @@ class Watcher:
         Returns:
             list: Returns $self.watch_pool; list of directories being watched.
         """
+        if not evt_handler:
+            evt_handler = self.default_evt_handler
         msg = ""
         if not dirs or dirs == ["*"]:
             msg = "Now watching over full system. Clearing all Watchers in pool."
@@ -71,7 +76,7 @@ class Watcher:
             to_watch = []
             for fp in dirs:
                 if not skip_check:
-                    found = await (self.__check_if_already_watching_fp(fp))
+                    found = await (self._check_if_already_watching_fp(fp))
                     if found:
                         msg = "{} is already being watched!".format(fp)
                         continue
@@ -80,8 +85,16 @@ class Watcher:
                 logger.print_logm(msg)
             self.watch_pool.extend(to_watch)
         logger.print_logm("Building watch pool..")
-        __build_watch_pool(self.watch_pool)
+        await self._build_watch_pool(self.watch_pool)
         return self.watch_pool
+
+    async def check_if_already_watching_fp(self, fp: str) -> bool:
+        """Checks to see if filepath is already being watched in watch_pool.
+        """
+        for to_watch in watch_pool:
+            if misc.check_if_child_in_parent(fp, to_watch):
+                return True
+        return False
 
     async def stop(self, dirs: list) -> None:
         """
@@ -89,20 +102,12 @@ class Watcher:
         that isn't being watched, it will be skipped."""
         return
 
-    async def __build__watch_pool(self, watch_pool: list) -> None:
+    async def _build_watch_pool(self, watch_pool: list) -> None:
         """Calls Watchgod."""
         return
 
-    async def __create_watcher(self, fp: str) -> None:
+    async def _create_watcher(self, fp: str) -> None:
         return
-
-    async def __check_if_already_watching_fp(self, fp: str) -> bool:
-        """Checks to see if filepath is already being watched in watch_pool.
-        """
-        for to_watch in watch_pool:
-            if misc.check_if_child_in_parent(fp, to_watch):
-                return True
-        return False
 
     async def main(self, arg):
         res = await watcher.constant_scan(arg)
@@ -112,4 +117,4 @@ class Watcher:
 
 if __name__ == "__main__":
     watcher = Watcher()
-    watcher.main(["*"])
+    asyncio.run(watcher.main(["*"]))
