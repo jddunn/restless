@@ -31,7 +31,7 @@ class Watcher:
 
     def __init__(self, watch_pool: list = None):
         self.watch_pool = watch_pool
-        self.default_evt_cb = AsyncFileClassifyEventHandler # Default event callback
+        self.default_evt_handler = AsyncFileClassifyEventHandler # Default event callback
                                                             # if watched file changes
         if self.watch_pool:
             logger.print_logm(
@@ -46,15 +46,17 @@ class Watcher:
         self.default_event_cb = evt
         return
 
-    async def constant_scan(self, dirs: list = None, initializing=False) -> list:
+    async def constant_scan(self, dirs: list = None, evt_handler: object = self.default_evt_handler, skip_check=False) -> list:
         """
         Main Watcher function.
 
         Args:
             dirs (list): List of directories to watch over. If $dirs == ["*"],
                 then one watcher will be set over the root path of the machine.
-            initializing (bool, optional): If true, don't perform check to see
-                if we've already made watchers.
+            evt_handler (object): Event handler for each Watcher. Defaults to
+                $self.default_evt_handler.
+            skip_check (bool, optional): If true, don't perform check to see
+                if we've already made watchers for the dirs. Defaults to false.
 
         Returns:
             list: Returns $self.watch_pool; list of directories being watched.
@@ -68,10 +70,11 @@ class Watcher:
         else:
             to_watch = []
             for fp in dirs:
-                found = await (self.__check_if_already_watching_fp(fp))
-                if found and not initializing:
-                    msg = "{} is already being watched!".format(fp)
-                    continue
+                if not skip_check:
+                    found = await (self.__check_if_already_watching_fp(fp))
+                    if found:
+                        msg = "{} is already being watched!".format(fp)
+                        continue
                 msg = "Now adding: {} to the Watcher pool.".format(fp)
                 to_watch.append(fp)
                 logger.print_logm(msg)
