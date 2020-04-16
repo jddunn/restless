@@ -1,8 +1,9 @@
 import os, sys
 import asyncio
+import watchdog
+from hachiko.hachiko import AIOWatchdog # Async wrapper for Watchdog
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-import watchdog
 
 # make dep imports work when running in dir and in outside scripts
 PACKAGE_PARENT = "../../.."
@@ -14,6 +15,8 @@ try:
     from restless.components.utils import utils as utils
 except Exception as e:
     from ..utils import utils as utils
+
+from .events import AsyncFileClassifyEventHandler
 
 logger = utils.logger
 misc = utils.misc
@@ -28,6 +31,8 @@ class Watcher:
 
     def __init__(self, watch_pool: list = None):
         self.watch_pool = watch_pool
+        self.default_evt_cb = AsyncFileClassifyEventHandler # Default event callback
+                                                            # if watched file changes
         if self.watch_pool:
             logger.print_logm(
                 "Restless.Watcher is now watching over system files in dirs: "
@@ -35,6 +40,10 @@ class Watcher:
                 + "."
             )
             self.constant_scan(self.watch_pool, initializing=True)
+        return
+
+    async def change_default_callback_evt(self, evt) -> None:
+        self.default_event_cb = evt
         return
 
     async def constant_scan(self, dirs: list = None, initializing=False) -> list:
@@ -81,6 +90,9 @@ class Watcher:
         """Calls Watchgod."""
         return
 
+    async def __create_watcher(self, fp: str) -> None:
+        return
+
     async def __check_if_already_watching_fp(self, fp: str) -> bool:
         """Checks to see if filepath is already being watched in watch_pool.
         """
@@ -89,10 +101,12 @@ class Watcher:
                 return True
         return False
 
-    async def __on_change_callback(self, fp: str) -> None:
-        return
+    async def main(self, arg):
+        res = await watcher.constant_scan(arg)
+        print(res)
+        return res
 
 
 if __name__ == "__main__":
     watcher = Watcher()
-    watcher.constant_scan(["*"])
+    watcher.main(["*"])
