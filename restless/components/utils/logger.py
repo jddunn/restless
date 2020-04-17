@@ -17,14 +17,14 @@ class Logger:
             "error",
             "critical",
         ]
-        logging.basicConfig(level=logging.INFO)
+        # logging.basicConfig(level=logging.INFO)
         # Add success level
         logging.SUCCESS = 25  # between WARNING and INFO
         logging.addLevelName(logging.SUCCESS, "SUCCESS")
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         self.ch = logging.StreamHandler()  # console handler
-        self.ch.setLevel(logging.INFO)
+        # self.ch.setLevel(logging.INFO)
         # Adjust formatting
         self.ch.setFormatter(CustomFormatter())
         self.logger.addHandler(self.ch)
@@ -151,9 +151,6 @@ class CustomFormatter(logging.Formatter):
             "SUCCESS": "green",
         }
         clr = mapping.get(record.levelname)
-        log_fmt = colored("%(asctime)s", mapping.get("white")) + "\t"
-        log_fmt += colored("(%(levelname)-4s)", clr) + "\t"
-        log_fmt += colored("%(message)s", mapping.get("white"))
-        # log_fmt += colored('%(name)s', mapping.get('bggrey')) + ' ()'
+        log_fmt = colored("%(asctime)s", mapping.get("white")) + "\t" + colored("(%(levelname)-4s)", clr) + "\t" + colored("%(message)s", mapping.get("white")) + "\t" +  colored('(%(name)s)', mapping.get('bggrey'))
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)

@@ -13,7 +13,7 @@ from components.watcher import Watcher
 from components.scanner import Scanner
 from components.nlp import NLP
 
-logger = utils.logger
+logger = utils.logger.logger
 
 
 class Restless(object):
@@ -23,15 +23,10 @@ class Restless(object):
 
     def __init__(self, run_system_scan=False):
         self.run_system_scan = run_system_scan
-        # keys of features from pe_analyzer
-        logger.print_log(
-            {
-                "level": "info",
-                "text": "Restless initializing. Running system-wide scan: "
-                + str(self.run_system_scan),
-            }
+        logger.info(
+          "Restless initializing. Running system-wide scan: "
+               + str(self.run_system_scan)
         )
-        # logger.logger.success("HELP MEEEEE")
         self.scanner = Scanner()
         if self.run_system_scan:
             # Get last system scan time
@@ -58,7 +53,7 @@ class Restless(object):
             res = (fname, self.nlp.hann.predict(matrix_results))
             results.append(res)
             # a_map = self.nlp.hann.attention_map(matrix_results)
-            logger.print_logm(
+            logger.info(
                 "Scanned {} - predicted: {}% benign and {}% malicious".format(
                     res[0], res[1][0], res[1][1]
                 )
