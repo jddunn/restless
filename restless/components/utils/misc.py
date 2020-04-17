@@ -1,3 +1,4 @@
+import os, sys
 from datetime import datetime
 from pathlib import Path
 
@@ -53,5 +54,7 @@ class Misc:
         Returns:
             str: Root path of current machine
         """
-        root = ""
-        return root
+        path = sys.executable
+        while os.path.split(path)[1]:
+            path = os.path.split(path)[0]
+        return path

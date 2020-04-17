@@ -18,7 +18,8 @@ except Exception as e:
 
 from events import AsyncFileClassifyEventHandler
 
-logger = utils.logger
+logging = utils.logger
+logger = utils.logger.logger
 misc = utils.misc
 
 
@@ -39,13 +40,12 @@ class Watcher:
         self.observer = None # Watchdog
         # if watched file changes
         if self.watch_pool:
-            logger.print_logm(
+            logger.info(
                 "Restless.Watcher is now watching over system files in dirs: "
                 + str(self.watch_pool)
                 + "."
             )
             self.constant_scan(self.watch_pool, skip_check=True)
-        print("DA WATCHPOOLLLL: ", self.watch_pool)
         return
 
     async def change_default_callback_evt(self, evt) -> None:
@@ -76,10 +76,10 @@ class Watcher:
             evt_handler = self.default_evt_handler
         msg = ""
         if not dirs or dirs == ["*"]:
+            root = misc.get_os_root_path()
             msg = "Now watching over full system. Clearing all Watchers in pool."
-            root = ""
             self.watch_pool = [root]
-            logger.print_logm(msg)
+            logger.info(msg)
         else:
             to_watch = []
             for fp in dirs:
@@ -90,9 +90,9 @@ class Watcher:
                         continue
                 msg = "Now adding: {} to the Watcher pool.".format(fp)
                 to_watch.append(fp)
-                logger.print_logm(msg)
+                logger.info(msg)
             self.watch_pool.extend(to_watch)
-        logger.print_logm("Building watch pool..")
+        logger.info("Building watch pool..")
         await self._build_watch_pool(self.watch_pool, evt_handler)
         self.observer.start()
         try:
@@ -120,7 +120,6 @@ class Watcher:
     async def _build_watch_pool(self, watch_pool: list, evt_handler = None) -> None:
         """Calls Watchdog."""
         self.observer = Observer()
-        print("DA WATCH_POOL: ", watch_pool)
         if not evt_handler:
             evt_handler = self.default_evt_handler
         for watched_dir in watch_pool:
