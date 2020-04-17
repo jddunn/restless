@@ -37,7 +37,7 @@ class Watcher:
         self.default_evt_handler = (
             default_evt_handler  # Event callback on watch modification signal
         )
-        self.observer = None # Watchdog
+        self.observer = None  # Watchdog
         # if watched file changes
         if self.watch_pool:
             logger.info(
@@ -56,7 +56,11 @@ class Watcher:
         return
 
     async def constant_scan(
-        self, dirs: list = None, evt_handler: object = None, skip_check=False, time_interval:int=1
+        self,
+        dirs: list = None,
+        evt_handler: object = None,
+        skip_check=False,
+        time_interval: int = 1,
     ) -> list:
         """
         Main Watcher function.
@@ -117,7 +121,7 @@ class Watcher:
         that isn't being watched, it will be skipped."""
         return
 
-    async def _build_watch_pool(self, watch_pool: list, evt_handler = None) -> None:
+    async def _build_watch_pool(self, watch_pool: list, evt_handler=None) -> None:
         """Calls Watchdog."""
         self.observer = Observer()
         if not evt_handler:
