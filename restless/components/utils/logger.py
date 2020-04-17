@@ -34,6 +34,7 @@ class Logger:
             "success",
             lambda message, *args: self.logger._log(logging.SUCCESS, message, args),
         )
+        self.colored = colored # Bind method to color text
         return
 
     def print_logm(self, text: str, save: bool = False) -> None:
@@ -129,9 +130,10 @@ class ANSIColor:
 
     def colored(self, text, color=None):
         if color not in self.colors:
-            color = "white"
+            color = 'white'
+
         clr = self.colors[color]
-        return (self.prefix + "%dm%s" + self.suffix) % (clr, text)
+        return (self.prefix+'%dm%s'+self.suffix) % (clr, text)
 
 
 colored = ANSIColor().colored
