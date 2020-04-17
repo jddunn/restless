@@ -23,12 +23,10 @@ class Restless(object):
     Main Restless module.
     """
 
-    def __init__(self, run_system_scan=True, constant_watch=False, watch_pool = ["*"]):
+    def __init__(self, run_system_scan=True, constant_watch=False, watch_pool=["*"]):
 
         self.run_system_scan = run_system_scan
-        logger.info(
-            "Restless initializing.."
-        )
+        logger.info("Restless initializing..")
         self.scanner = Scanner()
         self.watcher = Watcher(watch_pool)
         self.nlp = NLP(load_default_hann_model=True)

@@ -1,6 +1,7 @@
 import os, sys
 import asyncio
 import uvloop
+import time as time
 from watchdog.observers.polling import PollingObserver as Observer
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -55,7 +56,7 @@ class Watcher:
         self.default_event_cb = evt
         return
 
-    async def constant_scan(
+    async def constant_watch(
         self,
         dirs: list = None,
         evt_handler: object = None,
@@ -88,7 +89,9 @@ class Watcher:
             to_watch = []
             for fp in dirs:
                 if not skip_check:
-                    found = await (self._check_if_already_watching_fp(fp))
+                    found = await (
+                        self.check_if_already_watching_fp(fp, self.watch_pool)
+                    )
                     if found:
                         msg = "{} is already being watched!".format(fp)
                         continue
@@ -107,7 +110,7 @@ class Watcher:
         self.observer.join()
         return self.watch_pool
 
-    async def check_if_already_watching_fp(self, fp: str) -> bool:
+    async def check_if_already_watching_fp(self, fp: str, watch_pool) -> bool:
         """Checks to see if filepath is already being watched in watch_pool.
         """
         for to_watch in watch_pool:
@@ -130,13 +133,8 @@ class Watcher:
             self.observer.schedule(evt_handler, watched_dir, recursive=True)
         return
 
-    async def main(self, arg):
-        res = await watcher.constant_scan(arg)
-        print(res)
-        return res
-
 
 if __name__ == "__main__":
     watcher = Watcher([])
     uvloop.install()
-    asyncio.run(watcher.main(["*"]))
+    asyncio.run(watcher.constant_scan(["*"]))
