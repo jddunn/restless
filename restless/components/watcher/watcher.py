@@ -1,8 +1,7 @@
 import os, sys
 import asyncio
 import uvloop
-import watchdog
-from hachiko.hachiko import AIOWatchdog  # Async wrapper for Watchdog
+from watchdog.observers.polling import PollingObserver as Observer
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
@@ -37,6 +36,7 @@ class Watcher:
         self.default_evt_handler = (
             default_evt_handler  # Event callback on watch modification signal
         )
+        self.observer = None # Watchdog
         # if watched file changes
         if self.watch_pool:
             logger.print_logm(
@@ -45,6 +45,7 @@ class Watcher:
                 + "."
             )
             self.constant_scan(self.watch_pool, skip_check=True)
+        print("DA WATCHPOOLLLL: ", self.watch_pool)
         return
 
     async def change_default_callback_evt(self, evt) -> None:
@@ -55,7 +56,7 @@ class Watcher:
         return
 
     async def constant_scan(
-        self, dirs: list = None, evt_handler: object = None, skip_check=False
+        self, dirs: list = None, evt_handler: object = None, skip_check=False, time_interval:int=1
     ) -> list:
         """
         Main Watcher function.
@@ -92,7 +93,14 @@ class Watcher:
                 logger.print_logm(msg)
             self.watch_pool.extend(to_watch)
         logger.print_logm("Building watch pool..")
-        await self._build_watch_pool(self.watch_pool)
+        await self._build_watch_pool(self.watch_pool, evt_handler)
+        self.observer.start()
+        try:
+            while True:
+                time.sleep(time_interval)
+        except KeyboardInterrupt:
+            self.observer.stop()
+        self.observer.join()
         return self.watch_pool
 
     async def check_if_already_watching_fp(self, fp: str) -> bool:
@@ -109,11 +117,14 @@ class Watcher:
         that isn't being watched, it will be skipped."""
         return
 
-    async def _build_watch_pool(self, watch_pool: list) -> None:
-        """Calls Watchgod."""
-        return
-
-    async def _create_watcher(self, fp: str) -> None:
+    async def _build_watch_pool(self, watch_pool: list, evt_handler = None) -> None:
+        """Calls Watchdog."""
+        self.observer = Observer()
+        print("DA WATCH_POOL: ", watch_pool)
+        if not evt_handler:
+            evt_handler = self.default_evt_handler
+        for watched_dir in watch_pool:
+            self.observer.schedule(evt_handler, watched_dir, recursive=True)
         return
 
     async def main(self, arg):
@@ -123,6 +134,6 @@ class Watcher:
 
 
 if __name__ == "__main__":
-    watcher = Watcher(["."])
+    watcher = Watcher([])
     uvloop.install()
     asyncio.run(watcher.main(["*"]))
