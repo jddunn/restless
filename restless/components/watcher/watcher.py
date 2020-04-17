@@ -44,7 +44,7 @@ class Watcher:
                 + str(self.watch_pool)
                 + "."
             )
-            self.constant_scan(self.watch_pool, initializing=True)
+            self.constant_scan(self.watch_pool, skip_check=True)
         return
 
     async def change_default_callback_evt(self, evt) -> None:
@@ -123,6 +123,6 @@ class Watcher:
 
 
 if __name__ == "__main__":
-    watcher = Watcher()
+    watcher = Watcher(["."])
     uvloop.install()
     asyncio.run(watcher.main(["*"]))
