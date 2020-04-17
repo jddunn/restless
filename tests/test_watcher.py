@@ -1,21 +1,17 @@
 import unittest
 import os
 
-from restless import restless
-
-r = restless()
-watcher = r.watcher()
-print(watcher)
+from restless.components.watcher import Watcher
 
 class WatcherTest(unittest.TestCase):
 
     def setUp(self):
-        r = restles()
-        self.watcher = r.watcher()
+        self.watcher = Watcher(watch_pool=[])
         return
 
     def test_watcher_init(self):
-        assert self.watcher is not None
+        self.assertIsNotNone(self.watcher)
+        return
 
 if __name__ == "__main__":
     unittest.main()

@@ -100,6 +100,11 @@ class Logger:
         else:
             raise ValueError("Invalid logging level!")
 
+    def color_text(self, text: str, color: str = "white") -> str:
+        prefix = "\033["
+        suffix = "\033[0m"
+        return colored
+
 
 class ANSIColor:
     """

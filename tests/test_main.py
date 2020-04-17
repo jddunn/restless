@@ -6,13 +6,10 @@ import unittest
 
 from restless import restless
 
-
 class TestRestlessSuite(unittest.TestCase):
     def test_restless_import(self):
         from restless import restless
-
         self.assertIsNotNone(restless)
-
 
 if __name__ == "__main__":
     unittest.main()
