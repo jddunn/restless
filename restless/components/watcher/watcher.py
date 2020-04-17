@@ -1,5 +1,6 @@
 import os, sys
 import asyncio
+import uvloop
 import watchdog
 from hachiko.hachiko import AIOWatchdog  # Async wrapper for Watchdog
 from collections import defaultdict
@@ -123,4 +124,5 @@ class Watcher:
 
 if __name__ == "__main__":
     watcher = Watcher()
+    uvloop.install()
     asyncio.run(watcher.main(["*"]))
