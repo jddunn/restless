@@ -54,16 +54,14 @@ class Restless(object):
         file_results = self.scanner.scan_folder(filepath)
         for file_result in file_results:
             fname = file_result[0]
-            short_fname = fname.split("/")[len(fname.split("/"))-1]
+            short_fname = fname.split("/")[len(fname.split("/")) - 1]
             features = file_result[1]
             if len(self.nlp.hann.features) > 0:
                 features = [x for x in features if x in self.nlp.hann.features]
             matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
             result = (fname, self.nlp.hann.predict(matrix_results))
             results.append(result)
-            colored_fname = logging.colored(
-                short_fname, "gray"
-            )
+            colored_fname = logging.colored(short_fname, "gray")
             benign = float(result[1][0])
             malicious = float(result[1][1])
             # Colorize percentages
@@ -103,7 +101,9 @@ class Restless(object):
             )
         if len(potential_malware) > 0:
             logger.critical(
-                "Found {} files to be potentially infected!".format(logging.colored(str(len(potential_malware)), "bold"))
+                "Found {} files to be potentially infected!".format(
+                    logging.colored(str(len(potential_malware)), ["bold", "red"])
+                )
             )
             self.clean_files(potential_malware)
         return results
