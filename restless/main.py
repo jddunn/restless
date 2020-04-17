@@ -15,7 +15,6 @@ from components.nlp import NLP
 
 logger = utils.logger
 
-
 class Restless(object):
     """
     Main Restless module.
@@ -24,16 +23,17 @@ class Restless(object):
     def __init__(self, run_system_scan=False):
         self.run_system_scan = run_system_scan
         # keys of features from pe_analyzer
-        logger.print_logm(
-            "Restless initializing. Running system-wide scan: "
-            + str(self.run_system_scan)
+        logger.print_log({"level": "info", "text":
+          "Restless initializing. Running system-wide scan: "
+           + str(self.run_system_scan)}
         )
+        # logger.logger.success("HELP MEEEEE")
         self.scanner = Scanner()
         if self.run_system_scan:
             # Get last system scan time
             self.scanner.scan_full_system()
         else:
-            self.watcher = Watcher()
+            self.watcher = Watcher([])
         nlp = NLP(load_default_hann_model=True)
         self.nlp = nlp
         return
