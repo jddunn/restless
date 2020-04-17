@@ -1,28 +1,24 @@
 import datetime
 import logging as logging
 
+extended_log_data = (
+    True  # Format logs with extended metadata like functions, files, lineno
+)
+
 
 class Logger:
     """
     Logging with colors.
     """
 
+    level = "INFO"
+
     def __init__(self):
-        self.levels = [
-            "debug",
-            "info",
-            "success",
-            "warning",
-            "level",
-            "error",
-            "critical",
-        ]
-        # logging.basicConfig(level=logging.INFO)
         # Add success level
         logging.SUCCESS = 25  # between WARNING and INFO
         logging.addLevelName(logging.SUCCESS, "SUCCESS")
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(self.level)
         self.ch = logging.StreamHandler()  # console handler
         # Adjust formatting
         self.ch.setFormatter(CustomFormatter())
@@ -82,12 +78,13 @@ class Logger:
 
     def change_logging_level(self, level: str) -> None:
         """Changes level of logger and console handler."""
+        self.level = level
         if level == "debug":
             self.logger.setLevel(logging.DEBUG)
             self.ch.setLevel(logging.DEBUG)
         elif level == "info":
-            self.logger.setLevel(logging.DEBUG)
-            self.ch.setLevel(logging.DEBUG)
+            self.logger.setLevel(logging.INFO)
+            self.ch.setLevel(logging.INFO)
         elif level == "warning":
             self.logger.setLevel(logging.WARNING)
             self.ch.setLevel(logging.WARNING)
@@ -98,7 +95,7 @@ class Logger:
             self.logger.setLevel(logging.CRITICAL)
             self.ch.setLevel(logging.CRITICAL)
         else:
-            raise ValueError("Invalid logging level!")
+            raise ValueError("Invalid logging level to set!")
 
 
 class ANSIColor:
@@ -154,15 +151,25 @@ class ANSIColor:
         "bg_l_cyan": 106,
         "bg_white": 107,
     }
+
     prefix = "\033["
     suffix = "\033[0m"
 
     def colored(self, text, color=None):
-        if color not in self.colors:
-            color = "white"
-
-        clr = self.colors[color]
-        return (self.prefix + "%dm%s" + self.suffix) % (clr, text)
+        if isinstance(color, list):
+            # Apply multiple styles
+            result = ""
+            for _color in color:
+                clr = self.colors[_color]
+                result += (self.prefix + "%d" + "m") % clr
+            result += ("%s") % text
+            result += self.suffix
+            return result
+        else:
+            if color not in self.colors:
+                color = "white"
+            clr = self.colors[color]
+            return (self.prefix + "%dm%s" + self.suffix) % (clr, text)
 
 
 colored = ANSIColor().colored
@@ -174,27 +181,39 @@ class CustomFormatter(logging.Formatter):
     https://stackoverflow.com/questions/384076/how-can-i-color-python-logging-output
     """
 
+    mapping = {
+        "INFO": "cyan",
+        "WARNING": "yellow",
+        "ERROR": "red",
+        "CRITICAL": "bg_red",
+        "DEBUG": "bg_gray",
+        "SUCCESS": "green",
+    }
+
     def format(self, record):
-
         message = record.getMessage()
-
-        mapping = {
-            "INFO": "cyan",
-            "WARNING": "yellow",
-            "ERROR": "red",
-            "CRITICAL": "bgred",
-            "DEBUG": "bggrey",
-            "SUCCESS": "green",
-        }
-        clr = mapping.get(record.levelname)
-        log_fmt = (
-            colored("%(asctime)s", mapping.get("white"))
-            + "\t"
-            + colored("(%(levelname)-4s)", clr)
-            + "\t"
-            + colored("%(message)s", mapping.get("white"))
-            + "\t"
-            + colored("(%(name)s)", mapping.get("bggrey"))
-        )
-        formatter = logging.Formatter(log_fmt)
+        clr = self.mapping.get(record.levelname)
+        if extended_log_data == True:
+            # Format log with extended props for debugging
+            log_fmt = (
+                colored("%(asctime)s", "gray")
+                + "\t"
+                + colored("(%(levelname)-4s)", clr)
+                + "\t"
+                + colored("%(message)s", "white")
+                + "\t"
+                + colored("(%(filename)s : ", "d_gray")
+                + colored("line %(lineno)s in function ", "d_gray")
+                + colored("%(funcName)s)", "d_gray")
+            )
+            formatter = logging.Formatter(log_fmt)
+        else:
+            log_fmt = (
+                colored("%(asctime)s", self.mapping.get("gray"))
+                + "\t"
+                + colored("(%(levelname)-4s)", clr)
+                + "\t"
+                + colored("%(message)s", self.mapping.get("white"))
+            )
+            formatter = logging.Formatter(log_fmt, "%Y-%m-%d %H:%M:%S")
         return formatter.format(record)

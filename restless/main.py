@@ -39,24 +39,29 @@ class Restless(object):
         self.nlp = nlp
         return
 
+    def clean_files(self, infected_files: list) -> None:
+        for file in infected_files:
+            pass
+        return
+
     def scan_full_system(self):
         results = self.scanner.scan_full_system()
         return results
 
     def scan_folder(self, filepath: str):
         results = []
+        potential_malware = []
         file_results = self.scanner.scan_folder(filepath)
         for file_result in file_results:
             fname = file_result[0]
+            short_fname = fname.split("/")[len(fname.split("/")) - 1]
             features = file_result[1]
             if len(self.nlp.hann.features) > 0:
                 features = [x for x in features if x in self.nlp.hann.features]
             matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
             result = (fname, self.nlp.hann.predict(matrix_results))
             results.append(result)
-            colored_fname = logging.colored(
-                result[0].split("/")[len(result[0].split("/")) - 1], "gray"
-            )
+            colored_fname = logging.colored(short_fname, "gray")
             benign = float(result[1][0])
             malicious = float(result[1][1])
             # Colorize percentages
@@ -81,6 +86,7 @@ class Restless(object):
                 colored_malicious = logging.colored(malicious, clr)
                 colored_malicious += logging.colored("% malicious", clr)
             if malicious > 0.6:
+                potential_malware.append(fname)
                 clr = "red" if malicious > 0.8 else "b_red"
                 colored_malicious = logging.colored(malicious, clr)
                 colored_malicious += logging.colored("% malicious", clr)
@@ -93,4 +99,11 @@ class Restless(object):
                     colored_malicious,
                 )
             )
+        if len(potential_malware) > 0:
+            logger.critical(
+                "Found {} files to be potentially infected!".format(
+                    logging.colored(str(len(potential_malware)), ["bold", "red"])
+                )
+            )
+            self.clean_files(potential_malware)
         return results
