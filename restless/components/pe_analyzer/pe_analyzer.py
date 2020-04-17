@@ -4,8 +4,6 @@ import os
 import pefile
 import csv
 
-rootdir = "/home/ubuntu/restless/restless/data"
-
 # Change this based on the PE file we're analyzing -
 # [0] for benign and [1] for malicious, or leave empty if we do$
 class_label = []
@@ -82,7 +80,6 @@ class PEAnalyzer:
 
     def __init__(self):
         self.class_label = class_label
-        self.rootdir = rootdir
 
     def file_creation_year(self, seconds):
         return 1970 + ((int(seconds) / 86400) / 365)
@@ -158,22 +155,15 @@ class PEAnalyzer:
         ]
         return IMAGE_DOS_HEADER_data + FILE_HEADER_data + OPTIONAL_HEADER_data
 
-    def send_files_recursive(self, rootdir: str = None):
+    def send_files_recursive(self, rootdir: str):
         results = []
-        if not rootdir:
-            rootdir = self.rootdir
-        print("PEAnalyzer scanning: ", rootdir)
         for dirpath, dirs, files in os.walk(rootdir):
-            # print(dirpath, dirs, files)
             for filename in files:
                 fname = os.path.join(dirpath, filename)
                 with open(fname) as myfile:
-                    # print(myfile.read())
                     try:
                         pe = pefile.PE(fname)
-                        # print("PE: ", fname, pe)
                     except Exception as e:
-                        # print("File: ", fname, " cannot be analyzed - ", e)
                         pass
                     else:
                         try:
@@ -181,7 +171,6 @@ class PEAnalyzer:
                             result = (fname, features)
                             results.append(result)
                         except Exception as e:
-                            # print("Error while saving features: ", e)
                             pass
         return results
 
