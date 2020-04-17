@@ -1,6 +1,10 @@
 # Make relative imports work for Docker
 import sys
 import os
+import asyncio
+import uvloop
+
+from concurrent.futures import ThreadPoolExecutor
 
 PACKAGE_PARENT = "."
 SCRIPT_DIR = os.path.dirname(
@@ -23,19 +27,32 @@ class Restless(object):
     Main Restless module.
     """
 
-    def __init__(self, run_system_scan=True, constant_watch=False, watch_pool=["*"]):
-
+    def __init__(self, run_system_scan=True, constant_watch=True, watch_pool=["*"]):
+        uvloop.install()
         self.run_system_scan = run_system_scan
         logger.info("Restless initializing..")
         self.scanner = Scanner()
+        # Run Watcher in async event loop in new thread
         self.watcher = Watcher(watch_pool)
+        event_loop = asyncio.get_event_loop()
+        event_loop = asyncio.new_event_loop()
+        # with ThreadPoolExecutor(max_workers=4) as executor:
+        #  event_loop.run_until_complete(self.watcher.start_new_watch_thread(event_loop, executor, watch_pool))
+        # with ThreadPoolExecutor(max_workers=1) as executor:
+        #  event_loop.run_until_complete(self.watcher.keep_loop())
         self.nlp = NLP(load_default_hann_model=True)
         if self.run_system_scan:
             logger.info("Scanning full system.")
             self.scan_full_system()
         if constant_watch:
             logger.info("Constantly watching: {}.".format(watch_pool))
-            self.constant_watch(watch_pool)
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                event_loop.run_until_complete(
+                    self.watcher.start_new_watch_thread(
+                        event_loop, executor, watch_pool
+                    )
+                )
+            # self.constant_watch(watch_pool)
         return
 
     def clean_files(self, infected_files: list) -> None:
@@ -65,38 +82,34 @@ class Restless(object):
             benign = float(result[1][0])
             malicious = float(result[1][1])
             # Colorize percentages
-            colored_benign = (
-                logging.colored(benign, "gray")
-                + logging.colored("%", "gray")
-                + " "
-                + logging.colored("benign", "gray")
+            colored_benign = logging.colored(benign, "d_gray") + logging.colored(
+                "%", "d_gray"
             )
-            colored_malicious = (
-                logging.colored(malicious, "gray")
-                + logging.colored("%", "gray")
-                + " "
-                + logging.colored("malicious", "gray")
+            colored_malicious = logging.colored(malicious, "d_gray") + logging.colored(
+                "%", "d_gray"
             )
             if benign > 0.6:
                 clr = "green" if benign < 0.8 else "b_green"
                 colored_benign = logging.colored(benign, clr)
-                colored_benign += logging.colored("% benign", clr)
+                colored_benign += logging.colored("%", clr)
             if malicious > 0.1 and malicious < 0.4:
                 clr = "yellow"
                 colored_malicious = logging.colored(malicious, clr)
-                colored_malicious += logging.colored("% malicious", clr)
+                colored_malicious += logging.colored("%", clr)
             if malicious > 0.6:
                 potential_malware.append(fname)
                 clr = "red" if malicious > 0.8 else "b_red"
                 colored_malicious = logging.colored(malicious, clr)
-                colored_malicious += logging.colored("% malicious", clr)
+                colored_malicious += logging.colored("%", clr)
             logger.info(
-                "{} {} {} predicted: {} and {}.".format(
+                "{} {} {} predicted: {} {} and {} {}.".format(
                     logging.colored("Scanned", "white"),
                     colored_fname,
                     logging.colored("-", "d_gray"),
                     colored_benign,
+                    logging.colored("benign", "gray"),
                     colored_malicious,
+                    logging.colored("malicious", "gray"),
                 )
             )
         if len(potential_malware) > 0:

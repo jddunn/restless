@@ -17,17 +17,17 @@ SCRIPT_DIR = os.path.dirname(
 sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 try:
     from restless.components.utils import utils as utils
-    from restless.components.watcher.events import AsyncFileClassifyEventHandler, AIOEventHandler, EventHandler
 except Exception as e:
     from ..utils import utils as utils
 
-from events import AsyncFileClassifyEventHandler, AIOEventHandler, EventHandler
+from events import AsyncFileClassifyEventHandler
 
 logging = utils.logger
 logger = utils.logger.logger
 misc = utils.misc
 
 uvloop.install()
+
 
 class Watcher:
 
@@ -36,16 +36,22 @@ class Watcher:
     saved files, sending them to the classification / defense pipeline."
     """
 
-    def __init__(self, watch_pool: list, default_evt_handler=AsyncFileClassifyEventHandler()):
+    def __init__(
+        self, watch_pool: list, default_evt_handler=AsyncFileClassifyEventHandler()
+    ):
         self.watch_pool = watch_pool  # Array of paths to watch
         self.default_evt_handler = (
             default_evt_handler  # Event callback on watch modification signal
         )
-        self.watchdog = AIOWatchdog(self.watch_pool, event_handler=self.default_evt_handler)
-        self.watching = True # As long as this is true, Watcher will be watching
+        self.watchdog = AIOWatchdog(
+            self.watch_pool, event_handler=self.default_evt_handler
+        )
+        self.watching = True  # As long as this is true, Watcher will be watching
         return
 
-    async def start_new_watch_thread(self, loop, executor = None, dirs: list = None) -> None:
+    async def start_new_watch_thread(
+        self, loop, executor=None, dirs: list = None
+    ) -> None:
         try:
             result = start_new_thread(self.constant_watch, (dirs,))
         finally:
@@ -82,7 +88,12 @@ class Watcher:
             evt_handler = self.default_evt_handler
         msg = ""
         if not dirs or dirs == ["*"] or dirs == ([],):
-            msg = logging.colored("Restless", "bold") + " is now " + logging.colored("watching over", "slow_blink") + " the full system."
+            msg = (
+                logging.colored("Restless", "bold")
+                + " is now "
+                + logging.colored("watching over", "slow_blink")
+                + " the full system."
+            )
             root = misc.get_os_root_path()
             self.watch_pool = [root]
         else:
@@ -97,8 +108,15 @@ class Watcher:
                 to_watch.append(fp)
                 logger.info(msg)
             self.watch_pool.extend(to_watch)
-            msg = logging.colored("Restless", "bold") + " is now " + logging.colored("watching over", "slow_blink") + " the system."
-        self.watchdog = AIOWatchdog(self.watch_pool, event_handler=self.default_evt_handler, recursive=True)
+            msg = (
+                logging.colored("Restless", "bold")
+                + " is now "
+                + logging.colored("watching over", "slow_blink")
+                + " the system."
+            )
+        self.watchdog = AIOWatchdog(
+            self.watch_pool, event_handler=self.default_evt_handler, recursive=True
+        )
         logger.info(msg)
         self.watchdog.start()
         try:
@@ -137,9 +155,7 @@ class Watcher:
 # https://github.com/biesnecker/hachiko, but modified
 # to work with multiple watched directories
 class AIOWatchdog(object):
-
-    def __init__(self, path='.', recursive=True, event_handler=None,
-                 observer=None):
+    def __init__(self, path=".", recursive=True, event_handler=None, observer=None):
         if observer is None:
             self._observer = Observer()
         else:
@@ -164,10 +180,11 @@ class AIOWatchdog(object):
 if __name__ == "__main__":
     dirs = ["/home/ubuntu"]
     watcher = Watcher(dirs)
-    # Create new thread
     event_loop = asyncio.get_event_loop()
     event_loop = asyncio.new_event_loop()
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        event_loop.run_until_complete(watcher.start_new_watch_thread(event_loop, executor, dirs))
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        event_loop.run_until_complete(
+            watcher.start_new_watch_thread(event_loop, executor, dirs)
+        )
     with ThreadPoolExecutor(max_workers=1) as executor:
         event_loop.run_until_complete(watcher.keep_loop())
