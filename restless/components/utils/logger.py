@@ -8,21 +8,11 @@ class Logger:
     """
 
     def __init__(self):
-        self.levels = [
-            "debug",
-            "info",
-            "success",
-            "warning",
-            "level",
-            "error",
-            "critical",
-        ]
-        # logging.basicConfig(level=logging.INFO)
         # Add success level
         logging.SUCCESS = 25  # between WARNING and INFO
         logging.addLevelName(logging.SUCCESS, "SUCCESS")
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel("INFO")
         self.ch = logging.StreamHandler()  # console handler
         # Adjust formatting
         self.ch.setFormatter(CustomFormatter())
@@ -154,6 +144,7 @@ class ANSIColor:
         "bg_l_cyan": 106,
         "bg_white": 107,
     }
+
     prefix = "\033["
     suffix = "\033[0m"
 
@@ -182,19 +173,19 @@ class CustomFormatter(logging.Formatter):
             "INFO": "cyan",
             "WARNING": "yellow",
             "ERROR": "red",
-            "CRITICAL": "bgred",
-            "DEBUG": "bggrey",
+            "CRITICAL": "bg_red",
+            "DEBUG": "bg_gray",
             "SUCCESS": "green",
         }
         clr = mapping.get(record.levelname)
         log_fmt = (
-            colored("%(asctime)s", mapping.get("white"))
+            colored("%(asctime)s", mapping.get("gray"))
             + "\t"
             + colored("(%(levelname)-4s)", clr)
             + "\t"
             + colored("%(message)s", mapping.get("white"))
             + "\t"
-            + colored("(%(name)s)", mapping.get("bggrey"))
+            + colored("(%(filename)s)", mapping.get("d_gray"))
         )
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)
