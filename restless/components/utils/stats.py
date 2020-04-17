@@ -21,7 +21,7 @@ DEFAULT_SCREENSHOTS_PATH = os.path.abspath(
 )
 
 
-class StatsUtils:
+class Stats:
     """
     Contains functions to facilitate statistical modeling
     and ML processing.

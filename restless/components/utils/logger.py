@@ -2,7 +2,7 @@ import datetime
 import logging as logging
 
 
-class LoggerUtils:
+class Logger:
     """
     Logging with colors.
     """

@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-class MiscUtils:
+class Misc:
 
     """Misc / general utilis."""
 

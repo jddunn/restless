@@ -4,7 +4,7 @@ import numpy as np
 
 from pandas import DataFrame
 
-from misc_utils import MiscUtils
+from misc import Misc
 
 import matplotlib.pyplot as plt
 import seaborn as sbn
@@ -19,10 +19,8 @@ DEFAULT_SCREENSHOTS_PATH = os.path.abspath(
 # Generate a custom diverging colormap
 cmap = sbn.diverging_palette(220, 10, as_cmap=True)
 
-misc = MiscUtils()
 
-
-class StatsVisUtils:
+class StatsVis:
     def __init__(self):
         return
 
@@ -66,7 +64,7 @@ class StatsVisUtils:
             cbar_kws={"shrink": 0.5},
             annot_kws={"size": 6},
         )
-        ts = misc.make_ts()
+        ts = Misc.make_ts()
         plot_title_to_show = self._make_plot_title(ts, plot_title, ts_title)
         plt.title(plot_title_to_show)
         if save_image:
