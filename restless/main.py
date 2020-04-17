@@ -13,6 +13,7 @@ from components.watcher import Watcher
 from components.scanner import Scanner
 from components.nlp import NLP
 
+misc = utils.misc
 logging = utils.logger
 logger = utils.logger.logger
 
@@ -22,21 +23,21 @@ class Restless(object):
     Main Restless module.
     """
 
-    def __init__(self, run_system_scan=False):
+    def __init__(self, run_system_scan=True, constant_watch=False, watch_pool = ["*"]):
 
         self.run_system_scan = run_system_scan
         logger.info(
-            "Restless initializing. Running system-wide scan: "
-            + str(self.run_system_scan)
+            "Restless initializing.."
         )
         self.scanner = Scanner()
+        self.watcher = Watcher(watch_pool)
+        self.nlp = NLP(load_default_hann_model=True)
         if self.run_system_scan:
-            # Get last system scan time
-            self.scanner.scan_full_system()
-        else:
-            self.watcher = Watcher([])
-        nlp = NLP(load_default_hann_model=True)
-        self.nlp = nlp
+            logger.info("Scanning full system.")
+            self.scan_full_system()
+        if constant_watch:
+            logger.info("Constantly watching: {}.".format(watch_pool))
+            self.constant_watch(watch_pool)
         return
 
     def clean_files(self, infected_files: list) -> None:
@@ -45,10 +46,11 @@ class Restless(object):
         return
 
     def scan_full_system(self):
-        results = self.scanner.scan_full_system()
+        root = misc.get_os_root_path()
+        results = self.scanner.scan(root)
         return results
 
-    def scan_folder(self, filepath: str):
+    def scan(self, filepath: str):
         results = []
         potential_malware = []
         file_results = self.scanner.scan_folder(filepath)
