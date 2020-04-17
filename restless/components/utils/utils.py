@@ -1,17 +1,17 @@
 import os
 import subprocess
 
-from .logger_utils import LoggerUtils
-from .stats_utils import StatsUtils
-from .stats_vis_utils import StatsVisUtils
-from .misc_utils import MiscUtils
+from .logger import Logger
+from .stats import Stats
+from .stats_vis import StatsVis
+from .misc import Misc
 
 # from .db_caller import DB_Caller
 
-logger = LoggerUtils()
-stats = StatsUtils()
-stats_vis = StatsVisUtils()
-misc = MiscUtils()
+logger = Logger()
+stats = Stats()
+stats_vis = StatsVis()
+misc = Misc()
 # db = DB_Caller()
 
 
@@ -26,5 +26,4 @@ class Utils:
         self.stats_vis = stats_vis
         self.misc = misc
         # self.db = db
-        # self.print_logm("Initializing db: " + str(self.db.context))
         pass
