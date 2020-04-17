@@ -67,6 +67,8 @@ class Logger:
             self.logger.error(data["text"])
         elif level == "warning":
             self.logger.warning(data["text"])
+        elif level == "success":
+            self.logger.success(data["text"])
         elif level == "debug":
             self.logger.debug(data["text"])
         else:
