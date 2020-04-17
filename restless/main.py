@@ -13,6 +13,7 @@ from components.watcher import Watcher
 from components.scanner import Scanner
 from components.nlp import NLP
 
+logging = utils.logger
 logger = utils.logger.logger
 
 
@@ -22,10 +23,11 @@ class Restless(object):
     """
 
     def __init__(self, run_system_scan=False):
+
         self.run_system_scan = run_system_scan
         logger.info(
-          "Restless initializing. Running system-wide scan: "
-               + str(self.run_system_scan)
+            "Restless initializing. Running system-wide scan: "
+            + str(self.run_system_scan)
         )
         self.scanner = Scanner()
         if self.run_system_scan:
@@ -50,12 +52,45 @@ class Restless(object):
             if len(self.nlp.hann.features) > 0:
                 features = [x for x in features if x in self.nlp.hann.features]
             matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
-            res = (fname, self.nlp.hann.predict(matrix_results))
-            results.append(res)
-            # a_map = self.nlp.hann.attention_map(matrix_results)
+            result = (fname, self.nlp.hann.predict(matrix_results))
+            results.append(result)
+            colored_fname = logging.colored(
+                result[0].split("/")[len(result[0].split("/")) - 1], "gray"
+            )
+            benign = float(result[1][0])
+            malicious = float(result[1][1])
+            # Colorize percentages
+            colored_benign = (
+                logging.colored(benign, "gray")
+                + logging.colored("%", "gray")
+                + " "
+                + logging.colored("benign", "gray")
+            )
+            colored_malicious = (
+                logging.colored(malicious, "gray")
+                + logging.colored("%", "gray")
+                + " "
+                + logging.colored("malicious", "gray")
+            )
+            if benign > 0.6:
+                clr = "green" if benign < 0.8 else "b_green"
+                colored_benign = logging.colored(benign, clr)
+                colored_benign += logging.colored("% benign", clr)
+            if malicious > 0.1 and malicious < 0.4:
+                clr = "yellow"
+                colored_malicious = logging.colored(malicious, clr)
+                colored_malicious += logging.colored("% malicious", clr)
+            if malicious > 0.6:
+                clr = "red" if malicious > 0.8 else "b_red"
+                colored_malicious = logging.colored(malicious, clr)
+                colored_malicious += logging.colored("% malicious", clr)
             logger.info(
-                "Scanned {} - predicted: {}% benign and {}% malicious".format(
-                    res[0], res[1][0], res[1][1]
+                "{} {} {} predicted: {} and {}.".format(
+                    logging.colored("Scanned", "white"),
+                    colored_fname,
+                    logging.colored("-", "d_gray"),
+                    colored_benign,
+                    colored_malicious,
                 )
             )
         return results

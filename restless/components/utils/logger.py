@@ -24,7 +24,6 @@ class Logger:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         self.ch = logging.StreamHandler()  # console handler
-        # self.ch.setLevel(logging.INFO)
         # Adjust formatting
         self.ch.setFormatter(CustomFormatter())
         self.logger.addHandler(self.ch)
@@ -34,7 +33,7 @@ class Logger:
             "success",
             lambda message, *args: self.logger._log(logging.SUCCESS, message, args),
         )
-        self.colored = colored # Bind method to color text
+        self.colored = colored  # Bind method to color text
         return
 
     def print_logm(self, text: str, save: bool = False) -> None:
@@ -101,11 +100,6 @@ class Logger:
         else:
             raise ValueError("Invalid logging level!")
 
-    def color_text(self, text: str, color: str = "white") -> str:
-        prefix = "\033["
-        suffix = "\033[0m"
-        return colored
-
 
 class ANSIColor:
     """
@@ -114,6 +108,18 @@ class ANSIColor:
     """
 
     colors = {
+        "reset": 0,
+        "bold": 1,
+        "faint": 2,
+        "italic": 3,
+        "underline": 4,
+        "framed": 51,
+        "encircled": 52,
+        "overlined": 53,
+        "slow_blink": 5,
+        "rapid_blink": 6,
+        "reversed": 7,
+        "conceal": 8,
         "black": 30,
         "red": 31,
         "green": 32,
@@ -121,19 +127,42 @@ class ANSIColor:
         "blue": 34,
         "magenta": 35,
         "cyan": 36,
-        "white": 37,
-        "bgred": 41,
-        "bggrey": 100,
+        "gray": 37,
+        "d_gray": 90,
+        "b_red": 91,
+        "b_green": 92,
+        "b_yellow": 93,
+        "b_blue": 94,
+        "b_magenta": 95,
+        "b_cyan": 96,
+        "white": 97,
+        "bg_default": 49,
+        "bg_black": 40,
+        "bg_red": 41,
+        "bg_green": 42,
+        "bg_yellow": 43,
+        "bg_blue": 44,
+        "bg_magenta": 45,
+        "bg_cyan": 46,
+        "bg_gray": 47,
+        "bg_d_gray": 100,
+        "bg_l_red": 101,
+        "bg_l_green": 102,
+        "bg_l_yellow": 103,
+        "bg_l_blue": 104,
+        "bg_l_magenta": 105,
+        "bg_l_cyan": 106,
+        "bg_white": 107,
     }
     prefix = "\033["
     suffix = "\033[0m"
 
     def colored(self, text, color=None):
         if color not in self.colors:
-            color = 'white'
+            color = "white"
 
         clr = self.colors[color]
-        return (self.prefix+'%dm%s'+self.suffix) % (clr, text)
+        return (self.prefix + "%dm%s" + self.suffix) % (clr, text)
 
 
 colored = ANSIColor().colored
@@ -158,6 +187,14 @@ class CustomFormatter(logging.Formatter):
             "SUCCESS": "green",
         }
         clr = mapping.get(record.levelname)
-        log_fmt = colored("%(asctime)s", mapping.get("white")) + "\t" + colored("(%(levelname)-4s)", clr) + "\t" + colored("%(message)s", mapping.get("white")) + "\t" +  colored('(%(name)s)', mapping.get('bggrey'))
+        log_fmt = (
+            colored("%(asctime)s", mapping.get("white"))
+            + "\t"
+            + colored("(%(levelname)-4s)", clr)
+            + "\t"
+            + colored("%(message)s", mapping.get("white"))
+            + "\t"
+            + colored("(%(name)s)", mapping.get("bggrey"))
+        )
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)
