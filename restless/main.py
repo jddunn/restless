@@ -30,10 +30,12 @@ class Restless(object):
 
     def __init__(
         self,
-        run_system_scan: bool = False,
-        constant_watch: bool = False,
-        watch_pool: list = ["*"],
-        default_malware_prob_threshold=0.6,
+        run_system_scan: bool = False,  # Run full system scan (from home dir)
+        constant_watch: bool = False,  # Constantly defend system (defaults to home dir)
+        # by scanning and cleaning new / modified files
+        watch_pool: list = ["*"],  # List of dirs to constantly watch / defend
+        # "*" will make it default to home dir
+        default_malware_prob_threshold=0.6,  # Prob threshold to classify as malware
     ):
         uvloop.install()  # make event loop fast
         self.run_system_scan = run_system_scan
@@ -69,7 +71,7 @@ class Restless(object):
 
     def scan_full_system(self):
         root = misc.get_os_root_path()
-        results = self.scanner.scan(root)
+        results = self.scan(root)
         return results
 
     def scan(self, filepath: str, malware_prob_threshold: float = 0.6):
