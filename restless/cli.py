@@ -13,11 +13,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "-i",
         "--input",
-        required=True,
+        required=False,
         help="File path to scan or folder path to scan recursively.",
     )
     args = parser.parse_args()
     fp = args.input
+    if not fp:
+        fp = "*"
     if fp is "*":
         restless.scan_full_system()
         # Run full system scan
