@@ -19,11 +19,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
     fp = args.input
     if fp is "*":
-        restless.scanner.scan_full_system()
+        restless.scan_full_system()
         # Run full system scan
     else:
         if os.path.exists(fp):
-            restless.scan_folder(fp)
+            restless.scan(fp)
         else:
             print(
                 "Input is not a valid filepath! Please pass the absolute path or relative path if the files are inside the same dir."

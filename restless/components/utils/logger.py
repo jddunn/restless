@@ -196,11 +196,11 @@ class CustomFormatter(logging.Formatter):
         if extended_log_data == True:
             # Format log with extended props for debugging
             log_fmt = (
-                colored("%(asctime)s", "gray")
+                colored("%(asctime)-4s", "gray")
                 + "\t"
                 + colored("(%(levelname)-4s)", clr)
                 + "\t"
-                + colored("%(message)s", "white")
+                + colored("%(message)-4s", "white")
                 + "\t"
                 + colored("(%(filename)s : ", "d_gray")
                 + colored("line %(lineno)s in function ", "d_gray")
@@ -209,7 +209,7 @@ class CustomFormatter(logging.Formatter):
             formatter = logging.Formatter(log_fmt)
         else:
             log_fmt = (
-                colored("%(asctime)s", self.mapping.get("gray"))
+                colored("%(asctime)-4s", self.mapping.get("gray"))
                 + "\t"
                 + colored("(%(levelname)-4s)", clr)
                 + "\t"

@@ -1,5 +1,6 @@
 import unittest
 import os
+import pytest
 
 from restless.components.watcher import Watcher
 
