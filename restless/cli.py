@@ -15,22 +15,30 @@ if __name__ == "__main__":
         "--input",
         required=False,
         help="File path to scan or folder path to scan recursively."
-        + " Enter '*' to run a full system scan.",
+        + " Enter '*' (in quotes) to run a full system scan.",
     )
     parser.add_argument(
         "-w",
         "--watch",
         required=False,
-        help="If --watch is passed, Restless will always always watch the input"
-              + " directory (or the home dir by default), and send each new file added"
-              + " / modified to the classification pipeline. "
+        help="If --watch is passed, Restless will always always watch the directory"
+        + " (and all subdirs) passed directory. Enter '*' (in quotes) to watch"
+        + " the home dir. New / modified files will be sent to the defense pipeline.",
     )
     args = parser.parse_args()
     fp = args.input
-    if not fp:
+    wfp = args.watch
+    if fp and wfp:
+        print(
+            "Error! Please only pass in either an -i or -w (for input directory to scan now, or directory to watch and defend)."
+        )
+    if not fp and wfp:
+        restless = Restless(run_system_scan=False)
+        restless.constant_watch(wfp)
+    if not fp and not wfp:
         fp = "*"
     if fp is "*":
-        restless = Restless(run_system_scan=False)
+        restless = Restless(run_system_scan=True)
         # Run a full system scan
         restless.scan_full_system()
     else:
@@ -39,7 +47,7 @@ if __name__ == "__main__":
             restless.scan(fp)
         else:
             print(
-                "Input is not a valid filepath! Please pass the absolute path or" +
-                " relative path if the files are inside the same dir."
+                "Input is not a valid filepath! Please pass the absolute path or"
+                + " relative path if the files are inside the same dir."
             )
             exit()
