@@ -20,6 +20,7 @@ from components.nlp import NLP
 misc = utils.misc
 logging = utils.logger
 logger = utils.logger.logger
+colored = utils.logger.colored
 
 
 class Restless(object):
@@ -65,12 +66,15 @@ class Restless(object):
         results = self.scanner.scan(root)
         return results
 
-    def scan(self, filepath: str):
+    def scan(self, filepath: str, malware_prob_threshold: float = 0.6):
         results = []
         potential_malware = []
         file_results = self.scanner.scan_folder(filepath)
         for file_result in file_results:
             fname = file_result[0]
+            path_to_fname = fname.split("/")
+            path_to_fname.pop()
+            path_to_fname = "/".join(path_to_fname)
             short_fname = fname.split("/")[len(fname.split("/")) - 1]
             features = file_result[1]
             if len(self.nlp.hann.features) > 0:
@@ -78,44 +82,45 @@ class Restless(object):
             matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
             result = (fname, self.nlp.hann.predict(matrix_results))
             results.append(result)
-            colored_fname = logging.colored(short_fname, "gray")
+            colored_fname = (
+                colored(path_to_fname, "gray")
+                + colored("/", "bold")
+                + colored(short_fname, ["gray", "underline"])
+            )
             benign = float(result[1][0])
             malicious = float(result[1][1])
             # Colorize percentages
-            colored_benign = logging.colored(benign, "d_gray") + logging.colored(
-                "%", "d_gray"
-            )
-            colored_malicious = logging.colored(malicious, "d_gray") + logging.colored(
-                "%", "d_gray"
-            )
+            colored_benign = colored(benign, "d_gray") + colored("%", "d_gray")
+            colored_malicious = colored(malicious, "d_gray") + colored("%", "d_gray")
             if benign > 0.6:
                 clr = "green" if benign < 0.8 else "b_green"
-                colored_benign = logging.colored(benign, clr)
-                colored_benign += logging.colored("%", clr)
+                colored_benign = colored(benign, clr)
+                colored_benign += colored("%", clr)
             if malicious > 0.1 and malicious < 0.4:
                 clr = "yellow"
-                colored_malicious = logging.colored(malicious, clr)
-                colored_malicious += logging.colored("%", clr)
+                colored_malicious = colored(malicious, clr)
+                colored_malicious += colored("%", clr)
             if malicious > 0.6:
-                potential_malware.append(fname)
                 clr = "red" if malicious > 0.8 else "b_red"
-                colored_malicious = logging.colored(malicious, clr)
-                colored_malicious += logging.colored("%", clr)
+                colored_malicious = colored(malicious, clr)
+                colored_malicious += colored("%", clr)
+            if malicious >= malware_prob_threshold:
+                potential_malware.append(fname)
             logger.info(
                 "{} {} {} predicted: {} {} and {} {}.".format(
-                    logging.colored("Scanned", "white"),
+                    colored("Scanned", "white"),
                     colored_fname,
-                    logging.colored("-", "d_gray"),
+                    colored("-", "d_gray"),
                     colored_benign,
-                    logging.colored("benign", "gray"),
+                    colored("benign", "gray"),
                     colored_malicious,
-                    logging.colored("malicious", "gray"),
+                    colored("malicious", "gray"),
                 )
             )
         if len(potential_malware) > 0:
             logger.critical(
                 "Found {} files to be potentially infected!".format(
-                    logging.colored(str(len(potential_malware)), ["bold", "red"])
+                    colored(str(len(potential_malware)), ["bold", "red"])
                 )
             )
             self.clean_files(potential_malware)
