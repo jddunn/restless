@@ -36,8 +36,7 @@ class Scanner:
             for filename in files:
                 fname = os.path.join(dirpath, filename)
                 result = self.pea.analyze_file(fname)
-                if not result:
-                    results.append(result)
+                results.append(result)
         return results
 
     def scan_file(self, filepath: str) -> list:

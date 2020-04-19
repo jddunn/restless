@@ -1,10 +1,8 @@
 import datetime
 import logging as logging
 
-extended_log_data = (
-    True  # Format logs with extended metadata like functions, files, lineno
-)
-
+# Format logs with extended metadata like functions, files, lineno
+extended_log_data = True
 
 class Logger:
     """

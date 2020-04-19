@@ -64,7 +64,9 @@ class Misc:
             with open(path, "rb") as f:
                 try:
                     return pickle.load(f)
-                except Exception:
+                except Exception as e:
+                    print("Could not read pickle!")
+                    print(e)
                     return None
         else:
             return None
@@ -75,9 +77,9 @@ class Misc:
         if os.path.isfile(path):
             with open(path, "wb") as f:
                 try:
-                    pickle.dump(path, f)
-                    return path
-                except Exception:
+                    pickle.dump(data, f)
+                except Exception as e:
                     return None
-        else:
+        except:
             return None
+        return path
