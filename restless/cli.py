@@ -32,22 +32,23 @@ if __name__ == "__main__":
         print(
             "Error! Please only pass in either an -i or -w (for input directory to scan now, or directory to watch and defend)."
         )
-    if not fp and wfp:
+    if fp is None and wfp:
         restless = Restless(run_system_scan=False)
         restless.constant_watch(wfp)
-    if not fp and not wfp:
-        fp = "*"
-    if fp is "*":
-        restless = Restless(run_system_scan=False)
-        # Run a full system scan
-        restless.scan_full_system()
     else:
-        if os.path.exists(fp):
+        if fp is None and wfp is None:
+            fp = "*"
+        if fp is "*":
             restless = Restless(run_system_scan=False)
-            restless.scan(fp)
+            # Run a full system scan
+            restless.scan_full_system()
         else:
-            print(
-                "Input is not a valid filepath! Please pass the absolute path or"
-                + " relative path if the files are inside the same dir."
-            )
-            exit()
+            if os.path.exists(fp):
+                restless = Restless(run_system_scan=False)
+                restless.scan(fp)
+            else:
+                print(
+                    "Input is not a valid filepath! Please pass the absolute path or"
+                    + " relative path if the files are inside the same dir."
+                )
+                exit()

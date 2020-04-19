@@ -42,7 +42,7 @@ class Restless(object):
         self.default_malware_prob_threshold = default_malware_prob_threshold
         logger.info("Restless initializing..")
         self.scanner = Scanner()
-        self.watcher = Watcher(watch_pool)
+        self.watcher = Watcher(watch_pool, self.scan)
         self.event_loop = asyncio.get_event_loop()  # reset event loop
         self.event_loop = asyncio.new_event_loop()
         # Our default model will extract PE header data for classification
@@ -61,10 +61,10 @@ class Restless(object):
     def constant_watch(self, watch_pool: list = ["*"]) -> None:
         self.event_loop = asyncio.get_event_loop()  # reset event loop
         self.event_loop = asyncio.new_event_loop()
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
             self.event_loop.run_until_complete(
                 self.watcher.start_new_watch_thread(
-                    self.event_loop, executor, watch_pool
+                self.event_loop, watch_pool
                 )
             )
         return
