@@ -81,6 +81,20 @@ class Restless(object):
         results = []
         potential_malware = []
         file_results = self.scanner.scan_folder(filepath)
+        files_scanned = len(file_results)
+        # Remove none from our results (meaning those files did not have any
+        # extractable metadata for our classifier, for now at least)
+        file_results = [res for res in file_results if res]
+        if len(file_results) == 0:
+            logger.success(
+                colored(
+                    "Found no files that were scannable for malware (checked {} files).".format(
+                        colored(str(files_scanned), "bold"), "green"
+                    )
+                )
+            )
+            logger.success(colored("The system appears to be safe.", "green"))
+            return
         for file_result in file_results:
             fname = file_result[0]
             path_to_fname = fname.split("/")

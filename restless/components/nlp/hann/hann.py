@@ -182,7 +182,9 @@ class HierarchicalAttentionNetwork:
                 custom_objects={"AttentionLayer": AttentionLayer},
                 compile=False,
             )
-            self.model_name = DEFAULT_MODEL_PATH.split("/")[len(DEFAULT_MODEL_PATH.split("/"))-1]
+            self.model_name = DEFAULT_MODEL_PATH.split("/")[
+                len(DEFAULT_MODEL_PATH.split("/")) - 1
+            ]
             # Get the original training vocabulary (should load from file / db later)
             self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
             if len(self.feature_map) is 0:
@@ -236,7 +238,7 @@ class HierarchicalAttentionNetwork:
         )
         print("Finished training model.")
         self.model = model
-        self.model_name = output_path.split("/")[len(output_path.split("/"))-1]
+        self.model_name = output_path.split("/")[len(output_path.split("/")) - 1]
         if save_model:
             self.save_model(model, outputpath)
             print("Finished saving model: {} at {}".format(model_name, output_path))
@@ -632,9 +634,9 @@ class HierarchicalAttentionNetwork:
         self.tokenizer = Tokenizer()
         _texts = []
         # for i, each in enumerate(self.texts):
-          #  if type(each) is list:
-           #     each = "".join(each)
-           # _texts.append(str(each))
+        #  if type(each) is list:
+        #     each = "".join(each)
+        # _texts.append(str(each))
         for i in range(len(self.records)):
             self.labels.append(self.records[i]["classification"])
         # texts = _texts
