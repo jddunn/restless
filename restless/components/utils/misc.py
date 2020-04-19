@@ -1,6 +1,7 @@
 import os, sys
 from datetime import datetime
 from pathlib import Path
+import pickle
 
 
 class Misc:
@@ -55,3 +56,14 @@ class Misc:
             list: Root / important system paths to scan.
         """
         return os.path.expanduser("~")
+
+    @staticmethod
+    def read_pickle_data(path):
+        if os.path.isfile(path):
+            with open(path, "rb") as f:
+                try:
+                    return pickle.load(f)
+                except Exception:
+                    return None
+        else:
+            return None

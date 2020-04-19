@@ -113,11 +113,12 @@ DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "defau
 
 # Pickled objects to load when we load models
 DEFAULT_MODEL_ASSETS_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "model_assets"))
-DEFAULT_WORD_INDEX_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "word_index")
-DEFAULT_TEXT_CORPUS_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "text_corpus")
+DEFAULT_WORD_INDEX_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "word_index"))
+DEFAULT_TEXT_CORPUS_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "text_corpus"))
 
 stats = utils.stats
 stats_vis = utils.stats_vis
+misc = utils.misc
 
 kf = KFold(n_splits=K_NUM, shuffle=True, random_state=1618)
 
