@@ -74,8 +74,10 @@ class Restless(object):
         results = self.scan(root)
         return results
 
-    def scan(self, filepath: str, malware_prob_threshold: float = 0.6):
-        logger.info("Scanning full system.")
+    def scan(self, filepath: str, malware_prob_threshold: float = None):
+        if not malware_prob_threshold:
+            malware_prob_threshold = self.default_malware_prob_threshold
+        logger.info("Scanning system now at {}.".format(colored(filepath, "cyan")))
         results = []
         potential_malware = []
         file_results = self.scanner.scan_folder(filepath)
@@ -133,4 +135,8 @@ class Restless(object):
                 )
             )
             self.clean_files(potential_malware)
+        else:
+            logger.success(
+                colored("Scan finished sucessfully, found no potential malware!", "b_green")
+            )
         return results

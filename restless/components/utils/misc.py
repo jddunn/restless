@@ -47,14 +47,11 @@ class Misc:
         return True if p_parent in p_child.parents else False
 
     @staticmethod
-    def get_os_root_path() -> str:
+    def get_os_root_path() -> list:
         """
-        Returns root path of current machine.
+        Returns root / system paths of current machine.
 
         Returns:
-            str: Root path of current machine
+            list: Root / important system paths to scan.
         """
-        path = sys.executable
-        while os.path.split(path)[1]:
-            path = os.path.split(path)[0]
-        return path
+        return os.path.expanduser("~")

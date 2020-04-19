@@ -38,7 +38,7 @@ if __name__ == "__main__":
     if not fp and not wfp:
         fp = "*"
     if fp is "*":
-        restless = Restless(run_system_scan=True)
+        restless = Restless(run_system_scan=False)
         # Run a full system scan
         restless.scan_full_system()
     else:
