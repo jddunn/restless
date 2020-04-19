@@ -317,13 +317,16 @@ class HierarchicalAttentionNetwork:
             (len(data_train), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32",
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype="int32")
-        text_corpus_asset_path = self.model_name.split(".")[0] + "_text_corpus"
-        word_index_asset_path = self.model_name.split(".")[0] + "_word_index"
-        vectorized_data_asset_path = self.model_name.split(".")[0] + "_vectorized_data"
+        # Read or write preprocessed data into pickle
+        text_corpus_asset_path = self.model_name.split(".")[0] + "_text_corpus.p"
+        word_index_asset_path = self.model_name.split(".")[0] + "_word_index.p"
+        vectorized_data_asset_path = self.model_name.split(".")[0] + "_vectorized_data.p"
         read = misc.read_pickle_data(text_corpus_asset_path)
         if not read:
             self.texts = self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)
             print("Finished building corpus.")
+            if pickle_data:
+                misc.write_pickle_data(self.texts, text_corpus_asset_path)
         else:
             self.texts = read
             print("Finished loading corpus.")
@@ -331,6 +334,9 @@ class HierarchicalAttentionNetwork:
         if not read:
             self._build_feature_matrix_from_data(data_train, feature_map)
             print("Finished building feature matrix from corupus.")
+            if pickle_data:
+                misc.write_pickle_data(self.word_index, word_index_asset_path)
+                misc.write_pickle_data(self.data, vectorized_data_asset_path)
         else:
             self.word_index = read
             read = misc.read_pickle_data(vectorized_data_asset_path)
