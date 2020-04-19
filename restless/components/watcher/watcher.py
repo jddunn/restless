@@ -16,7 +16,7 @@ SCRIPT_DIR = os.path.dirname(
 )
 sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 try:
-   from restless.components.utils import utils as utils
+    from restless.components.utils import utils as utils
 except Exception as e:
     from ..utils import utils as utils
 
@@ -93,7 +93,7 @@ class Watcher:
                 + " is now "
                 + logging.colored("watching over", "slow_blink")
                 + " the full system."
-                )
+            )
             root = misc.get_os_root_path()
             dirs = [root]
             self.watch_pool = dirs
@@ -110,7 +110,8 @@ class Watcher:
                     msg = "Adding: {} to the Watcher pool.".format(fp)
                     to_watch.append(fp)
                     logger.info(msg)
-                if len(to_watch) == 0: return
+                if len(to_watch) == 0:
+                    return
                 self.watch_pool.extend(to_watch)
                 msg = (
                     logging.colored("Restless", "bold")
@@ -120,7 +121,7 @@ class Watcher:
                 )
                 logger.info(msg)
             else:
-                fp = dirs[0] # root dir
+                fp = dirs[0]  # root dir
                 if not skip_check:
                     found = self.check_if_already_watching_fp(fp, self.watch_pool)
                     if found:
@@ -129,7 +130,8 @@ class Watcher:
                         msg = "Adding: {} to the Watcher pool.".format(fp)
                     to_watch.append(fp)
                     logger.info(msg)
-                if len(to_watch) == 0: return
+                if len(to_watch) == 0:
+                    return
                 self.watch_pool.extend(to_watch)
                 msg = (
                     logging.colored("Restless", "bold")
@@ -139,7 +141,8 @@ class Watcher:
                 )
                 logger.info(msg)
         self.watchdog = AIOWatchdog(
-            self.watch_pool, event_handler=self.default_evt_handler, recursive=True)
+            self.watch_pool, event_handler=self.default_evt_handler, recursive=True
+        )
         self.watchdog.start()
         try:
             while True:

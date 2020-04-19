@@ -137,6 +137,8 @@ class Restless(object):
             self.clean_files(potential_malware)
         else:
             logger.success(
-                colored("Scan finished sucessfully, found no potential malware!", "b_green")
+                colored(
+                    "Scan finished sucessfully, found no potential malware!", "b_green"
+                )
             )
         return results

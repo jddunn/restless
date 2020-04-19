@@ -71,8 +71,9 @@ import nltk
 
 from attention import AttentionLayer, ATTENTION_DIM
 
-import pickle # Once we train the model we'll load the corpus / word index
-              # as serialized objs so we don't have to preprocess in prediction
+import pickle  # Once we train the model we'll load the corpus / word index
+
+# as serialized objs so we don't have to preprocess in prediction
 
 # make dep imports work when running as lib / in high-levels scripts
 PACKAGE_PARENT = "../../../.."
@@ -112,9 +113,15 @@ DEFAULT_MODEL_DIR_PATH = os.path.abspath(os.path.join(DEFAULT_DATA_PATH, "models
 DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "default.h5"))
 
 # Pickled objects to load when we load models
-DEFAULT_MODEL_ASSETS_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "model_assets"))
-DEFAULT_WORD_INDEX_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "word_index"))
-DEFAULT_TEXT_CORPUS_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "text_corpus"))
+DEFAULT_MODEL_ASSETS_PATH = os.path.abspath(
+    os.path.join(DEFAULT_MODEL_DIR_PATH, "model_assets")
+)
+DEFAULT_WORD_INDEX_PATH = os.path.abspath(
+    os.path.join(DEFAULT_MODEL_DIR_PATH, "word_index")
+)
+DEFAULT_TEXT_CORPUS_PATH = os.path.abspath(
+    os.path.join(DEFAULT_MODEL_DIR_PATH, "text_corpus")
+)
 
 stats = utils.stats
 stats_vis = utils.stats_vis
@@ -176,7 +183,9 @@ class HierarchicalAttentionNetwork:
 
         if load_default_model:
             self.model = load_model(
-                DEFAULT_MODEL_PATH, custom_objects={"AttentionLayer": AttentionLayer}, compile=False
+                DEFAULT_MODEL_PATH,
+                custom_objects={"AttentionLayer": AttentionLayer},
+                compile=False,
             )
             # Get the original training vocabulary (should load from file / db later)
             self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
