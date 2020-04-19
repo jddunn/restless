@@ -16,7 +16,7 @@ SCRIPT_DIR = os.path.dirname(
 )
 sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 try:
-    from restless.components.utils import utils as utils
+   from restless.components.utils import utils as utils
 except Exception as e:
     from ..utils import utils as utils
 
@@ -87,37 +87,59 @@ class Watcher:
         if not evt_handler:
             evt_handler = self.default_evt_handler
         msg = ""
-        if not dirs or dirs == ["*"] or dirs == ([],):
+        if not dirs or dirs == ["*"] or dirs == ([],) or dirs == "*":
             msg = (
                 logging.colored("Restless", "bold")
                 + " is now "
                 + logging.colored("watching over", "slow_blink")
                 + " the full system."
-            )
+                )
             root = misc.get_os_root_path()
-            self.watch_pool = [root]
+            dirs = [root]
+            self.watch_pool = dirs
         else:
-            to_watch = []
-            for fp in dirs:
+            if isinstance(dirs, list):
+                to_watch = []
+                for fp in dirs:
+                    if not skip_check:
+                        found = self.check_if_already_watching_fp(fp, self.watch_pool)
+                        if found:
+                            msg = "{} is already being watched!".format(fp)
+                            logger.info(msg)
+                            continue
+                    msg = "Adding: {} to the Watcher pool.".format(fp)
+                    to_watch.append(fp)
+                    logger.info(msg)
+                if len(to_watch) == 0: return
+                self.watch_pool.extend(to_watch)
+                msg = (
+                    logging.colored("Restless", "bold")
+                    + " is now "
+                    + logging.colored("watching over", "slow_blink")
+                    + " the system."
+                )
+                logger.info(msg)
+            else:
+                fp = dirs[0] # root dir
                 if not skip_check:
                     found = self.check_if_already_watching_fp(fp, self.watch_pool)
                     if found:
                         msg = "{} is already being watched!".format(fp)
-                        continue
-                msg = "Adding: {} to the Watcher pool.".format(fp)
-                to_watch.append(fp)
+                    else:
+                        msg = "Adding: {} to the Watcher pool.".format(fp)
+                    to_watch.append(fp)
+                    logger.info(msg)
+                if len(to_watch) == 0: return
+                self.watch_pool.extend(to_watch)
+                msg = (
+                    logging.colored("Restless", "bold")
+                    + " is now "
+                    + logging.colored("watching over", "slow_blink")
+                    + " the system."
+                )
                 logger.info(msg)
-            self.watch_pool.extend(to_watch)
-            msg = (
-                logging.colored("Restless", "bold")
-                + " is now "
-                + logging.colored("watching over", "slow_blink")
-                + " the system."
-            )
         self.watchdog = AIOWatchdog(
-            self.watch_pool, event_handler=self.default_evt_handler, recursive=True
-        )
-        logger.info(msg)
+            self.watch_pool, event_handler=self.default_evt_handler, recursive=True)
         self.watchdog.start()
         try:
             while True:
@@ -175,16 +197,3 @@ class AIOWatchdog(object):
     def stop(self):
         self._observer.stop()
         self._observer.join()
-
-
-if __name__ == "__main__":
-    dirs = ["/home/ubuntu"]
-    watcher = Watcher(dirs)
-    event_loop = asyncio.get_event_loop()
-    event_loop = asyncio.new_event_loop()
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        event_loop.run_until_complete(
-            watcher.start_new_watch_thread(event_loop, executor, dirs)
-        )
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        event_loop.run_until_complete(watcher.keep_loop())

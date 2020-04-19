@@ -68,11 +68,3 @@ class AsyncFileClassifyEventHandler(AIOEventHandler):
     async def on_modified(self, event):
         # print("Modified:", event.src_path)
         pass
-
-
-class EventHandler(FileSystemEventHandler):
-    def on_any_event(self, event):
-        print("EVENT")
-        print(event.event_type)
-        print(event.src_path)
-        print()

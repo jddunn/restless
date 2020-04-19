@@ -87,6 +87,8 @@ except:
     from utils import utils
     from text_normalizer import text_normalizer
 
+print("Finished loading NLP modules.")
+
 # Hyperparams
 MAX_SENTENCE_LENGTH = 100
 MAX_SENTENCE_COUNT = 48
@@ -170,7 +172,7 @@ class HierarchicalAttentionNetwork:
 
         if load_default_model:
             self.model = load_model(
-                DEFAULT_MODEL_PATH, custom_objects={"AttentionLayer": AttentionLayer},
+                DEFAULT_MODEL_PATH, custom_objects={"AttentionLayer": AttentionLayer}, compile=False
             )
             # Get the original training vocabulary (should load from file / db later)
             self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
