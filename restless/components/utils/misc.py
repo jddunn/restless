@@ -63,8 +63,6 @@ class Misc:
         if os.path.isfile(path):
             with open(path, "rb") as f:
                 try:
-                    print("IT WILL BR OPENED :", path)
-                    print(pickle.load(f))
                     return pickle.load(f)
                 except Exception as e:
                     print("Could not read pickle!")
@@ -82,9 +80,12 @@ class Misc:
             if os.path.isfile(path):
                 print("{} exists and will not be overwritten!")
                 return None
-        with open(path, "wb") as f:
-            try:
-                pickle.dump(data, path)
-            except Exception as e:
-                return None
+        try:
+            with open(path, "wb") as f:
+                try:
+                    pickle.dump(data, f)
+                except Exception as e:
+                    return None
+        except:
+            return None
         return path

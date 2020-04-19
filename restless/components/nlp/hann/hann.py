@@ -322,9 +322,8 @@ class HierarchicalAttentionNetwork:
         word_index_asset_path = os.path.join(DEFAULT_MODEL_ASSETS_DIR_PATH, self.model_name.split(".")[0] + "_word_index.p")
         vectorized_data_asset_path = os.path.join(DEFAULT_MODEL_ASSETS_DIR_PATH, self.model_name.split(".")[0] + "_vectorized_data.p")
         read = misc.read_pickle_data(text_corpus_asset_path)
-        print("IT SHALL BE READ: ", read, text_corpus_asset_path)
-        if not read:
-            self.texts = self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)
+        if read is None:
+            self.texts = self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)[0]
             print("Finished building corpus.")
             if pickle_data:
                 misc.write_pickle_data(self.texts, text_corpus_asset_path)
@@ -332,7 +331,7 @@ class HierarchicalAttentionNetwork:
             self.texts = read
             print("Finished loading corpus.")
         read = misc.read_pickle_data(word_index_asset_path)
-        if not read:
+        if read is None:
             self._build_feature_matrix_from_data(data_train, feature_map)
             print("Finished building feature matrix from corupus.")
             if pickle_data:
@@ -340,14 +339,16 @@ class HierarchicalAttentionNetwork:
                 misc.write_pickle_data(self.data, vectorized_data_asset_path)
         else:
             self.word_index = read
+            print("Finished loading word index.")
             read = misc.read_pickle_data(vectorized_data_asset_path)
-            if not read:
+            if read is None:
                 self._build_feature_matrix_from_data(data_train, feature_map)
                 print("Finished building feature matrix from corupus.")
                 misc.write_pickle_data(self.word_index, word_index_asset_path)
                 misc.write_pickle_data(self.data, vectorized_data_asset_path)
             else:
                 self.data = read
+                print("Finished loading preprocessed data.")
         print("Total %s unique tokens." % len(self.word_index))
         print("Shape of data tensor: ", self.data, self.data.shape)
         print("Finished preprocessing data.")
@@ -658,7 +659,7 @@ class HierarchicalAttentionNetwork:
         self.tokenizer = Tokenizer()
         _texts = []
         for i, each in enumerate(self.texts):
-            if type(each) is list:
+            if isinstance(each, list):
                 each = "".join(each)
             _texts.append(str(each))
         for i in range(len(self.records)):
