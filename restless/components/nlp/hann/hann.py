@@ -217,15 +217,19 @@ class HierarchicalAttentionNetwork:
         self.preprocess_data(
             self.X, self.feature_map, word_token_level, sent_token_level
         )
+        print("Finished preprocessing data.")
         self.embeddings_index = self.get_glove_embeddings()
+        print("Finished getting GlOve embeddings.")
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
+        print("Finished making embeddings matrix from word index.")
         model = self.build_network_and_train_model(
             embeddings_matrix, labels=labels, model_base=model_base
         )
+        print("Finished training model.")
         self.model = model
-        outputpath = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "model.p"))
         if save_model:
             self.save_model(model, outputpath)
+            print("Finished saving model.")
         return model
 
     def _build_corpus(
@@ -302,7 +306,9 @@ class HierarchicalAttentionNetwork:
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype="int32")
         self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)
+        print("Finished building corpus.")
         self._build_feature_matrix_from_data(data_train, feature_map)
+        print("Finished building feature matrix from corupus.")
         print("Total %s unique tokens." % len(self.word_index))
         print("Shape of data tensor: ", self.data, self.data.shape)
         print("Finished preprocessing data.")
