@@ -32,45 +32,6 @@ class Logger:
         self.colored = colored  # Bind method to color text
         return
 
-    def print_logm(self, text: str, save: bool = False) -> None:
-        """
-        Easy print log to info level with timestamp.
-        Meant to be more high-level than Python's logging.
-
-        Args:
-          text (str): Message to print to `INFO` level.
-        """
-        self.print_log({"text": text})
-        return
-
-    def print_log(self, data: dict, save: bool = False):
-        """
-        Prints a log to sys output.
-        Meant to be more high-level than Python's logging.
-
-        Args:
-          data (dict): Keys include: `level`, `text`. Timestamp will automatically be included.
-                       `Level` will default to `INFO`.
-        """
-        level = data.get("level")
-        if level is None:
-            level = "info"
-        if level == "info":
-            self.logger.info(str(data["text"]))
-        elif level == "critical":
-            self.logger.critical(data["text"])
-        elif level == "error":
-            self.logger.error(data["text"])
-        elif level == "warning":
-            self.logger.warning(data["text"])
-        elif level == "success":
-            self.logger.success(data["text"])
-        elif level == "debug":
-            self.logger.debug(data["text"])
-        else:
-            self.logger.info(data["text"])
-        return
-
     def change_logging_config(self, config: dict) -> None:
         """Change logging configuration (uses Python's logging module)."""
         logging.basicConfig(config)
@@ -101,7 +62,9 @@ class Logger:
 class ANSIColor:
     """
     Utility to return ansi colored text.
+    Modified from
     https://gist.github.com/hit9/5635505
+    with full styles and multi-style functionality.
     """
 
     colors = {

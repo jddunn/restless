@@ -70,7 +70,7 @@ class Misc:
             return None
 
     @staticmethod
-    def write_pickle_data(path: str, data: object):
+    def write_pickle_data(data: object, path: str):
         """Writes pickled data."""
         if os.path.isfile(path):
             with open(path, "wb") as f:
