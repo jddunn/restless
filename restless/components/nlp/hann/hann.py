@@ -59,8 +59,6 @@ from keras.layers import (
 )
 from keras.models import Model, load_model, Sequential
 
-from keras import backend as K
-
 from sklearn.model_selection import KFold
 
 from sklearn.preprocessing import RobustScaler
@@ -72,6 +70,9 @@ scaler = RobustScaler()
 import nltk
 
 from attention import AttentionLayer, ATTENTION_DIM
+
+import pickle # Once we train the model we'll load the corpus / word index
+              # as serialized objs so we don't have to preprocess in prediction
 
 # make dep imports work when running as lib / in high-levels scripts
 PACKAGE_PARENT = "../../../.."
@@ -86,8 +87,6 @@ try:
 except:
     from utils import utils
     from text_normalizer import text_normalizer
-
-print("Finished loading NLP modules.")
 
 # Hyperparams
 MAX_SENTENCE_LENGTH = 100
@@ -111,6 +110,9 @@ DEFAULT_TRAINING_DATA_PATH = os.path.abspath(
 
 DEFAULT_MODEL_DIR_PATH = os.path.abspath(os.path.join(DEFAULT_DATA_PATH, "models"))
 
+# Pickled objects to load when we load models
+DEFAULT_MODEL_ASSETS_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "model_assets"))
+
 DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "default.h5"))
 
 stats = utils.stats
@@ -119,6 +121,7 @@ stats_vis = utils.stats_vis
 kf = KFold(n_splits=K_NUM, shuffle=True, random_state=1618)
 
 metrics = ["accuracy"]
+
 
 
 class HierarchicalAttentionNetwork:
