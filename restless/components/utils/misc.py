@@ -59,10 +59,24 @@ class Misc:
 
     @staticmethod
     def read_pickle_data(path):
+        """Reads pickled data."""
         if os.path.isfile(path):
             with open(path, "rb") as f:
                 try:
                     return pickle.load(f)
+                except Exception:
+                    return None
+        else:
+            return None
+
+    @staticmethod
+    def write_pickle_data(path):
+        """Writes pickled data."""
+        if os.path.isfile(path):
+            with open(path, "wb") as f:
+                try:
+                    pickle.dump(path, f)
+                    return path
                 except Exception:
                     return None
         else:
