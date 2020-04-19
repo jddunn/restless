@@ -113,7 +113,7 @@ DEFAULT_MODEL_DIR_PATH = os.path.abspath(os.path.join(DEFAULT_DATA_PATH, "models
 DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "default.h5"))
 
 # Pickled objects to load when we load models
-DEFAULT_MODEL_ASSETS_PATH = os.path.abspath(
+DEFAULT_MODEL_ASSETS_DIR_PATH = os.path.abspath(
     os.path.join(DEFAULT_MODEL_DIR_PATH, "model_assets")
 )
 
@@ -318,9 +318,9 @@ class HierarchicalAttentionNetwork:
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype="int32")
         # Read or write preprocessed data into pickle
-        text_corpus_asset_path = self.model_name.split(".")[0] + "_text_corpus.p"
-        word_index_asset_path = self.model_name.split(".")[0] + "_word_index.p"
-        vectorized_data_asset_path = self.model_name.split(".")[0] + "_vectorized_data.p"
+        text_corpus_asset_path = os.path.join(DEFAULT_MODEL_ASSETS_DIR_PATH, self.model_name.split(".")[0] + "_text_corpus.p")
+        word_index_asset_path = os.path.join(DEFAULT_MODEL_ASSETS_DIR_PATH, self.model_name.split(".")[0] + "_word_index.p")
+        vectorized_data_asset_path = os.path.join(DEFAULT_MODEL_ASSETS_DIR_PATH, self.model_name.split(".")[0] + "_vectorized_data.p")
         read = misc.read_pickle_data(text_corpus_asset_path)
         if not read:
             self.texts = self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)
@@ -343,6 +343,8 @@ class HierarchicalAttentionNetwork:
             if not read:
                 self._build_feature_matrix_from_data(data_train, feature_map)
                 print("Finished building feature matrix from corupus.")
+                misc.write_pickle_data(self.word_index, word_index_asset_path)
+                misc.write_pickle_data(self.data, vectorized_data_asset_path)
             else:
                 self.data = read
         print("Total %s unique tokens." % len(self.word_index))
