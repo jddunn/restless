@@ -322,6 +322,7 @@ class HierarchicalAttentionNetwork:
         word_index_asset_path = os.path.join(DEFAULT_MODEL_ASSETS_DIR_PATH, self.model_name.split(".")[0] + "_word_index.p")
         vectorized_data_asset_path = os.path.join(DEFAULT_MODEL_ASSETS_DIR_PATH, self.model_name.split(".")[0] + "_vectorized_data.p")
         read = misc.read_pickle_data(text_corpus_asset_path)
+        print("IT SHALL BE READ: ", read, text_corpus_asset_path)
         if not read:
             self.texts = self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)
             print("Finished building corpus.")

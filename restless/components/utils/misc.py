@@ -80,10 +80,7 @@ class Misc:
                 return None
         with open(path, "wb") as f:
             try:
-                print("PICKLE IT UP")
-                print("AT THE PATH BOY: ", path, f)
                 pickle.dump(f, path)
-                print("WE DID IT AT :", path)
             except Exception as e:
                 return None
         return path
