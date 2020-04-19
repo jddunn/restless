@@ -28,32 +28,29 @@ class Restless(object):
     Main Restless module.
     """
 
-    def __init__(self, run_system_scan=True, constant_watch=True, watch_pool=["*"]):
-        uvloop.install()
+    def __init__(
+        self,
+        run_system_scan: bool = False,  # Run full system scan (from home dir)
+        constant_watch: bool = False,  # Constantly defend system (defaults to home dir)
+        # by scanning and cleaning new / modified files
+        watch_pool: list = ["*"],  # List of dirs to constantly watch / defend
+        # "*" will make it default to home dir
+        default_malware_prob_threshold=0.6,  # Prob threshold to classify as malware
+    ):
+        uvloop.install()  # make event loop fast
         self.run_system_scan = run_system_scan
+        self.default_malware_prob_threshold = default_malware_prob_threshold
         logger.info("Restless initializing..")
         self.scanner = Scanner()
-        # Run Watcher in async event loop in new thread
         self.watcher = Watcher(watch_pool)
-        event_loop = asyncio.get_event_loop()
-        event_loop = asyncio.new_event_loop()
-        # with ThreadPoolExecutor(max_workers=4) as executor:
-        #  event_loop.run_until_complete(self.watcher.start_new_watch_thread(event_loop, executor, watch_pool))
-        # with ThreadPoolExecutor(max_workers=1) as executor:
-        #  event_loop.run_until_complete(self.watcher.keep_loop())
+        self.event_loop = asyncio.get_event_loop()  # reset event loop
+        self.event_loop = asyncio.new_event_loop()
+        # Our default model will extract PE header data for classification
         self.nlp = NLP(load_default_hann_model=True)
         if self.run_system_scan:
-            logger.info("Scanning full system.")
             self.scan_full_system()
         if constant_watch:
-            logger.info("Constantly watching: {}.".format(watch_pool))
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                event_loop.run_until_complete(
-                    self.watcher.start_new_watch_thread(
-                        event_loop, executor, watch_pool
-                    )
-                )
-            # self.constant_watch(watch_pool)
+            self.constant_watch(watch_pool)
         return
 
     def clean_files(self, infected_files: list) -> None:
@@ -61,15 +58,43 @@ class Restless(object):
             pass
         return
 
+    def constant_watch(self, watch_pool: list = ["*"]) -> None:
+        self.event_loop = asyncio.get_event_loop()  # reset event loop
+        self.event_loop = asyncio.new_event_loop()
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            self.event_loop.run_until_complete(
+                self.watcher.start_new_watch_thread(
+                    self.event_loop, executor, watch_pool
+                )
+            )
+        return
+
     def scan_full_system(self):
         root = misc.get_os_root_path()
-        results = self.scanner.scan(root)
+        results = self.scan(root)
         return results
 
-    def scan(self, filepath: str, malware_prob_threshold: float = 0.6):
+    def scan(self, filepath: str, malware_prob_threshold: float = None):
+        if not malware_prob_threshold:
+            malware_prob_threshold = self.default_malware_prob_threshold
+        logger.info("Scanning system now at {}.".format(colored(filepath, "cyan")))
         results = []
         potential_malware = []
         file_results = self.scanner.scan_folder(filepath)
+        files_scanned = len(file_results)
+        # Remove none from our results (meaning those files did not have any
+        # extractable metadata for our classifier, for now at least)
+        file_results = [res for res in file_results if res]
+        if len(file_results) == 0:
+            logger.success(
+                colored(
+                    "Found no files that were scannable for malware (checked {} files).".format(
+                        colored(str(files_scanned), "bold"), "green"
+                    )
+                )
+            )
+            logger.success(colored("The system appears to be safe.", "green"))
+            return
         for file_result in file_results:
             fname = file_result[0]
             path_to_fname = fname.split("/")
@@ -124,4 +149,10 @@ class Restless(object):
                 )
             )
             self.clean_files(potential_malware)
+        else:
+            logger.success(
+                colored(
+                    "Scan finished sucessfully, found no potential malware!", "b_green"
+                )
+            )
         return results

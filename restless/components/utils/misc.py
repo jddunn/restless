@@ -1,6 +1,7 @@
 import os, sys
 from datetime import datetime
 from pathlib import Path
+import pickle
 
 
 class Misc:
@@ -47,14 +48,36 @@ class Misc:
         return True if p_parent in p_child.parents else False
 
     @staticmethod
-    def get_os_root_path() -> str:
+    def get_os_root_path() -> list:
         """
-        Returns root path of current machine.
+        Returns root / system paths of current machine.
 
         Returns:
-            str: Root path of current machine
+            list: Root / important system paths to scan.
         """
-        path = sys.executable
-        while os.path.split(path)[1]:
-            path = os.path.split(path)[0]
-        return path
+        return os.path.expanduser("~")
+
+    @staticmethod
+    def read_pickle_data(path):
+        """Reads pickled data."""
+        if os.path.isfile(path):
+            with open(path, "rb") as f:
+                try:
+                    return pickle.load(f)
+                except Exception:
+                    return None
+        else:
+            return None
+
+    @staticmethod
+    def write_pickle_data(path: str, data: object):
+        """Writes pickled data."""
+        if os.path.isfile(path):
+            with open(path, "wb") as f:
+                try:
+                    pickle.dump(path, f)
+                    return path
+                except Exception:
+                    return None
+        else:
+            return None

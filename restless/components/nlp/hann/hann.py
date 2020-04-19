@@ -59,8 +59,6 @@ from keras.layers import (
 )
 from keras.models import Model, load_model, Sequential
 
-from keras import backend as K
-
 from sklearn.model_selection import KFold
 
 from sklearn.preprocessing import RobustScaler
@@ -72,6 +70,10 @@ scaler = RobustScaler()
 import nltk
 
 from attention import AttentionLayer, ATTENTION_DIM
+
+import pickle  # Once we train the model we'll load the corpus / word index
+
+# as serialized objs so we don't have to preprocess in prediction
 
 # make dep imports work when running as lib / in high-levels scripts
 PACKAGE_PARENT = "../../../.."
@@ -108,11 +110,16 @@ DEFAULT_TRAINING_DATA_PATH = os.path.abspath(
 )
 
 DEFAULT_MODEL_DIR_PATH = os.path.abspath(os.path.join(DEFAULT_DATA_PATH, "models"))
-
 DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "default.h5"))
+
+# Pickled objects to load when we load models
+DEFAULT_MODEL_ASSETS_PATH = os.path.abspath(
+    os.path.join(DEFAULT_MODEL_DIR_PATH, "model_assets")
+)
 
 stats = utils.stats
 stats_vis = utils.stats_vis
+misc = utils.misc
 
 kf = KFold(n_splits=K_NUM, shuffle=True, random_state=1618)
 
@@ -133,6 +140,7 @@ class HierarchicalAttentionNetwork:
         **kwargs
     ):
         self.model = None
+        self.model_name = ""
 
         self.data_train = pd.read_csv(
             DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS
@@ -170,8 +178,13 @@ class HierarchicalAttentionNetwork:
 
         if load_default_model:
             self.model = load_model(
-                DEFAULT_MODEL_PATH, custom_objects={"AttentionLayer": AttentionLayer},
+                DEFAULT_MODEL_PATH,
+                custom_objects={"AttentionLayer": AttentionLayer},
+                compile=False,
             )
+            self.model_name = DEFAULT_MODEL_PATH.split("/")[
+                len(DEFAULT_MODEL_PATH.split("/")) - 1
+            ]
             # Get the original training vocabulary (should load from file / db later)
             self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
             if len(self.feature_map) is 0:
@@ -187,7 +200,7 @@ class HierarchicalAttentionNetwork:
             )
             print(
                 "Successfully loaded default HANN model - {} - {}.".format(
-                    DEFAULT_MODEL_PATH, self.model
+                    DEFAULT_MODEL_PATH, self.model_name
                 )
             )
         return
@@ -215,15 +228,20 @@ class HierarchicalAttentionNetwork:
         self.preprocess_data(
             self.X, self.feature_map, word_token_level, sent_token_level
         )
+        print("Finished preprocessing data.")
         self.embeddings_index = self.get_glove_embeddings()
+        print("Finished getting GlOve embeddings.")
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
+        print("Finished making embeddings matrix from word index.")
         model = self.build_network_and_train_model(
             embeddings_matrix, labels=labels, model_base=model_base
         )
+        print("Finished training model.")
         self.model = model
-        outputpath = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "model.p"))
+        self.model_name = output_path.split("/")[len(output_path.split("/")) - 1]
         if save_model:
             self.save_model(model, outputpath)
+            print("Finished saving model: {} at {}".format(model_name, output_path))
         return model
 
     def _build_corpus(
@@ -284,7 +302,6 @@ class HierarchicalAttentionNetwork:
                 sentences.append(sentence)
             texts.extend(sentences)
             texts_features.append(sentences)
-        self.texts = texts
         return (texts, texts_features)
 
     def preprocess_data(
@@ -293,14 +310,41 @@ class HierarchicalAttentionNetwork:
         feature_map: dict,
         word_token_level: str = "word",
         sent_token_level: str = "sent",
+        pickle_data: bool = True
     ):
         """Preprocesses data given a df object."""
         self.data = np.zeros(
             (len(data_train), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32",
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype="int32")
-        self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)
-        self._build_feature_matrix_from_data(data_train, feature_map)
+        # Read or write preprocessed data into pickle
+        text_corpus_asset_path = self.model_name.split(".")[0] + "_text_corpus.p"
+        word_index_asset_path = self.model_name.split(".")[0] + "_word_index.p"
+        vectorized_data_asset_path = self.model_name.split(".")[0] + "_vectorized_data.p"
+        read = misc.read_pickle_data(text_corpus_asset_path)
+        if not read:
+            self.texts = self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)
+            print("Finished building corpus.")
+            if pickle_data:
+                misc.write_pickle_data(self.texts, text_corpus_asset_path)
+        else:
+            self.texts = read
+            print("Finished loading corpus.")
+        read = misc.read_pickle_data(word_index_asset_path)
+        if not read:
+            self._build_feature_matrix_from_data(data_train, feature_map)
+            print("Finished building feature matrix from corupus.")
+            if pickle_data:
+                misc.write_pickle_data(self.word_index, word_index_asset_path)
+                misc.write_pickle_data(self.data, vectorized_data_asset_path)
+        else:
+            self.word_index = read
+            read = misc.read_pickle_data(vectorized_data_asset_path)
+            if not read:
+                self._build_feature_matrix_from_data(data_train, feature_map)
+                print("Finished building feature matrix from corupus.")
+            else:
+                self.data = read
         print("Total %s unique tokens." % len(self.word_index))
         print("Shape of data tensor: ", self.data, self.data.shape)
         print("Finished preprocessing data.")
@@ -618,7 +662,7 @@ class HierarchicalAttentionNetwork:
             self.labels.append(self.records[i]["classification"])
         texts = _texts
         self.texts = _texts
-        self.tokenizer.fit_on_texts(texts)
+        self.tokenizer.fit_on_texts(self.texts)
         self.word_index = self.tokenizer.word_index
         self.vocab_size = len(self.word_index)
         for i, sentences in enumerate(texts_features):
