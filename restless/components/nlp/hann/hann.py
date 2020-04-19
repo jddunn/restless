@@ -319,8 +319,8 @@ class HierarchicalAttentionNetwork:
         word_index_asset_path = self.model_name.split(".")[0] + "_word_index"
         text_corpus_asset_path = self.model_name.split(".")[0] + "_text_corpus"
         vectorized_data_asset_path = self.model_name.split(".")[0] + "_vectorized_data"
-        # if not misc.read_pickle_data(word_index_asset_path):
-        self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)
+        if not misc.read_pickle_data(text_corpus_asset_path):
+            self.texts = self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)
         print("Finished building corpus.")
         self._build_feature_matrix_from_data(data_train, feature_map)
         print("Finished building feature matrix from corupus.")
@@ -633,14 +633,14 @@ class HierarchicalAttentionNetwork:
         """Helper function to build feature vector for HANN to classify."""
         self.tokenizer = Tokenizer()
         _texts = []
-        # for i, each in enumerate(self.texts):
-        #  if type(each) is list:
-        #     each = "".join(each)
-        # _texts.append(str(each))
+        for i, each in enumerate(self.texts):
+            if type(each) is list:
+                each = "".join(each)
+            _texts.append(str(each))
         for i in range(len(self.records)):
             self.labels.append(self.records[i]["classification"])
-        # texts = _texts
-        # self.texts = _texts
+        texts = _texts
+        self.texts = _texts
         self.tokenizer.fit_on_texts(self.texts)
         self.word_index = self.tokenizer.word_index
         self.vocab_size = len(self.word_index)
