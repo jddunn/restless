@@ -70,14 +70,17 @@ class Misc:
             return None
 
     @staticmethod
-    def write_pickle_data(data: object, path: str):
-        """Writes pickled data."""
-        if os.path.isfile(path):
-            with open(path, "wb") as f:
-                try:
-                    pickle.dump(path, f)
-                    return path
-                except Exception:
-                    return None
-        else:
-            return None
+    def write_pickle_data(data: object, path: str, overwrite: bool=True):
+        """
+        Writes pickled data to disk (overwrites existing paths by default).
+        """
+        if not overwrite:
+            if os.path.isfile(path):
+                print("{} exists and will not be overwritten!")
+                return None
+        with open(path, "wb") as f:
+            try:
+                pickle.dump(f, path)
+            except Exception as e:
+                return None
+        return path
