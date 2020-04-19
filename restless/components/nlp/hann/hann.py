@@ -310,20 +310,35 @@ class HierarchicalAttentionNetwork:
         feature_map: dict,
         word_token_level: str = "word",
         sent_token_level: str = "sent",
+        pickle_data: bool = True
     ):
         """Preprocesses data given a df object."""
         self.data = np.zeros(
             (len(data_train), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32",
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype="int32")
-        word_index_asset_path = self.model_name.split(".")[0] + "_word_index"
         text_corpus_asset_path = self.model_name.split(".")[0] + "_text_corpus"
+        word_index_asset_path = self.model_name.split(".")[0] + "_word_index"
         vectorized_data_asset_path = self.model_name.split(".")[0] + "_vectorized_data"
-        if not misc.read_pickle_data(text_corpus_asset_path):
+        read = misc.read_pickle_data(text_corpus_asset_path)
+        if not read:
             self.texts = self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)
-        print("Finished building corpus.")
-        self._build_feature_matrix_from_data(data_train, feature_map)
-        print("Finished building feature matrix from corupus.")
+            print("Finished building corpus.")
+        else:
+            self.texts = read
+            print("Finished loading corpus.")
+        read = misc.read_pickle_data(word_index_asset_path)
+        if not read:
+            self._build_feature_matrix_from_data(data_train, feature_map)
+            print("Finished building feature matrix from corupus.")
+        else:
+            self.word_index = read
+            read = misc.read_pickle_data(vectorized_data_asset_path)
+            if not read:
+                self._build_feature_matrix_from_data(data_train, feature_map)
+                print("Finished building feature matrix from corupus.")
+            else:
+                self.data = read
         print("Total %s unique tokens." % len(self.word_index))
         print("Shape of data tensor: ", self.data, self.data.shape)
         print("Finished preprocessing data.")
