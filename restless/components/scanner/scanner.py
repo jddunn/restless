@@ -24,7 +24,12 @@ class Scanner:
         return
 
     def scan_folder(self, folderpath: str) -> list:
-        results = self.pea.send_files_recursive(folderpath)
+        results = []
+        # recursive walk
+        for dirpath, dirs, files in os.walk(folderpath):
+            for filename in files:
+                fname = os.path.join(dirpath, filename)
+                result = self.pea.analyze_file(fname)
         return results
 
     def scan_file(self, filepath: str) -> list:

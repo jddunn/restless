@@ -116,12 +116,6 @@ DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, "defau
 DEFAULT_MODEL_ASSETS_PATH = os.path.abspath(
     os.path.join(DEFAULT_MODEL_DIR_PATH, "model_assets")
 )
-DEFAULT_WORD_INDEX_PATH = os.path.abspath(
-    os.path.join(DEFAULT_MODEL_DIR_PATH, "word_index")
-)
-DEFAULT_TEXT_CORPUS_PATH = os.path.abspath(
-    os.path.join(DEFAULT_MODEL_DIR_PATH, "text_corpus")
-)
 
 stats = utils.stats
 stats_vis = utils.stats_vis
@@ -146,6 +140,7 @@ class HierarchicalAttentionNetwork:
         **kwargs
     ):
         self.model = None
+        self.model_name = ""
 
         self.data_train = pd.read_csv(
             DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS
@@ -187,6 +182,7 @@ class HierarchicalAttentionNetwork:
                 custom_objects={"AttentionLayer": AttentionLayer},
                 compile=False,
             )
+            self.model_name = DEFAULT_MODEL_PATH.split("/")[len(DEFAULT_MODEL_PATH.split("/"))-1]
             # Get the original training vocabulary (should load from file / db later)
             self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
             if len(self.feature_map) is 0:
@@ -202,7 +198,7 @@ class HierarchicalAttentionNetwork:
             )
             print(
                 "Successfully loaded default HANN model - {} - {}.".format(
-                    DEFAULT_MODEL_PATH, self.model
+                    DEFAULT_MODEL_PATH, self.model_name
                 )
             )
         return
@@ -240,9 +236,10 @@ class HierarchicalAttentionNetwork:
         )
         print("Finished training model.")
         self.model = model
+        self.model_name = output_path.split("/")[len(output_path.split("/"))-1]
         if save_model:
             self.save_model(model, outputpath)
-            print("Finished saving model.")
+            print("Finished saving model: {} at {}".format(model_name, output_path))
         return model
 
     def _build_corpus(
@@ -303,7 +300,6 @@ class HierarchicalAttentionNetwork:
                 sentences.append(sentence)
             texts.extend(sentences)
             texts_features.append(sentences)
-        self.texts = texts
         return (texts, texts_features)
 
     def preprocess_data(
@@ -318,6 +314,10 @@ class HierarchicalAttentionNetwork:
             (len(data_train), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype="int32",
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype="int32")
+        word_index_asset_path = self.model_name.split(".")[0] + "_word_index"
+        text_corpus_asset_path = self.model_name.split(".")[0] + "_text_corpus"
+        vectorized_data_asset_path = self.model_name.split(".")[0] + "_vectorized_data"
+        # if not misc.read_pickle_data(word_index_asset_path):
         self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)
         print("Finished building corpus.")
         self._build_feature_matrix_from_data(data_train, feature_map)
@@ -631,15 +631,15 @@ class HierarchicalAttentionNetwork:
         """Helper function to build feature vector for HANN to classify."""
         self.tokenizer = Tokenizer()
         _texts = []
-        for i, each in enumerate(self.texts):
-            if type(each) is list:
-                each = "".join(each)
-            _texts.append(str(each))
+        # for i, each in enumerate(self.texts):
+          #  if type(each) is list:
+           #     each = "".join(each)
+           # _texts.append(str(each))
         for i in range(len(self.records)):
             self.labels.append(self.records[i]["classification"])
-        texts = _texts
-        self.texts = _texts
-        self.tokenizer.fit_on_texts(texts)
+        # texts = _texts
+        # self.texts = _texts
+        self.tokenizer.fit_on_texts(self.texts)
         self.word_index = self.tokenizer.word_index
         self.vocab_size = len(self.word_index)
         for i, sentences in enumerate(texts_features):
