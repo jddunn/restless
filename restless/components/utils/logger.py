@@ -1,8 +1,11 @@
 import datetime
 import logging as logging
+import sys
 
 # Format logs with extended metadata like functions, files, lineno
 extended_log_data = True
+
+import time
 
 class Logger:
     """
@@ -28,6 +31,16 @@ class Logger:
             lambda message, *args: self.logger._log(logging.SUCCESS, message, args),
         )
         self.colored = colored  # Bind method to color text
+        self.same_line = same_line
+        return
+
+    def flush(self, newline=False) -> None:
+        CURSOR_UP_ONE = '\033[K'
+        ERASE_LINE = '\x1b[2K'
+        sys.stdout.write(CURSOR_UP_ONE)
+        sys.stdout.write(ERASE_LINE+'\r')
+        if newline:
+            sys.stdout.write(ERASE_LINE+'\n')
         return
 
     def change_logging_config(self, config: dict) -> None:
@@ -116,7 +129,11 @@ class ANSIColor:
     prefix = "\033["
     suffix = "\033[0m"
 
-    def colored(self, text, color=None):
+    def same_line(self, text: str):
+        text = "\033[K" + "\033[F" + "\033[K" + text
+        return text
+
+    def colored(self, text: str, color=None):
         if isinstance(color, list):
             # Apply multiple styles
             result = ""
@@ -134,7 +151,7 @@ class ANSIColor:
 
 
 colored = ANSIColor().colored
-
+same_line = ANSIColor().same_line
 
 class CustomFormatter(logging.Formatter):
     """

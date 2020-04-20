@@ -18,7 +18,9 @@ pea = PEAnalyzer()
 
 logging = utils.logger
 logger = utils.logger.logger
-
+colored = logging.colored
+same_line = logging.same_line
+flush = logging.flush
 
 class Scanner:
     """
@@ -29,16 +31,26 @@ class Scanner:
         self.pea = pea
         return
 
-    def scan_folder(self, folderpath: str) -> list:
+    async def scan_recursive(self, path: str) -> list:
         results = []
+        path = os.path.abspath(path)
         # recursive walk
-        for dirpath, dirs, files in os.walk(folderpath):
-            for filename in files:
-                fname = os.path.join(dirpath, filename)
-                result = self.pea.analyze_file(fname)
-                results.append(result)
-        return results
-
-    def scan_file(self, filepath: str) -> list:
-        results = self.scan_folder(filepath)
+        if os.path.isfile(path):
+            result = self.pea.analyze_file(path)
+            flush(newline=True)
+            logger.info("Prechecking " + colored("1", ["bold", "d_gray"]) + " file for metadata - {}.".format(path))
+            results.append(result)
+        else:
+            count = 0
+            flush(newline=True)
+            for dirpath, dirs, files in os.walk(path):
+                for filename in files:
+                    fname = os.path.join(dirpath, filename)
+                    # Unfortunately the logging lib doesn't support printing on
+                    # the same line easily, so we have to flush the last printed line
+                    logger.info(same_line("Prechecking {} files for metadata - {}.".format(colored(count, ["bold", "d_gray"]), colored(filename, ["underline", "d_gray"]))))
+                    flush()
+                    result = await self.pea.analyze_file(fname)
+                    results.append(result)
+                    count += 1
         return results

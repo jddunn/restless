@@ -74,12 +74,13 @@ class Misc:
     @staticmethod
     def write_pickle_data(data: object, path: str):
         """Writes pickled data."""
-        if os.path.isfile(path):
-            with open(path, "wb") as f:
-                try:
-                    pickle.dump(data, f)
-                except Exception as e:
-                    return None
+        try:
+            if os.path.isfile(path):
+                with open(path, "wb") as f:
+                    try:
+                        pickle.dump(data, f)
+                    except Exception as e:
+                        return None
         except:
             return None
         return path

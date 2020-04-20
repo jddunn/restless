@@ -1,10 +1,13 @@
+import os, sys
 # Silence TF warnings
 import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-import os, sys
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import tensorflow as tf
+
 import pandas as pd
 
 # make dep imports work when running in dir and in outside scripts

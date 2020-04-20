@@ -155,17 +155,15 @@ class PEAnalyzer:
         ]
         return IMAGE_DOS_HEADER_data + FILE_HEADER_data + OPTIONAL_HEADER_data
 
-    def analyze_file(self, fp: str):
-        with open(fp) as f:
+    async def analyze_file(self, fp: str):
+        try:
+            pe = pefile.PE(fp)
+        except Exception as e:
+            pass
+        else:
             try:
-                pe = pefile.PE(fp)
+                features = self.extract_features(pe)
+                result = (fp, features)
+                return result
             except Exception as e:
                 pass
-            else:
-                try:
-                    features = self.extract_features(pe)
-                    result = (fp, features)
-                    return result
-                except Exception as e:
-                    pass
-        return
