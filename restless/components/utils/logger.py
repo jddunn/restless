@@ -1,5 +1,6 @@
 import datetime
 import logging as logging
+import sys
 
 # Format logs with extended metadata like functions, files, lineno
 extended_log_data = True
@@ -28,6 +29,11 @@ class Logger:
             lambda message, *args: self.logger._log(logging.SUCCESS, message, args),
         )
         self.colored = colored  # Bind method to color text
+        return
+
+    def flush(self) -> None:
+        """Wipes last printed line in console. For replacing same line logging"""
+        sys.stdout.flush()
         return
 
     def change_logging_config(self, config: dict) -> None:
