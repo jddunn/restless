@@ -5,8 +5,12 @@
   </a>
   <p align="center">
     Always-on anti-malware software using malicious language processing (nlp-inspired) techniques.
-        <br>
-        </p>
+        <br><br>
+  <a href="./screenshots/Restless - CLI Full Scan Demo.gif">
+    <img src="./screenshots/Restless - CLI Full Scan Demo.gif" alt="Restless - CLI Full Scan Demo">
+    <sup>Restless - CLI Full Scan Demo</sup>
+  </a>
+  </p>
 </p>
 
 <!-- TABLE OF CONTENTS -->
