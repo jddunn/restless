@@ -82,8 +82,9 @@ class Restless(object):
     async def scan(self, filepath: str, malware_prob_threshold: float = None):
         if not malware_prob_threshold:
             malware_prob_threshold = self.default_malware_prob_threshold
-        logger.info("\t" +
-            colored("Scanning", ["slow_blink", "bold"])
+        logger.info(
+            "\t"
+            + colored("Scanning", ["slow_blink", "bold"])
             + " system now at {}.".format(colored(filepath, "cyan"))
         )
         results = []
@@ -151,16 +152,12 @@ class Restless(object):
             colored_malicious = colored(malicious, "d_gray") + colored("%", "d_gray")
             if benign > 0.6:
                 clr = "green" if benign < 0.8 else "b_green"
-                colored_benign = colored(benign, clr)
-                colored_benign += colored("%", clr)
+                colored_benign = colored(misc.prob_to_percentages(benign), clr)
             if malicious > 0.1 and malicious < 0.4:
                 clr = "yellow"
-                colored_malicious = colored(malicious, clr)
                 colored_malicious += colored("%", clr)
             if malicious > 0.6:
-                clr = "red" if malicious > 0.8 else "b_red"
-                colored_malicious = colored(malicious, clr)
-                colored_malicious += colored("%", clr)
+                colored_malicious = colored(misc.prob_to_percentages(malicious), clr)
             if malicious >= malware_prob_threshold:
                 potential_malware.append(fname)
             logger.info(
