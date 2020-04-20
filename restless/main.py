@@ -42,7 +42,7 @@ class Restless(object):
         self.run_system_scan = run_system_scan
         self.default_malware_prob_threshold = default_malware_prob_threshold
         flush(newline=True)
-        logger.info(colored("Restless initializing..", ["cyan", "bold"]))
+        logger.info("\t" + colored("Restless initializing..", ["cyan", "bold"]))
         flush(newline=True)
         self.scanner = Scanner()
         watch_pool = [os.path.abspath(path) for path in watch_pool]
@@ -82,7 +82,7 @@ class Restless(object):
     async def scan(self, filepath: str, malware_prob_threshold: float = None):
         if not malware_prob_threshold:
             malware_prob_threshold = self.default_malware_prob_threshold
-        logger.info(
+        logger.info("\t" +
             colored("Scanning", ["slow_blink", "bold"])
             + " system now at {}.".format(colored(filepath, "cyan"))
         )
