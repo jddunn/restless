@@ -115,34 +115,19 @@ Model evaluation metrics:
 -i = file or folder to scan recursively
 ```
 python restless/cli.py -i ../test_exes/
-Using TensorFlow backend.
-Succesfully loaded HANN model:  /home/ubuntu/restless/restless/components/nlp/hann/default.h5
 ..
 2020-04-13 08:19:07 INFO Restless initializing. Running system-wide scan: False
-2020-04-13 08:19:07 INFO Restless.Watcher is now watching over system and scanning new incoming files.
-PEAnalyzer scanning:  ../test_exes/
+..
 2020-04-13 08:22:34 INFO Scanned ../test_exes/benign/CuteWriter.exe - predicted: 0.9961581826210022% benign and 0.0038418229669332504% malicious
 2020-04-13 08:22:37 INFO Scanned ../test_exes/benign/7z1900-x64.exe - predicted: 0.8289633989334106% benign and 0.17103658616542816% malicious
-2020-04-13 08:22:40 INFO Scanned ../test_exes/benign/Explorer++_1.exe - predicted: 0.04687594622373581% benign and 0.9531241059303284% malicious
 2020-04-13 08:22:43 INFO Scanned ../test_exes/benign/setup-lightshot.exe - predicted: 0.9980466365814209% benign and 0.001953382510691881% malicious
-2020-04-13 08:22:46 INFO Scanned ../test_exes/benign/WinCDEmu-4.1.exe - predicted: 0.01972261257469654% benign and 0.9802773594856262% malicious
 2020-04-13 08:22:49 INFO Scanned ../test_exes/benign/putty.exe - predicted: 0.023633623495697975% benign and 0.976366400718689% malicious
-2020-04-13 08:22:53 INFO Scanned ../test_exes/benign/peazip-7.1.1.WIN64.exe - predicted: 0.9818265438079834% benign and 0.018173446878790855% malicious
 2020-04-13 08:22:56 INFO Scanned ../test_exes/malicious/bx89.exe - predicted: 0.1358533501625061% benign and 0.8641467094421387% malicious
 2020-04-13 08:22:59 INFO Scanned ../test_exes/malicious/Bombermania.exe - predicted: 0.028919104486703873% benign and 0.9710809588432312% malicious
 2020-04-13 08:23:02 INFO Scanned ../test_exes/malicious/2d.exe - predicted: 0.08720230311155319% benign and 0.9127976894378662% malicious
 2020-04-13 08:23:05 INFO Scanned ../test_exes/malicious/ransomware.exe - predicted: 0.2670203447341919% benign and 0.7329797148704529% malicious
-2020-04-13 08:23:08 INFO Scanned ../test_exes/malicious/3.exe - predicted: 0.0033065322786569595% benign and 0.99669349193573% malicious
-2020-04-13 08:23:11 INFO Scanned ../test_exes/malicious/711.exe - predicted: 0.10913511365652084% benign and 0.8908648490905762% malicious
-2020-04-13 08:23:14 INFO Scanned ../test_exes/malicious/311.exe - predicted: 0.10913511365652084% benign and 0.8908648490905762% malicious
-2020-04-13 08:23:18 INFO Scanned ../test_exes/malicious/microsoft office 2007 service pack 2.exe - predicted: 0.0007832201081328094% benign and 0.9992167949676514% malicious
-2020-04-13 08:23:21 INFO Scanned ../test_exes/malicious/1_1.exe - predicted: 0.0026582677382975817% benign and 0.9973416924476624% malicious
-2020-04-13 08:23:24 INFO Scanned ../test_exes/malicious/0.exe - predicted: 0.09539982676506042% benign and 0.904600203037262% malicious
-2020-04-13 08:23:27 INFO Scanned ../test_exes/malicious/se.exe - predicted: 0.04515210539102554% benign and 0.9548478722572327% malicious
-2020-04-13 08:23:31 INFO Scanned ../test_exes/malicious/mcpatcher.exe - predicted: 0.0007832201081328094% benign and 0.9992167949676514% malicious
 2020-04-13 08:23:34 INFO Scanned ../test_exes/malicious/tekdefense.dll - predicted: 0.7426907420158386% benign and 0.257309228181839% malicious
-2020-04-13 08:23:37 INFO Scanned ../test_exes/malicious/Google_Adobe_FlashPlayer.exe - predicted: 0.9877290725708008% benign and 0.012270929291844368% malicious
-2020-04-13 08:23:40 INFO Scanned ../test_exes/malicious/25000.exe - predicted: 0.8534355163574219% benign and 0.1465645134449005% malicious
+..
 ```
 ---------------------------------------------------
 While bulk testing needs to be done, Restless's malware classification seems to work fairly well, with few false negatives and relatively more false positives, which, given the nature of security, erring on the sie of caution in detecting threats, is sensible. 
