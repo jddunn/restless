@@ -8,6 +8,7 @@
         <br><br>
   <a href="./screenshots/Restless - CLI Full Scan Demo.gif">
     <img src="./screenshots/Restless - CLI Full Scan Demo.gif" alt="Restless - CLI Full Scan Demo">
+    <br>
     <sup>Restless - CLI Full Scan Demo</sup>
   </a>
   </p>
