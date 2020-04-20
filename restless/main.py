@@ -94,7 +94,7 @@ class Restless(object):
         flush(newline=True)
         # Remove none from our results (meaning those files did not have any
         # extractable metadata for our classifier, for now at least)
-        file_results = [res for res in file_results if res]
+        file_results = [res for res in file_results if res is not None]
         if len(file_results) == 0:
             logger.success(
                 colored(
@@ -108,7 +108,7 @@ class Restless(object):
         else:
              logger.info(
                     colored("Sending {} files to the malware analysis / defense pipeline.".format(
-                        colored(str(files_scanned - 1), ["d_gray", "underline"]), "bold")
+                        colored(str(file_results - 1), ["d_gray", "underline"]), "bold")
                 )
             )
         for file_result in file_results:
