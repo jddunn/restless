@@ -96,21 +96,21 @@ class Restless(object):
         # extractable metadata for our classifier, for now at least)
         file_results = [res for res in file_results if res is not None]
         if len(file_results) == 0:
+            flush(newline=True)
             logger.success(
                 colored(
                     "Found no files that were scannable for malware (checked {} files).".format(
-                        colored(str(files_scanned), "bold"), "green"
+                        colored(str(files_scanned), ["bold", "underline"]), "green"
                     )
                 )
             )
-            logger.success(colored("The system appears to be safe.", "green"))
+            logger.success(colored("The system appears to be safe.", ["green", "bold"]))
             return
         else:
              logger.info(
                     colored("Sending {} files to the malware analysis / defense pipeline.".format(
-                        colored(str(file_results - 1), ["d_gray", "underline"]), "bold")
+                        colored(str(len(file_results) - 1)), ["d_gray", "underline", "bold"]), "bold")
                 )
-            )
         for file_result in file_results:
             fname = file_result[0]
             path_to_fname = fname.split("/")
@@ -159,13 +159,15 @@ class Restless(object):
                 )
             )
         if len(potential_malware) > 0:
+            flush(newline=True)
             logger.critical(
                 "Found {} files to be potentially infected!".format(
-                    colored(str(len(potential_malware)), ["bold", "red"])
+                    colored(str(len(potential_malware)), ["bold", "red", "underline"])
                 )
             )
             self.clean_files(potential_malware)
         else:
+            flush(newline=True)
             logger.success(
                 colored(
                     "Scan finished sucessfully, found no potential malware!", "b_green"
