@@ -117,7 +117,8 @@ class Watcher:
                     return
                 self.watch_pool.extend(to_watch)
                 msg = (
-                    logging.colored("Restless", "framed")
+                    "\t"
+                    + logging.colored("Restless", "framed")
                     + " is now "
                     + logging.colored("watching over", "slow_blink")
                     + " the system."
