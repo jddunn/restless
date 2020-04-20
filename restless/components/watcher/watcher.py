@@ -28,7 +28,7 @@ misc = utils.misc
 
 uvloop.install()
 
-CustomEventHandler = EventHandler()
+CustomEventHandler = EventHandler
 
 
 class Watcher:
@@ -39,14 +39,11 @@ class Watcher:
     """
 
     def __init__(
-        self, watch_pool: list, default_event_handler_cb = None, default_evt_handler=EventHandler()
+        self, watch_pool: list, loop=None, default_event_handler_cb = None, default_evt_handler=CustomEventHandler()
     ):
         self.watch_pool = watch_pool  # Array of paths to watch
         self.default_evt_handler = (
             default_evt_handler  # Event callback on watch modification signal
-        )
-        self.watchdog = AIOWatchdog(
-            self.watch_pool, event_handler=self.default_evt_handler
         )
         self.watching = True  # As long as this is true, Watcher will be watching
         self.default_event_handler_cb = default_event_handler_cb # What method the event cb will call
@@ -55,7 +52,7 @@ class Watcher:
         return
 
     async def start_new_watch_thread(
-        self, loop, executor=None, dirs: list = None
+        self, dirs: list = None
     ) -> None:
         try:
             # result = start_new_thread(self.constant_watch, (dirs,))
@@ -92,21 +89,20 @@ class Watcher:
         self.watch_pool = []
         if not evt_handler:
             evt_handler = self.default_evt_handler
-        msg = ""
-        if not dirs or dirs is None or dirs == ["*"] or dirs == ([],) or dirs == "*":
+        to_watch = []
+        if dirs == ["*"] or dirs == ([],) or dirs == "*":
             msg = (
                 logging.colored("Restless", "bold")
                 + " is now "
                 + logging.colored("watching over", "slow_blink")
                 + " the full system."
-            )
+                )
             logger.info(msg)
             root = misc.get_os_root_path()
             dirs = [root]
             self.watch_pool = dirs
         else:
             if isinstance(dirs, list):
-                to_watch = []
                 for fp in dirs:
                     if not skip_check:
                         found = self.check_if_already_watching_fp(fp, self.watch_pool)
@@ -128,7 +124,7 @@ class Watcher:
                 )
                 logger.info(msg)
             else:
-                fp = dirs[0]  # root dir
+                fp = dirs  # root dir
                 if not skip_check:
                     found = self.check_if_already_watching_fp(fp, self.watch_pool)
                     if found:

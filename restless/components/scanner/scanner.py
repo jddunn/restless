@@ -29,16 +29,17 @@ class Scanner:
         self.pea = pea
         return
 
-    def scan_folder(self, folderpath: str) -> list:
+    async def scan_recursive(self, path: str) -> list:
         results = []
+        path = os.path.abspath(path)
         # recursive walk
-        for dirpath, dirs, files in os.walk(folderpath):
-            for filename in files:
-                fname = os.path.join(dirpath, filename)
-                result = self.pea.analyze_file(fname)
-                results.append(result)
-        return results
-
-    def scan_file(self, filepath: str) -> list:
-        results = self.scan_folder(filepath)
+        if os.path.isfile(path):
+            result = self.pea.analyze_file(path)
+            results.append(result)
+        else:
+            for dirpath, dirs, files in os.walk(path):
+                for filename in files:
+                    fname = os.path.join(dirpath, filename)
+                    result = self.pea.analyze_file(fname)
+                    results.append(result)
         return results

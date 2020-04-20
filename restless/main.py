@@ -42,9 +42,10 @@ class Restless(object):
         self.default_malware_prob_threshold = default_malware_prob_threshold
         logger.info("Restless initializing..")
         self.scanner = Scanner()
-        self.watcher = Watcher(watch_pool, self.scan)
+        watch_pool = [os.path.abspath(path) for path in watch_pool]
         self.event_loop = asyncio.get_event_loop()  # reset event loop
         self.event_loop = asyncio.new_event_loop()
+        self.watcher = Watcher(watch_pool, loop=self.event_loop, default_event_handler_cb=self.scan)
         # Our default model will extract PE header data for classification
         self.nlp = NLP(load_default_hann_model=True)
         if self.run_system_scan:
@@ -59,12 +60,13 @@ class Restless(object):
         return
 
     def constant_watch(self, watch_pool: list = ["*"]) -> None:
+        self.watch_pool = watch_pool
         self.event_loop = asyncio.get_event_loop()  # reset event loop
         self.event_loop = asyncio.new_event_loop()
         with ThreadPoolExecutor(max_workers=2) as executor:
             self.event_loop.run_until_complete(
                 self.watcher.start_new_watch_thread(
-                self.event_loop, watch_pool
+                    self.watch_pool
                 )
             )
         return
@@ -74,13 +76,13 @@ class Restless(object):
         results = self.scan(root)
         return results
 
-    def scan(self, filepath: str, malware_prob_threshold: float = None):
+    async def scan(self, filepath: str, malware_prob_threshold: float = None):
         if not malware_prob_threshold:
             malware_prob_threshold = self.default_malware_prob_threshold
         logger.info("Scanning system now at {}.".format(colored(filepath, "cyan")))
         results = []
         potential_malware = []
-        file_results = self.scanner.scan_folder(filepath)
+        file_results = await self.scanner.scan_recursive(filepath)
         files_scanned = len(file_results)
         # Remove none from our results (meaning those files did not have any
         # extractable metadata for our classifier, for now at least)
