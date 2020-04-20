@@ -34,11 +34,13 @@ class Logger:
         self.same_line = same_line
         return
 
-    def flush(self) -> None:
+    def flush(self, newline=False) -> None:
         CURSOR_UP_ONE = '\033[K'
         ERASE_LINE = '\x1b[2K'
         sys.stdout.write(CURSOR_UP_ONE)
         sys.stdout.write(ERASE_LINE+'\r')
+        if newline:
+            sys.stdout.write(ERASE_LINE+'\n')
         return
 
     def change_logging_config(self, config: dict) -> None:

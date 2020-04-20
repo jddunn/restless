@@ -37,10 +37,12 @@ class Scanner:
         # recursive walk
         if os.path.isfile(path):
             result = self.pea.analyze_file(path)
+            flush(newline=True)
             logger.info("Prechecking " + colored("1", ["bold", "d_gray"]) + " file for metadata - {}.".format(path))
             results.append(result)
         else:
             count = 0
+            flush(newline=True)
             for dirpath, dirs, files in os.walk(path):
                 for filename in files:
                     fname = os.path.join(dirpath, filename)

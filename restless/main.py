@@ -21,6 +21,7 @@ misc = utils.misc
 logging = utils.logger
 logger = utils.logger.logger
 colored = utils.logger.colored
+flush = utils.logger.flush
 
 
 class Restless(object):
@@ -40,7 +41,9 @@ class Restless(object):
         uvloop.install()  # make event loop fast
         self.run_system_scan = run_system_scan
         self.default_malware_prob_threshold = default_malware_prob_threshold
+        flush(newline=True)
         logger.info("Restless initializing..")
+        flush(newline=True)
         self.scanner = Scanner()
         watch_pool = [os.path.abspath(path) for path in watch_pool]
         self.event_loop = asyncio.get_event_loop()  # reset event loop
@@ -79,11 +82,16 @@ class Restless(object):
     async def scan(self, filepath: str, malware_prob_threshold: float = None):
         if not malware_prob_threshold:
             malware_prob_threshold = self.default_malware_prob_threshold
-        logger.info(colored("Scanning", "slow_blink") + " system now at {}.".format(colored(filepath, "cyan")))
+        logger.info(colored("Scanning", "rapid_blink") + " system now at {}.".format(colored(filepath, "cyan")))
         results = []
         potential_malware = []
         file_results = await self.scanner.scan_recursive(filepath)
         files_scanned = len(file_results)
+        flush(newline=True)
+        msg = "\t" + colored("Restless", ["bold", "slow_blink", "magenta"])
+        msg += " " + colored("defense pipeline activated.", ["magenta", "bold"])
+        logger.success(msg)
+        flush(newline=True)
         # Remove none from our results (meaning those files did not have any
         # extractable metadata for our classifier, for now at least)
         file_results = [res for res in file_results if res]
@@ -99,8 +107,8 @@ class Restless(object):
             return
         else:
              logger.info(
-                    "Sending {} files to the malware analysis / defense pipeline.".format(
-                        colored(str(files_scanned - 1), ["d_gray", "bold"])
+                    colored("Sending {} files to the malware analysis / defense pipeline.".format(
+                        colored(str(files_scanned - 1), ["d_gray", "underline"]), "bold")
                 )
             )
         for file_result in file_results:
