@@ -1,20 +1,16 @@
 import os, sys
 
 # Silence TF warnings
-import tensorflow as tf
-import tensorflow.python.util.deprecation as deprecation
 import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-deprecation._PRINT_DEPRECATION_WARNINGS = False
-import logging
 
-logging.getLogger("tensorflow").setLevel(logging.ERROR)
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+import tensorflow as tf
+import tensorflow.python.util.deprecation as deprecation
+deprecation._PRINT_DEPRECATION_WARNINGS = False
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-tf.get_logger().setLevel(3)
-logging.getLogger("tensorflow").disabled = True
 # TF is still printing out warnings..
 
 import pandas as pd

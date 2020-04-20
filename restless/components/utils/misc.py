@@ -86,7 +86,7 @@ class Misc:
         return path
 
     @staticmethod
-    def convert_prob_to_percentage(val: float, dec_places: int = 4) -> str:
+    def prob_to_percentage(val: float, dec_places: int = 4) -> str:
         # round to 4 place
-        result = "{:.dec_places%}".format(val)
+        result = "{:.4%}".format(val)
         return result

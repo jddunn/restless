@@ -143,21 +143,34 @@ class Restless(object):
             colored_fname = (
                 colored(path_to_fname, "gray")
                 + colored("/", "bold")
-                + colored(short_fname, ["gray", "underline"])
+                + " "
+                + colored(short_fname, ["gray", "underline", "bold"])
             )
             benign = float(result[1][0])
             malicious = float(result[1][1])
-            # Colorize percentages
-            colored_benign = colored(benign, "d_gray") + colored("%", "d_gray")
-            colored_malicious = colored(malicious, "d_gray") + colored("%", "d_gray")
-            if benign > 0.6:
-                clr = "green" if benign < 0.8 else "b_green"
-                colored_benign = colored(misc.prob_to_percentages(benign), clr)
-            if malicious > 0.1 and malicious < 0.4:
-                clr = "yellow"
-                colored_malicious += colored("%", clr)
-            if malicious > 0.6:
-                colored_malicious = colored(misc.prob_to_percentages(malicious), clr)
+            # Colorizd percentages
+            colored_benign = misc.prob_to_percentage(benign)
+            colored_malicious = misc.prob_to_percentage(malicious)
+            clr_b = "d_gray"  # benign color(s)
+            clr_m = "d_gray"  # malicious color(s)
+            if benign > .3:
+                clr_b = (
+                    "yellow" if benign < 0.45 else ["yellow", "bold"]
+                )
+            if benign >= 0.6:
+                clr_b = ["green"] if benign < 0.8 else ["green", "bold"]
+            if malicious > 0.15:
+                clr_m = (
+                    "yellow" if malicious < .25 else ["yellow", "bold"]
+                )
+            if malicious >= .4:
+                clr_m = (
+                    "red"
+                    if malicious >= 0.6 and malicious <= 0.8
+                    else ["red", "bold"]
+                )
+            colored_benign = colored(colored_benign, clr_b)
+            colored_malicious = colored(colored_malicious, clr_m)
             if malicious >= malware_prob_threshold:
                 potential_malware.append(fname)
             logger.info(
@@ -171,11 +184,18 @@ class Restless(object):
                     colored("malicious", "gray"),
                 )
             )
+        flush(newline=True)
+        logger.info(
+            "\tRestless scanned a total of {} files.".format(
+                colored(files_scanned, ["d_gray", "bold", "underline"])
+            )
+        )
+        flush(newline=True)
         if len(potential_malware) > 0:
-            logger.critical(
+            logger.critical(colored(
                 "Found {} files to be potentially infected!".format(
                     colored(str(len(potential_malware)), ["bold", "red", "underline"])
-                )
+                ), "red")
             )
             self.clean_files(potential_malware)
         else:

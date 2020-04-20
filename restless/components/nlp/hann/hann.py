@@ -209,11 +209,10 @@ class HierarchicalAttentionNetwork:
                 sent_token_level=self.sent_token_level,
             )
             print(
-                "Successfully loaded default HANN model - {} - {}.".format(
+                "Successfully loaded default HANN model - {} - {}.\n".format(
                     DEFAULT_MODEL_PATH, self.model_name
                 )
             )
-            print("\n")
         return
 
     def read_and_train_data(
@@ -372,7 +371,7 @@ class HierarchicalAttentionNetwork:
                 self.data = read
                 print("Finished loading preprocessed data.")
         print("Total %s unique tokens." % len(self.word_index))
-        print("Finished preprocessing data.\n")
+        print("Finished preprocessing data.")
         return self.data
 
     def predict(self, data):
