@@ -20,7 +20,7 @@ try:
 except Exception as e:
     from ..utils import utils as utils
 
-from events import AIOEventHandler, EventHandler
+from events import AsyncEventHandler
 
 logging = utils.logger
 logger = utils.logger.logger
@@ -29,8 +29,6 @@ colored = logging.colored
 flush = logging.flush
 
 uvloop.install()
-
-CustomEventHandler = EventHandler
 
 
 class Watcher:
@@ -45,7 +43,7 @@ class Watcher:
         watch_pool: list,
         loop=None,
         default_event_handler_cb=None,
-        default_evt_handler=CustomEventHandler(),
+        default_evt_handler=AsyncEventHandler(),
     ):
         self.watch_pool = watch_pool  # Array of paths to watch
         self.default_evt_handler = (
