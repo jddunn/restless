@@ -30,31 +30,70 @@ from components.utils import utils
 import argparse
 
 import os
+import asyncio
+import uvloop
+
 
 if __name__ == &#34;__main__&#34;:
-    restless = Restless(run_system_scan=False)
     parser = argparse.ArgumentParser(
-        description=&#34;CLI for using Restless to scan files for malware. Results of the scan will be printed.&#34;
+        description=&#34;CLI for using Restless to scan files for malware. Results of the&#34;
+        + &#34;scan will be printed.&#34;
     )
     parser.add_argument(
         &#34;-i&#34;,
         &#34;--input&#34;,
-        required=True,
-        help=&#34;File path to scan or folder path to scan recursively.&#34;,
+        required=False,
+        help=&#34;File path to scan or folder path to scan recursively.&#34;
+        + &#34; Enter &#39;*&#39; (in quotes) to run a full system scan.&#34;,
+    )
+    parser.add_argument(
+        &#34;-w&#34;,
+        &#34;--watch&#34;,
+        required=False,
+        help=&#34;If --watch is passed, Restless will always always watch the directory&#34;
+        + &#34; (and all subdirs) passed directory. Enter &#39;*&#39; (in quotes) to watch&#34;
+        + &#34; the home dir. New / modified files will be sent to the defense pipeline.&#34;,
     )
     args = parser.parse_args()
+    uvloop.install()
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    event_loop = asyncio.get_event_loop()
+    restless = Restless(run_system_scan=False)
     fp = args.input
-    if fp is &#34;*&#34;:
-        restless.scanner.scan_full_system()
-        # Run full system scan
+    wfp = args.watch
+    if fp and wfp:
+        print(
+            &#34;Error! Please only pass in either an -i or -w (for input directory to scan now, or directory to watch and defend).&#34;
+        )
+    if fp is None and wfp:
+        try:
+            event_loop.run_until_complete(restless.constant_watch(wfp))
+        finally:
+            event_loop.close()
+        try:
+            event_loop.run_until_complete(restless.scan_full_system())
+        finally:
+            event_loop.close()
     else:
-        if os.path.exists(fp):
-            restless.scan_folder(fp)
+        if fp is None and wfp is None:
+            fp = &#34;*&#34;
+        if fp is &#34;*&#34;:
+            try:
+                event_loop.run_until_complete(restless.scan_full_system())
+            finally:
+                event_loop.close()
         else:
-            print(
-                &#34;Input is not a valid filepath! Please pass the absolute path or relative path if the files are inside the same dir.&#34;
-            )
-            exit()</code></pre>
+            if os.path.exists(fp):
+                try:
+                    event_loop.run_until_complete(restless.scan(fp))
+                finally:
+                    event_loop.close()
+            else:
+                print(
+                    &#34;Input is not a valid filepath! Please pass the absolute path or&#34;
+                    + &#34; relative path if the files are inside the same dir.&#34;
+                )
+                exit()</code></pre>
 </details>
 </section>
 <section>

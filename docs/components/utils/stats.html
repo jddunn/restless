@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.5" />
-<title>restless.components.utils.stats_utils API documentation</title>
+<title>restless.components.utils.stats API documentation</title>
 <meta name="description" content="" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
@@ -17,7 +17,7 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>restless.components.utils.stats_utils</code></h1>
+<h1 class="title">Module <code>restless.components.utils.stats</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
@@ -47,7 +47,7 @@ DEFAULT_SCREENSHOTS_PATH = os.path.abspath(
 )
 
 
-class StatsUtils:
+class Stats:
     &#34;&#34;&#34;
     Contains functions to facilitate statistical modeling
     and ML processing.
@@ -258,8 +258,8 @@ class StatsUtils:
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="restless.components.utils.stats_utils.StatsUtils"><code class="flex name class">
-<span>class <span class="ident">StatsUtils</span></span>
+<dt id="restless.components.utils.stats.Stats"><code class="flex name class">
+<span>class <span class="ident">Stats</span></span>
 </code></dt>
 <dd>
 <section class="desc"><p>Contains functions to facilitate statistical modeling
@@ -268,7 +268,7 @@ and ML processing.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class StatsUtils:
+<pre><code class="python">class Stats:
     &#34;&#34;&#34;
     Contains functions to facilitate statistical modeling
     and ML processing.
@@ -471,7 +471,7 @@ and ML processing.</p></section>
 </details>
 <h3>Methods</h3>
 <dl>
-<dt id="restless.components.utils.stats_utils.StatsUtils.get_correlation_for_features"><code class="name flex">
+<dt id="restless.components.utils.stats.Stats.get_correlation_for_features"><code class="name flex">
 <span>def <span class="ident">get_correlation_for_features</span></span>(<span>self, data_train, features_to_compare=[], target_feature=None, get_corr_with_target_feature_only=False, correlation='pearson', print_output=False)</span>
 </code></dt>
 <dd>
@@ -546,7 +546,7 @@ metric to use; defaults to "pearson."</dd>
     return corr</code></pre>
 </details>
 </dd>
-<dt id="restless.components.utils.stats_utils.StatsUtils.get_metrics_averages"><code class="name flex">
+<dt id="restless.components.utils.stats.Stats.get_metrics_averages"><code class="name flex">
 <span>def <span class="ident">get_metrics_averages</span></span>(<span>self, metrics)</span>
 </code></dt>
 <dd>
@@ -584,7 +584,7 @@ must be int or floats.</p>
     return result</code></pre>
 </details>
 </dd>
-<dt id="restless.components.utils.stats_utils.StatsUtils.get_model_metrics"><code class="name flex">
+<dt id="restless.components.utils.stats.Stats.get_model_metrics"><code class="name flex">
 <span>def <span class="ident">get_model_metrics</span></span>(<span>self, y, y_pred, labels=['0', '1'], print_output=False)</span>
 </code></dt>
 <dd>
@@ -646,7 +646,7 @@ etc.</p></section>
     return result</code></pre>
 </details>
 </dd>
-<dt id="restless.components.utils.stats_utils.StatsUtils.pretty_print_cm"><code class="name flex">
+<dt id="restless.components.utils.stats.Stats.pretty_print_cm"><code class="name flex">
 <span>def <span class="ident">pretty_print_cm</span></span>(<span>self, cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None)</span>
 </code></dt>
 <dd>
@@ -692,7 +692,7 @@ etc.</p></section>
     return</code></pre>
 </details>
 </dd>
-<dt id="restless.components.utils.stats_utils.StatsUtils.transform_df_with_top_features_for_hann"><code class="name flex">
+<dt id="restless.components.utils.stats.Stats.transform_df_with_top_features_for_hann"><code class="name flex">
 <span>def <span class="ident">transform_df_with_top_features_for_hann</span></span>(<span>self, df, corr, features_list, target_feature, threshold=0.01, n_features=1000)</span>
 </code></dt>
 <dd>
@@ -779,13 +779,13 @@ which in this case, is our file classification.</p></section>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="restless.components.utils.stats_utils.StatsUtils" href="#restless.components.utils.stats_utils.StatsUtils">StatsUtils</a></code></h4>
+<h4><code><a title="restless.components.utils.stats.Stats" href="#restless.components.utils.stats.Stats">Stats</a></code></h4>
 <ul class="">
-<li><code><a title="restless.components.utils.stats_utils.StatsUtils.get_correlation_for_features" href="#restless.components.utils.stats_utils.StatsUtils.get_correlation_for_features">get_correlation_for_features</a></code></li>
-<li><code><a title="restless.components.utils.stats_utils.StatsUtils.get_metrics_averages" href="#restless.components.utils.stats_utils.StatsUtils.get_metrics_averages">get_metrics_averages</a></code></li>
-<li><code><a title="restless.components.utils.stats_utils.StatsUtils.get_model_metrics" href="#restless.components.utils.stats_utils.StatsUtils.get_model_metrics">get_model_metrics</a></code></li>
-<li><code><a title="restless.components.utils.stats_utils.StatsUtils.pretty_print_cm" href="#restless.components.utils.stats_utils.StatsUtils.pretty_print_cm">pretty_print_cm</a></code></li>
-<li><code><a title="restless.components.utils.stats_utils.StatsUtils.transform_df_with_top_features_for_hann" href="#restless.components.utils.stats_utils.StatsUtils.transform_df_with_top_features_for_hann">transform_df_with_top_features_for_hann</a></code></li>
+<li><code><a title="restless.components.utils.stats.Stats.get_correlation_for_features" href="#restless.components.utils.stats.Stats.get_correlation_for_features">get_correlation_for_features</a></code></li>
+<li><code><a title="restless.components.utils.stats.Stats.get_metrics_averages" href="#restless.components.utils.stats.Stats.get_metrics_averages">get_metrics_averages</a></code></li>
+<li><code><a title="restless.components.utils.stats.Stats.get_model_metrics" href="#restless.components.utils.stats.Stats.get_model_metrics">get_model_metrics</a></code></li>
+<li><code><a title="restless.components.utils.stats.Stats.pretty_print_cm" href="#restless.components.utils.stats.Stats.pretty_print_cm">pretty_print_cm</a></code></li>
+<li><code><a title="restless.components.utils.stats.Stats.transform_df_with_top_features_for_hann" href="#restless.components.utils.stats.Stats.transform_df_with_top_features_for_hann">transform_df_with_top_features_for_hann</a></code></li>
 </ul>
 </li>
 </ul>

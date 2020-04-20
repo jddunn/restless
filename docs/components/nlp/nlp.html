@@ -25,6 +25,21 @@
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">import os, sys
+
+# Silence TF warnings
+import warnings
+
+warnings.filterwarnings(&#34;ignore&#34;, category=FutureWarning)
+warnings.filterwarnings(&#34;ignore&#34;, category=DeprecationWarning)
+
+os.environ[&#34;TF_CPP_MIN_LOG_LEVEL&#34;] = &#34;3&#34;
+import tensorflow as tf
+import tensorflow.python.util.deprecation as deprecation
+
+deprecation._PRINT_DEPRECATION_WARNINGS = False
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+# TF is still printing out warnings..
+
 import pandas as pd
 
 # make dep imports work when running in dir and in outside scripts
@@ -57,6 +72,8 @@ top_df, top_features = stats.transform_df_with_top_features_for_hann(
     df, corr, features, target_feature, threshold=0.1
 )
 
+top_features = []
+
 
 class NLP:
     &#34;&#34;&#34;
@@ -65,8 +82,15 @@ class NLP:
 
     def __init__(self, load_default_hann_model=False):
         self.load_default_hann_model = load_default_hann_model
+        # We don&#39;t have &#34;sentences&#34; or &#34;words&#34; for PE header data,
+        # so tokenize every string into a word
+        # For example, &#34;4069&#34; will be considered a sentence,
+        # tokenized as a sequence of words &#34;4&#34;, &#34;0&#34;, &#34;6&#34;, &#34;9&#34;.
         hann = HierarchicalAttentionNetwork(
-            load_default_model=load_default_hann_model, features=top_features
+            load_default_model=load_default_hann_model,
+            features=top_features,
+            word_token_level=&#34;char&#34;,
+            sent_token_level=&#34;sent&#34;,
         )
         self.hann = hann</code></pre>
 </details>
@@ -97,8 +121,15 @@ class NLP:
 
     def __init__(self, load_default_hann_model=False):
         self.load_default_hann_model = load_default_hann_model
+        # We don&#39;t have &#34;sentences&#34; or &#34;words&#34; for PE header data,
+        # so tokenize every string into a word
+        # For example, &#34;4069&#34; will be considered a sentence,
+        # tokenized as a sequence of words &#34;4&#34;, &#34;0&#34;, &#34;6&#34;, &#34;9&#34;.
         hann = HierarchicalAttentionNetwork(
-            load_default_model=load_default_hann_model, features=top_features
+            load_default_model=load_default_hann_model,
+            features=top_features,
+            word_token_level=&#34;char&#34;,
+            sent_token_level=&#34;sent&#34;,
         )
         self.hann = hann</code></pre>
 </details>

@@ -42,13 +42,15 @@ import uvicorn
 from main import Restless
 from components.utils import utils
 
-restless = Restless(run_system_scan=True)
+misc = utils.misc
+
+restless = Restless(run_system_scan=False)
 
 SERVER_PORT = 4712
 
 app = FastAPI(docs_url=&#34;/api_docs&#34;)
 
-if utils.check_if_in_docker_container():
+if misc.check_if_in_docker_container():
     STATIC_DOCS_PATH = &#34;../docs&#34;
 else:
     STATIC_DOCS_PATH = &#34;/home/ubuntu/restless/docs&#34;

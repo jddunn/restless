@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.5" />
-<title>restless.components.utils.stats_vis_utils API documentation</title>
+<title>restless.components.utils.stats_vis API documentation</title>
 <meta name="description" content="" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
@@ -17,7 +17,7 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>restless.components.utils.stats_vis_utils</code></h1>
+<h1 class="title">Module <code>restless.components.utils.stats_vis</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
@@ -30,9 +30,10 @@ import numpy as np
 
 from pandas import DataFrame
 
+from misc import Misc
+
 import matplotlib.pyplot as plt
 import seaborn as sbn
-from datetime import datetime
 
 # Path to save visualization output images
 DEFAULT_SCREENSHOTS_PATH = os.path.abspath(
@@ -45,7 +46,7 @@ DEFAULT_SCREENSHOTS_PATH = os.path.abspath(
 cmap = sbn.diverging_palette(220, 10, as_cmap=True)
 
 
-class StatsVisUtils:
+class StatsVis:
     def __init__(self):
         return
 
@@ -55,8 +56,10 @@ class StatsVisUtils:
         features_list: list,
         annot: bool = False,
         plot_title: str = None,
+        ts_title: bool = True,
         save_image: bool = False,
         output_fp: str = None,
+        ts_output_fp: bool = False,
         show: bool = True,
     ) -&gt; object:
         &#34;&#34;&#34;
@@ -67,7 +70,6 @@ class StatsVisUtils:
         &#34;&#34;&#34;
         # Generate a mask for the upper triangle
         mask = np.triu(np.ones_like(corr, dtype=np.bool))
-        # mask = np.zeros_like(corr)
         mask[np.triu_indices_from(mask)] = True
         # Set up the matplotlib figure
         f, ax = plt.subplots(figsize=(11, 9))
@@ -88,28 +90,13 @@ class StatsVisUtils:
             cbar_kws={&#34;shrink&#34;: 0.5},
             annot_kws={&#34;size&#34;: 6},
         )
-        if plot_title:
-            plt.title(plot_title)
+        ts = Misc.make_ts()
+        plot_title_to_show = self._make_plot_title(ts, plot_title, ts_title)
+        plt.title(plot_title_to_show)
+        if save_image:
+            self._save_image(ts, output_fp, plot_title, ts_output_fp)
         if show:
             plt.show()
-        if save_image:
-            now = datetime.now().replace(microsecond=0)
-            if not output_fp:
-                if plot_title:
-                    output_fp = os.path.abspath(
-                        os.path.join(
-                            DEFAULT_SCREENSHOTS_PATH, plot_title + &#34; &#34; + str(now)
-                        )
-                    )
-                else:
-                    output_fp = os.path.abspath(
-                        os.path.join(DEFAULT_SCREENSHOTS_PATH, str(now))
-                    )
-            if plot_title:
-                print(&#34;Saving plot {} to {}.&#34;.format(plot_title, output_fp))
-            else:
-                print(&#34;Saving plot to {}.&#34;.format(output_fp))
-            plt.savefig(output_fp + &#34;.png&#34;, dpi=300)
         return hmap
 
     def plot_learning_curve(
@@ -260,7 +247,46 @@ class StatsVisUtils:
         axes[2].set_xlabel(&#34;fit_times&#34;)
         axes[2].set_ylabel(&#34;Score&#34;)
         axes[2].set_title(&#34;Performance of the model&#34;)
-        return plt</code></pre>
+        return plt
+
+    def _make_plot_title(self, ts: str, plot_title: str, ts_title: bool = False) -&gt; str:
+        if ts_title:
+            plot_title = plot_title + &#34; &#34; + ts
+        return plot_title
+
+    def _make_plot_output_fp(
+        self, ts: str, plot_title: str = None, ts_output_fp: bool = False
+    ) -&gt; str:
+        output_fp = &#34;&#34;
+        if plot_title:
+            if ts_output_fp:
+                output_fp = os.path.abspath(
+                    os.path.join(DEFAULT_SCREENSHOTS_PATH, plot_title + &#34; &#34; + ts)
+                )
+            else:
+                output_fp = os.path.abspath(
+                    os.path.join(DEFAULT_SCREENSHOTS_PATH, plot_title)
+                )
+        else:
+            output_fp = os.path.abspath(os.path.join(DEFAULT_SCREENSHOTS_PATH, ts))
+        return output_fp
+
+    def _save_image(
+        self,
+        ts: str,
+        output_fp: str = None,
+        plot_title: str = None,
+        ts_output_fp: bool = False,
+        dpi: int = 300,
+    ) -&gt; None:
+        if not output_fp:
+            output_fp = self._make_plot_output_fp(ts, plot_title, ts_output_fp)
+        if plot_title:
+            print(&#34;Saving plot {} to {}.&#34;.format(plot_title, output_fp))
+        else:
+            print(&#34;Saving plot to {}.&#34;.format(output_fp))
+        plt.savefig(output_fp + &#34;.png&#34;, dpi=dpi)
+        return</code></pre>
 </details>
 </section>
 <section>
@@ -272,8 +298,8 @@ class StatsVisUtils:
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="restless.components.utils.stats_vis_utils.StatsVisUtils"><code class="flex name class">
-<span>class <span class="ident">StatsVisUtils</span></span>
+<dt id="restless.components.utils.stats_vis.StatsVis"><code class="flex name class">
+<span>class <span class="ident">StatsVis</span></span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -281,7 +307,7 @@ class StatsVisUtils:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class StatsVisUtils:
+<pre><code class="python">class StatsVis:
     def __init__(self):
         return
 
@@ -291,8 +317,10 @@ class StatsVisUtils:
         features_list: list,
         annot: bool = False,
         plot_title: str = None,
+        ts_title: bool = True,
         save_image: bool = False,
         output_fp: str = None,
+        ts_output_fp: bool = False,
         show: bool = True,
     ) -&gt; object:
         &#34;&#34;&#34;
@@ -303,7 +331,6 @@ class StatsVisUtils:
         &#34;&#34;&#34;
         # Generate a mask for the upper triangle
         mask = np.triu(np.ones_like(corr, dtype=np.bool))
-        # mask = np.zeros_like(corr)
         mask[np.triu_indices_from(mask)] = True
         # Set up the matplotlib figure
         f, ax = plt.subplots(figsize=(11, 9))
@@ -324,28 +351,13 @@ class StatsVisUtils:
             cbar_kws={&#34;shrink&#34;: 0.5},
             annot_kws={&#34;size&#34;: 6},
         )
-        if plot_title:
-            plt.title(plot_title)
+        ts = Misc.make_ts()
+        plot_title_to_show = self._make_plot_title(ts, plot_title, ts_title)
+        plt.title(plot_title_to_show)
+        if save_image:
+            self._save_image(ts, output_fp, plot_title, ts_output_fp)
         if show:
             plt.show()
-        if save_image:
-            now = datetime.now().replace(microsecond=0)
-            if not output_fp:
-                if plot_title:
-                    output_fp = os.path.abspath(
-                        os.path.join(
-                            DEFAULT_SCREENSHOTS_PATH, plot_title + &#34; &#34; + str(now)
-                        )
-                    )
-                else:
-                    output_fp = os.path.abspath(
-                        os.path.join(DEFAULT_SCREENSHOTS_PATH, str(now))
-                    )
-            if plot_title:
-                print(&#34;Saving plot {} to {}.&#34;.format(plot_title, output_fp))
-            else:
-                print(&#34;Saving plot to {}.&#34;.format(output_fp))
-            plt.savefig(output_fp + &#34;.png&#34;, dpi=300)
         return hmap
 
     def plot_learning_curve(
@@ -496,11 +508,50 @@ class StatsVisUtils:
         axes[2].set_xlabel(&#34;fit_times&#34;)
         axes[2].set_ylabel(&#34;Score&#34;)
         axes[2].set_title(&#34;Performance of the model&#34;)
-        return plt</code></pre>
+        return plt
+
+    def _make_plot_title(self, ts: str, plot_title: str, ts_title: bool = False) -&gt; str:
+        if ts_title:
+            plot_title = plot_title + &#34; &#34; + ts
+        return plot_title
+
+    def _make_plot_output_fp(
+        self, ts: str, plot_title: str = None, ts_output_fp: bool = False
+    ) -&gt; str:
+        output_fp = &#34;&#34;
+        if plot_title:
+            if ts_output_fp:
+                output_fp = os.path.abspath(
+                    os.path.join(DEFAULT_SCREENSHOTS_PATH, plot_title + &#34; &#34; + ts)
+                )
+            else:
+                output_fp = os.path.abspath(
+                    os.path.join(DEFAULT_SCREENSHOTS_PATH, plot_title)
+                )
+        else:
+            output_fp = os.path.abspath(os.path.join(DEFAULT_SCREENSHOTS_PATH, ts))
+        return output_fp
+
+    def _save_image(
+        self,
+        ts: str,
+        output_fp: str = None,
+        plot_title: str = None,
+        ts_output_fp: bool = False,
+        dpi: int = 300,
+    ) -&gt; None:
+        if not output_fp:
+            output_fp = self._make_plot_output_fp(ts, plot_title, ts_output_fp)
+        if plot_title:
+            print(&#34;Saving plot {} to {}.&#34;.format(plot_title, output_fp))
+        else:
+            print(&#34;Saving plot to {}.&#34;.format(output_fp))
+        plt.savefig(output_fp + &#34;.png&#34;, dpi=dpi)
+        return</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
-<dt id="restless.components.utils.stats_vis_utils.StatsVisUtils.plot_learning_curve"><code class="name flex">
+<dt id="restless.components.utils.stats_vis.StatsVis.plot_learning_curve"><code class="name flex">
 <span>def <span class="ident">plot_learning_curve</span></span>(<span>estimator, title, X, y, axes=None, ylim=None, cv=None, n_jobs=None, train_sizes=array([0.1
 , 0.325, 0.55 , 0.775, 1.
 ]))</span>
@@ -709,8 +760,8 @@ be big enough to contain at least one sample from each class.
     return plt</code></pre>
 </details>
 </dd>
-<dt id="restless.components.utils.stats_vis_utils.StatsVisUtils.visualize_correlation_matrix"><code class="name flex">
-<span>def <span class="ident">visualize_correlation_matrix</span></span>(<span>self, corr, features_list, annot=False, plot_title=None, save_image=False, output_fp=None, show=True)</span>
+<dt id="restless.components.utils.stats_vis.StatsVis.visualize_correlation_matrix"><code class="name flex">
+<span>def <span class="ident">visualize_correlation_matrix</span></span>(<span>self, corr, features_list, annot=False, plot_title=None, ts_title=True, save_image=False, output_fp=None, ts_output_fp=False, show=True)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Graphs df correlation with diagonal matrix. Suitable for lots of
@@ -727,8 +778,10 @@ to image.
     features_list: list,
     annot: bool = False,
     plot_title: str = None,
+    ts_title: bool = True,
     save_image: bool = False,
     output_fp: str = None,
+    ts_output_fp: bool = False,
     show: bool = True,
 ) -&gt; object:
     &#34;&#34;&#34;
@@ -739,7 +792,6 @@ to image.
     &#34;&#34;&#34;
     # Generate a mask for the upper triangle
     mask = np.triu(np.ones_like(corr, dtype=np.bool))
-    # mask = np.zeros_like(corr)
     mask[np.triu_indices_from(mask)] = True
     # Set up the matplotlib figure
     f, ax = plt.subplots(figsize=(11, 9))
@@ -760,28 +812,13 @@ to image.
         cbar_kws={&#34;shrink&#34;: 0.5},
         annot_kws={&#34;size&#34;: 6},
     )
-    if plot_title:
-        plt.title(plot_title)
+    ts = Misc.make_ts()
+    plot_title_to_show = self._make_plot_title(ts, plot_title, ts_title)
+    plt.title(plot_title_to_show)
+    if save_image:
+        self._save_image(ts, output_fp, plot_title, ts_output_fp)
     if show:
         plt.show()
-    if save_image:
-        now = datetime.now().replace(microsecond=0)
-        if not output_fp:
-            if plot_title:
-                output_fp = os.path.abspath(
-                    os.path.join(
-                        DEFAULT_SCREENSHOTS_PATH, plot_title + &#34; &#34; + str(now)
-                    )
-                )
-            else:
-                output_fp = os.path.abspath(
-                    os.path.join(DEFAULT_SCREENSHOTS_PATH, str(now))
-                )
-        if plot_title:
-            print(&#34;Saving plot {} to {}.&#34;.format(plot_title, output_fp))
-        else:
-            print(&#34;Saving plot to {}.&#34;.format(output_fp))
-        plt.savefig(output_fp + &#34;.png&#34;, dpi=300)
     return hmap</code></pre>
 </details>
 </dd>
@@ -804,10 +841,10 @@ to image.
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="restless.components.utils.stats_vis_utils.StatsVisUtils" href="#restless.components.utils.stats_vis_utils.StatsVisUtils">StatsVisUtils</a></code></h4>
+<h4><code><a title="restless.components.utils.stats_vis.StatsVis" href="#restless.components.utils.stats_vis.StatsVis">StatsVis</a></code></h4>
 <ul class="">
-<li><code><a title="restless.components.utils.stats_vis_utils.StatsVisUtils.plot_learning_curve" href="#restless.components.utils.stats_vis_utils.StatsVisUtils.plot_learning_curve">plot_learning_curve</a></code></li>
-<li><code><a title="restless.components.utils.stats_vis_utils.StatsVisUtils.visualize_correlation_matrix" href="#restless.components.utils.stats_vis_utils.StatsVisUtils.visualize_correlation_matrix">visualize_correlation_matrix</a></code></li>
+<li><code><a title="restless.components.utils.stats_vis.StatsVis.plot_learning_curve" href="#restless.components.utils.stats_vis.StatsVis.plot_learning_curve">plot_learning_curve</a></code></li>
+<li><code><a title="restless.components.utils.stats_vis.StatsVis.visualize_correlation_matrix" href="#restless.components.utils.stats_vis.StatsVis.visualize_correlation_matrix">visualize_correlation_matrix</a></code></li>
 </ul>
 </li>
 </ul>

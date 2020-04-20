@@ -27,6 +27,10 @@
 <pre><code class="python"># Make relative imports work for Docker
 import sys
 import os
+import asyncio
+import uvloop
+
+from concurrent.futures import ThreadPoolExecutor
 
 PACKAGE_PARENT = &#34;.&#34;
 SCRIPT_DIR = os.path.dirname(
@@ -39,50 +43,191 @@ from components.watcher import Watcher
 from components.scanner import Scanner
 from components.nlp import NLP
 
+misc = utils.misc
+logging = utils.logger
+logger = utils.logger.logger
+colored = utils.logger.colored
+flush = utils.logger.flush
+
 
 class Restless(object):
     &#34;&#34;&#34;
     Main Restless module.
     &#34;&#34;&#34;
 
-    def __init__(self, run_system_scan=False):
+    def __init__(
+        self,
+        run_system_scan: bool = False,  # Run full system scan (from home dir)
+        constant_watch: bool = False,  # Constantly defend system (defaults to home dir)
+        # by scanning and cleaning new / modified files
+        watch_pool: list = [&#34;*&#34;],  # List of dirs to constantly watch / defend
+        # &#34;*&#34; will make it default to home dir
+        default_malware_prob_threshold=0.6,  # Prob threshold to classify as malware
+    ):
+        uvloop.install()  # make event loop fast
         self.run_system_scan = run_system_scan
-        # keys of features from pe_analyzer
-        utils.print_logm(
-            &#34;Restless initializing. Running system-wide scan: &#34;
-            + str(self.run_system_scan)
-        )
+        self.default_malware_prob_threshold = default_malware_prob_threshold
+        flush(newline=True)
+        logger.info(&#34;\t&#34; + colored(&#34;Restless initializing..&#34;, [&#34;cyan&#34;, &#34;bold&#34;]))
+        flush(newline=True)
         self.scanner = Scanner()
+        watch_pool = [os.path.abspath(path) for path in watch_pool]
+        self.event_loop = asyncio.get_event_loop()  # reset event loop
+        self.event_loop = asyncio.new_event_loop()
+        self.watcher = Watcher(
+            watch_pool, loop=self.event_loop, default_event_handler_cb=self.scan
+        )
+        # Our default model will extract PE header data for classification
+        self.nlp = NLP(load_default_hann_model=True)
         if self.run_system_scan:
-            # Get last system scan time
-            self.scanner.scan_full_system()
-        else:
-            self.watcher = Watcher()
-        nlp = NLP(load_default_hann_model=True)
-        self.nlp = nlp
+            self.scan_full_system()
+        if constant_watch:
+            self.constant_watch(watch_pool)
         return
 
-    def scan_full_system(self):
-        results = self.scanner.scan_full_system()
+    def clean_files(self, infected_files: list) -&gt; None:
+        for file in infected_files:
+            pass
+        return
+
+    def constant_watch(self, watch_pool: list = [&#34;*&#34;]) -&gt; None:
+        self.watch_pool = watch_pool
+        self.event_loop = asyncio.get_event_loop()  # reset event loop
+        self.event_loop = asyncio.new_event_loop()
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            self.event_loop.run_until_complete(
+                self.watcher.start_new_watch_thread(self.watch_pool)
+            )
+        return
+
+    async def scan_full_system(self):
+        root = misc.get_os_root_path()
+        results = await self.scan(root)
         return results
 
-    def scan_folder(self, filepath: str):
+    async def scan(self, filepath: str, malware_prob_threshold: float = None):
+        if not malware_prob_threshold:
+            malware_prob_threshold = self.default_malware_prob_threshold
+        logger.info(
+            &#34;\t&#34;
+            + colored(&#34;Scanning&#34;, [&#34;slow_blink&#34;, &#34;bold&#34;])
+            + &#34; system now at {}.&#34;.format(colored(filepath, &#34;cyan&#34;))
+        )
         results = []
-        file_results = self.scanner.scan_folder(filepath)
+        potential_malware = []
+        file_results = await self.scanner.scan_recursive(filepath)
+        files_scanned = len(file_results)
+        flush(newline=True)
+        msg = &#34;\t&#34; + colored(&#34;Restless&#34;, [&#34;bold&#34;, &#34;slow_blink&#34;, &#34;magenta&#34;, &#34;underline&#34;])
+        msg += &#34; &#34; + colored(
+            &#34;defense pipeline working.&#34;, [&#34;magenta&#34;, &#34;bold&#34;, &#34;slow_blink&#34;]
+        )
+        logger.success(msg)
+        flush(newline=True)
+        # Remove none from our results (meaning those files did not have any
+        # extractable metadata for our classifier, for now at least)
+        file_results = [res for res in file_results if res is not None]
+        if len(file_results) == 0:
+            logger.success(
+                colored(
+                    &#34;Found no files that were scannable for malware (checked {} files).&#34;.format(
+                        colored(str(files_scanned), [&#34;bold&#34;, &#34;underline&#34;])
+                    )
+                )
+                + colored(&#34; The system seems to be safe.&#34;, [&#34;bold&#34;, &#34;green&#34;])
+            )
+            return
+        else:
+            count = (
+                len(file_results) - 1
+                if len(file_results) - 1 &gt; 0
+                else len(file_results)
+            )
+            logger.info(
+                colored(
+                    &#34;Sending {} files to the malware analysis / defense pipeline.&#34;.format(
+                        colored(str(count), [&#34;d_gray&#34;, &#34;underline&#34;, &#34;bold&#34;]), &#34;bold&#34;
+                    )
+                )
+            )
         for file_result in file_results:
             fname = file_result[0]
+            path_to_fname = fname.split(&#34;/&#34;)
+            path_to_fname.pop()
+            path_to_fname = &#34;/&#34;.join(path_to_fname)
+            short_fname = fname.split(&#34;/&#34;)[len(fname.split(&#34;/&#34;)) - 1]
             features = file_result[1]
-            matrix_results = self.nlp.hann.build_features_vecs_from_input(features)
-            res = (fname, self.nlp.hann.predict(matrix_results))
-            results.append(res)
-            utils.print_logm(
-                &#34;Scanned &#34;
-                + str(res[0])
-                + &#34; - predicted: &#34;
-                + str(float(res[1][0]) * 100)
-                + &#34;% benign and &#34;
-                + str(float(res[1][1]) * 100)
-                + &#34;% malicious&#34;
+            if len(self.nlp.hann.features) &gt; 0:
+                features = [
+                    self.nlp.hann.text_normalizer.normalize_text(x)
+                    for x in features
+                    if x in self.nlp.hann.features
+                ]
+            matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
+            result = (fname, self.nlp.hann.predict(matrix_results))
+            results.append(result)
+            colored_fname = (
+                colored(path_to_fname, &#34;gray&#34;)
+                + colored(&#34;/&#34;, &#34;bold&#34;)
+                + &#34; &#34;
+                + colored(short_fname, [&#34;gray&#34;, &#34;underline&#34;, &#34;bold&#34;])
+            )
+            benign = float(result[1][0])
+            malicious = float(result[1][1])
+            # Colorizd percentages
+            colored_benign = misc.prob_to_percentage(benign)
+            colored_malicious = misc.prob_to_percentage(malicious)
+            clr_b = &#34;d_gray&#34;  # benign color(s)
+            clr_m = &#34;d_gray&#34;  # malicious color(s)
+            if benign &gt; 0.3:
+                clr_b = &#34;yellow&#34; if benign &lt; 0.45 else [&#34;yellow&#34;, &#34;bold&#34;]
+            if benign &gt;= 0.6:
+                clr_b = [&#34;green&#34;] if benign &lt; 0.8 else [&#34;green&#34;, &#34;bold&#34;]
+            if malicious &gt; 0.15:
+                clr_m = &#34;yellow&#34; if malicious &lt; 0.25 else [&#34;yellow&#34;, &#34;bold&#34;]
+            if malicious &gt;= 0.4:
+                clr_m = (
+                    &#34;red&#34; if malicious &gt;= 0.6 and malicious &lt;= 0.8 else [&#34;red&#34;, &#34;bold&#34;]
+                )
+            colored_benign = colored(colored_benign, clr_b)
+            colored_malicious = colored(colored_malicious, clr_m)
+            if malicious &gt;= malware_prob_threshold:
+                potential_malware.append(fname)
+            logger.info(
+                &#34;{} {} {} predicted: {} {} and {} {}.&#34;.format(
+                    colored(&#34;Scanned&#34;, &#34;white&#34;),
+                    colored_fname,
+                    colored(&#34;-&#34;, &#34;d_gray&#34;),
+                    colored_benign,
+                    colored(&#34;benign&#34;, &#34;gray&#34;),
+                    colored_malicious,
+                    colored(&#34;malicious&#34;, &#34;gray&#34;),
+                )
+            )
+        flush(newline=True)
+        logger.info(
+            &#34;\tRestless scanned a total of {} files.&#34;.format(
+                colored(files_scanned, [&#34;d_gray&#34;, &#34;bold&#34;, &#34;underline&#34;])
+            )
+        )
+        flush(newline=True)
+        if len(potential_malware) &gt; 0:
+            logger.critical(
+                colored(
+                    &#34;Found {} files to be potentially infected!&#34;.format(
+                        colored(
+                            str(len(potential_malware)), [&#34;bold&#34;, &#34;red&#34;, &#34;underline&#34;]
+                        )
+                    ),
+                    &#34;red&#34;,
+                )
+            )
+            self.clean_files(potential_malware)
+        else:
+            logger.success(
+                colored(
+                    &#34;Scan finished sucessfully, found no potential malware!&#34;, &#34;b_green&#34;
+                )
             )
         return results</code></pre>
 </details>
@@ -98,7 +243,7 @@ class Restless(object):
 <dl>
 <dt id="restless.main.Restless"><code class="flex name class">
 <span>class <span class="ident">Restless</span></span>
-<span>(</span><span>run_system_scan=False)</span>
+<span>(</span><span>run_system_scan=False, constant_watch=False, watch_pool=['*'], default_malware_prob_threshold=0.6)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Main Restless module.</p></section>
@@ -111,51 +256,186 @@ class Restless(object):
     Main Restless module.
     &#34;&#34;&#34;
 
-    def __init__(self, run_system_scan=False):
+    def __init__(
+        self,
+        run_system_scan: bool = False,  # Run full system scan (from home dir)
+        constant_watch: bool = False,  # Constantly defend system (defaults to home dir)
+        # by scanning and cleaning new / modified files
+        watch_pool: list = [&#34;*&#34;],  # List of dirs to constantly watch / defend
+        # &#34;*&#34; will make it default to home dir
+        default_malware_prob_threshold=0.6,  # Prob threshold to classify as malware
+    ):
+        uvloop.install()  # make event loop fast
         self.run_system_scan = run_system_scan
-        # keys of features from pe_analyzer
-        utils.print_logm(
-            &#34;Restless initializing. Running system-wide scan: &#34;
-            + str(self.run_system_scan)
-        )
+        self.default_malware_prob_threshold = default_malware_prob_threshold
+        flush(newline=True)
+        logger.info(&#34;\t&#34; + colored(&#34;Restless initializing..&#34;, [&#34;cyan&#34;, &#34;bold&#34;]))
+        flush(newline=True)
         self.scanner = Scanner()
+        watch_pool = [os.path.abspath(path) for path in watch_pool]
+        self.event_loop = asyncio.get_event_loop()  # reset event loop
+        self.event_loop = asyncio.new_event_loop()
+        self.watcher = Watcher(
+            watch_pool, loop=self.event_loop, default_event_handler_cb=self.scan
+        )
+        # Our default model will extract PE header data for classification
+        self.nlp = NLP(load_default_hann_model=True)
         if self.run_system_scan:
-            # Get last system scan time
-            self.scanner.scan_full_system()
-        else:
-            self.watcher = Watcher()
-        nlp = NLP(load_default_hann_model=True)
-        self.nlp = nlp
+            self.scan_full_system()
+        if constant_watch:
+            self.constant_watch(watch_pool)
         return
 
-    def scan_full_system(self):
-        results = self.scanner.scan_full_system()
+    def clean_files(self, infected_files: list) -&gt; None:
+        for file in infected_files:
+            pass
+        return
+
+    def constant_watch(self, watch_pool: list = [&#34;*&#34;]) -&gt; None:
+        self.watch_pool = watch_pool
+        self.event_loop = asyncio.get_event_loop()  # reset event loop
+        self.event_loop = asyncio.new_event_loop()
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            self.event_loop.run_until_complete(
+                self.watcher.start_new_watch_thread(self.watch_pool)
+            )
+        return
+
+    async def scan_full_system(self):
+        root = misc.get_os_root_path()
+        results = await self.scan(root)
         return results
 
-    def scan_folder(self, filepath: str):
+    async def scan(self, filepath: str, malware_prob_threshold: float = None):
+        if not malware_prob_threshold:
+            malware_prob_threshold = self.default_malware_prob_threshold
+        logger.info(
+            &#34;\t&#34;
+            + colored(&#34;Scanning&#34;, [&#34;slow_blink&#34;, &#34;bold&#34;])
+            + &#34; system now at {}.&#34;.format(colored(filepath, &#34;cyan&#34;))
+        )
         results = []
-        file_results = self.scanner.scan_folder(filepath)
+        potential_malware = []
+        file_results = await self.scanner.scan_recursive(filepath)
+        files_scanned = len(file_results)
+        flush(newline=True)
+        msg = &#34;\t&#34; + colored(&#34;Restless&#34;, [&#34;bold&#34;, &#34;slow_blink&#34;, &#34;magenta&#34;, &#34;underline&#34;])
+        msg += &#34; &#34; + colored(
+            &#34;defense pipeline working.&#34;, [&#34;magenta&#34;, &#34;bold&#34;, &#34;slow_blink&#34;]
+        )
+        logger.success(msg)
+        flush(newline=True)
+        # Remove none from our results (meaning those files did not have any
+        # extractable metadata for our classifier, for now at least)
+        file_results = [res for res in file_results if res is not None]
+        if len(file_results) == 0:
+            logger.success(
+                colored(
+                    &#34;Found no files that were scannable for malware (checked {} files).&#34;.format(
+                        colored(str(files_scanned), [&#34;bold&#34;, &#34;underline&#34;])
+                    )
+                )
+                + colored(&#34; The system seems to be safe.&#34;, [&#34;bold&#34;, &#34;green&#34;])
+            )
+            return
+        else:
+            count = (
+                len(file_results) - 1
+                if len(file_results) - 1 &gt; 0
+                else len(file_results)
+            )
+            logger.info(
+                colored(
+                    &#34;Sending {} files to the malware analysis / defense pipeline.&#34;.format(
+                        colored(str(count), [&#34;d_gray&#34;, &#34;underline&#34;, &#34;bold&#34;]), &#34;bold&#34;
+                    )
+                )
+            )
         for file_result in file_results:
             fname = file_result[0]
+            path_to_fname = fname.split(&#34;/&#34;)
+            path_to_fname.pop()
+            path_to_fname = &#34;/&#34;.join(path_to_fname)
+            short_fname = fname.split(&#34;/&#34;)[len(fname.split(&#34;/&#34;)) - 1]
             features = file_result[1]
-            matrix_results = self.nlp.hann.build_features_vecs_from_input(features)
-            res = (fname, self.nlp.hann.predict(matrix_results))
-            results.append(res)
-            utils.print_logm(
-                &#34;Scanned &#34;
-                + str(res[0])
-                + &#34; - predicted: &#34;
-                + str(float(res[1][0]) * 100)
-                + &#34;% benign and &#34;
-                + str(float(res[1][1]) * 100)
-                + &#34;% malicious&#34;
+            if len(self.nlp.hann.features) &gt; 0:
+                features = [
+                    self.nlp.hann.text_normalizer.normalize_text(x)
+                    for x in features
+                    if x in self.nlp.hann.features
+                ]
+            matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
+            result = (fname, self.nlp.hann.predict(matrix_results))
+            results.append(result)
+            colored_fname = (
+                colored(path_to_fname, &#34;gray&#34;)
+                + colored(&#34;/&#34;, &#34;bold&#34;)
+                + &#34; &#34;
+                + colored(short_fname, [&#34;gray&#34;, &#34;underline&#34;, &#34;bold&#34;])
+            )
+            benign = float(result[1][0])
+            malicious = float(result[1][1])
+            # Colorizd percentages
+            colored_benign = misc.prob_to_percentage(benign)
+            colored_malicious = misc.prob_to_percentage(malicious)
+            clr_b = &#34;d_gray&#34;  # benign color(s)
+            clr_m = &#34;d_gray&#34;  # malicious color(s)
+            if benign &gt; 0.3:
+                clr_b = &#34;yellow&#34; if benign &lt; 0.45 else [&#34;yellow&#34;, &#34;bold&#34;]
+            if benign &gt;= 0.6:
+                clr_b = [&#34;green&#34;] if benign &lt; 0.8 else [&#34;green&#34;, &#34;bold&#34;]
+            if malicious &gt; 0.15:
+                clr_m = &#34;yellow&#34; if malicious &lt; 0.25 else [&#34;yellow&#34;, &#34;bold&#34;]
+            if malicious &gt;= 0.4:
+                clr_m = (
+                    &#34;red&#34; if malicious &gt;= 0.6 and malicious &lt;= 0.8 else [&#34;red&#34;, &#34;bold&#34;]
+                )
+            colored_benign = colored(colored_benign, clr_b)
+            colored_malicious = colored(colored_malicious, clr_m)
+            if malicious &gt;= malware_prob_threshold:
+                potential_malware.append(fname)
+            logger.info(
+                &#34;{} {} {} predicted: {} {} and {} {}.&#34;.format(
+                    colored(&#34;Scanned&#34;, &#34;white&#34;),
+                    colored_fname,
+                    colored(&#34;-&#34;, &#34;d_gray&#34;),
+                    colored_benign,
+                    colored(&#34;benign&#34;, &#34;gray&#34;),
+                    colored_malicious,
+                    colored(&#34;malicious&#34;, &#34;gray&#34;),
+                )
+            )
+        flush(newline=True)
+        logger.info(
+            &#34;\tRestless scanned a total of {} files.&#34;.format(
+                colored(files_scanned, [&#34;d_gray&#34;, &#34;bold&#34;, &#34;underline&#34;])
+            )
+        )
+        flush(newline=True)
+        if len(potential_malware) &gt; 0:
+            logger.critical(
+                colored(
+                    &#34;Found {} files to be potentially infected!&#34;.format(
+                        colored(
+                            str(len(potential_malware)), [&#34;bold&#34;, &#34;red&#34;, &#34;underline&#34;]
+                        )
+                    ),
+                    &#34;red&#34;,
+                )
+            )
+            self.clean_files(potential_malware)
+        else:
+            logger.success(
+                colored(
+                    &#34;Scan finished sucessfully, found no potential malware!&#34;, &#34;b_green&#34;
+                )
             )
         return results</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
-<dt id="restless.main.Restless.scan_folder"><code class="name flex">
-<span>def <span class="ident">scan_folder</span></span>(<span>self, filepath)</span>
+<dt id="restless.main.Restless.clean_files"><code class="name flex">
+<span>def <span class="ident">clean_files</span></span>(<span>self, infected_files)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -163,29 +443,170 @@ class Restless(object):
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def scan_folder(self, filepath: str):
+<pre><code class="python">def clean_files(self, infected_files: list) -&gt; None:
+    for file in infected_files:
+        pass
+    return</code></pre>
+</details>
+</dd>
+<dt id="restless.main.Restless.constant_watch"><code class="name flex">
+<span>def <span class="ident">constant_watch</span></span>(<span>self, watch_pool=['*'])</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def constant_watch(self, watch_pool: list = [&#34;*&#34;]) -&gt; None:
+    self.watch_pool = watch_pool
+    self.event_loop = asyncio.get_event_loop()  # reset event loop
+    self.event_loop = asyncio.new_event_loop()
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        self.event_loop.run_until_complete(
+            self.watcher.start_new_watch_thread(self.watch_pool)
+        )
+    return</code></pre>
+</details>
+</dd>
+<dt id="restless.main.Restless.scan"><code class="name flex">
+<span>async def <span class="ident">scan</span></span>(<span>self, filepath, malware_prob_threshold=None)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def scan(self, filepath: str, malware_prob_threshold: float = None):
+    if not malware_prob_threshold:
+        malware_prob_threshold = self.default_malware_prob_threshold
+    logger.info(
+        &#34;\t&#34;
+        + colored(&#34;Scanning&#34;, [&#34;slow_blink&#34;, &#34;bold&#34;])
+        + &#34; system now at {}.&#34;.format(colored(filepath, &#34;cyan&#34;))
+    )
     results = []
-    file_results = self.scanner.scan_folder(filepath)
+    potential_malware = []
+    file_results = await self.scanner.scan_recursive(filepath)
+    files_scanned = len(file_results)
+    flush(newline=True)
+    msg = &#34;\t&#34; + colored(&#34;Restless&#34;, [&#34;bold&#34;, &#34;slow_blink&#34;, &#34;magenta&#34;, &#34;underline&#34;])
+    msg += &#34; &#34; + colored(
+        &#34;defense pipeline working.&#34;, [&#34;magenta&#34;, &#34;bold&#34;, &#34;slow_blink&#34;]
+    )
+    logger.success(msg)
+    flush(newline=True)
+    # Remove none from our results (meaning those files did not have any
+    # extractable metadata for our classifier, for now at least)
+    file_results = [res for res in file_results if res is not None]
+    if len(file_results) == 0:
+        logger.success(
+            colored(
+                &#34;Found no files that were scannable for malware (checked {} files).&#34;.format(
+                    colored(str(files_scanned), [&#34;bold&#34;, &#34;underline&#34;])
+                )
+            )
+            + colored(&#34; The system seems to be safe.&#34;, [&#34;bold&#34;, &#34;green&#34;])
+        )
+        return
+    else:
+        count = (
+            len(file_results) - 1
+            if len(file_results) - 1 &gt; 0
+            else len(file_results)
+        )
+        logger.info(
+            colored(
+                &#34;Sending {} files to the malware analysis / defense pipeline.&#34;.format(
+                    colored(str(count), [&#34;d_gray&#34;, &#34;underline&#34;, &#34;bold&#34;]), &#34;bold&#34;
+                )
+            )
+        )
     for file_result in file_results:
         fname = file_result[0]
+        path_to_fname = fname.split(&#34;/&#34;)
+        path_to_fname.pop()
+        path_to_fname = &#34;/&#34;.join(path_to_fname)
+        short_fname = fname.split(&#34;/&#34;)[len(fname.split(&#34;/&#34;)) - 1]
         features = file_result[1]
-        matrix_results = self.nlp.hann.build_features_vecs_from_input(features)
-        res = (fname, self.nlp.hann.predict(matrix_results))
-        results.append(res)
-        utils.print_logm(
-            &#34;Scanned &#34;
-            + str(res[0])
-            + &#34; - predicted: &#34;
-            + str(float(res[1][0]) * 100)
-            + &#34;% benign and &#34;
-            + str(float(res[1][1]) * 100)
-            + &#34;% malicious&#34;
+        if len(self.nlp.hann.features) &gt; 0:
+            features = [
+                self.nlp.hann.text_normalizer.normalize_text(x)
+                for x in features
+                if x in self.nlp.hann.features
+            ]
+        matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
+        result = (fname, self.nlp.hann.predict(matrix_results))
+        results.append(result)
+        colored_fname = (
+            colored(path_to_fname, &#34;gray&#34;)
+            + colored(&#34;/&#34;, &#34;bold&#34;)
+            + &#34; &#34;
+            + colored(short_fname, [&#34;gray&#34;, &#34;underline&#34;, &#34;bold&#34;])
+        )
+        benign = float(result[1][0])
+        malicious = float(result[1][1])
+        # Colorizd percentages
+        colored_benign = misc.prob_to_percentage(benign)
+        colored_malicious = misc.prob_to_percentage(malicious)
+        clr_b = &#34;d_gray&#34;  # benign color(s)
+        clr_m = &#34;d_gray&#34;  # malicious color(s)
+        if benign &gt; 0.3:
+            clr_b = &#34;yellow&#34; if benign &lt; 0.45 else [&#34;yellow&#34;, &#34;bold&#34;]
+        if benign &gt;= 0.6:
+            clr_b = [&#34;green&#34;] if benign &lt; 0.8 else [&#34;green&#34;, &#34;bold&#34;]
+        if malicious &gt; 0.15:
+            clr_m = &#34;yellow&#34; if malicious &lt; 0.25 else [&#34;yellow&#34;, &#34;bold&#34;]
+        if malicious &gt;= 0.4:
+            clr_m = (
+                &#34;red&#34; if malicious &gt;= 0.6 and malicious &lt;= 0.8 else [&#34;red&#34;, &#34;bold&#34;]
+            )
+        colored_benign = colored(colored_benign, clr_b)
+        colored_malicious = colored(colored_malicious, clr_m)
+        if malicious &gt;= malware_prob_threshold:
+            potential_malware.append(fname)
+        logger.info(
+            &#34;{} {} {} predicted: {} {} and {} {}.&#34;.format(
+                colored(&#34;Scanned&#34;, &#34;white&#34;),
+                colored_fname,
+                colored(&#34;-&#34;, &#34;d_gray&#34;),
+                colored_benign,
+                colored(&#34;benign&#34;, &#34;gray&#34;),
+                colored_malicious,
+                colored(&#34;malicious&#34;, &#34;gray&#34;),
+            )
+        )
+    flush(newline=True)
+    logger.info(
+        &#34;\tRestless scanned a total of {} files.&#34;.format(
+            colored(files_scanned, [&#34;d_gray&#34;, &#34;bold&#34;, &#34;underline&#34;])
+        )
+    )
+    flush(newline=True)
+    if len(potential_malware) &gt; 0:
+        logger.critical(
+            colored(
+                &#34;Found {} files to be potentially infected!&#34;.format(
+                    colored(
+                        str(len(potential_malware)), [&#34;bold&#34;, &#34;red&#34;, &#34;underline&#34;]
+                    )
+                ),
+                &#34;red&#34;,
+            )
+        )
+        self.clean_files(potential_malware)
+    else:
+        logger.success(
+            colored(
+                &#34;Scan finished sucessfully, found no potential malware!&#34;, &#34;b_green&#34;
+            )
         )
     return results</code></pre>
 </details>
 </dd>
 <dt id="restless.main.Restless.scan_full_system"><code class="name flex">
-<span>def <span class="ident">scan_full_system</span></span>(<span>self)</span>
+<span>async def <span class="ident">scan_full_system</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -193,8 +614,9 @@ class Restless(object):
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def scan_full_system(self):
-    results = self.scanner.scan_full_system()
+<pre><code class="python">async def scan_full_system(self):
+    root = misc.get_os_root_path()
+    results = await self.scan(root)
     return results</code></pre>
 </details>
 </dd>
@@ -219,7 +641,9 @@ class Restless(object):
 <li>
 <h4><code><a title="restless.main.Restless" href="#restless.main.Restless">Restless</a></code></h4>
 <ul class="">
-<li><code><a title="restless.main.Restless.scan_folder" href="#restless.main.Restless.scan_folder">scan_folder</a></code></li>
+<li><code><a title="restless.main.Restless.clean_files" href="#restless.main.Restless.clean_files">clean_files</a></code></li>
+<li><code><a title="restless.main.Restless.constant_watch" href="#restless.main.Restless.constant_watch">constant_watch</a></code></li>
+<li><code><a title="restless.main.Restless.scan" href="#restless.main.Restless.scan">scan</a></code></li>
 <li><code><a title="restless.main.Restless.scan_full_system" href="#restless.main.Restless.scan_full_system">scan_full_system</a></code></li>
 </ul>
 </li>

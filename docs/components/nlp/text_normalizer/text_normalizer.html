@@ -52,16 +52,28 @@ class TextNormalizer:
             &#34;R&#34;: wordnet.ADV,
         }
 
-    def tokenize_text(self, text: str) -&gt; list:
+    def tokenize_text(self, text: str, token_level=&#34;word&#34;) -&gt; list:
         &#34;&#34;&#34;
-        Tokenizes text.
+        Tokenizes text into a list of sequences. By default
+        does word level tokenization.
 
         Args:
           text (str): Text to tokenize.
+          token_level (str, optional): Level of tokenization. Defaults
+            word tokens.
         Returns:
           list: List of tokens.
         &#34;&#34;&#34;
-        return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
+        if token_level is &#34;sent&#34;:
+            return [s for s in sent_tokenize(text)]
+        elif token_level is &#34;word&#34;:
+            return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
+        elif token_level is &#34;char&#34;:
+            return [
+                c for c in [w for s in sent_tokenize(text) for w in word_tokenize(s)]
+            ]
+        else:
+            return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
 
     def lemmatize_text(self, text: str, lemmatizer: object = default_lemmatizer) -&gt; str:
         &#34;&#34;&#34;
@@ -244,16 +256,28 @@ class TextNormalizer:
             &#34;R&#34;: wordnet.ADV,
         }
 
-    def tokenize_text(self, text: str) -&gt; list:
+    def tokenize_text(self, text: str, token_level=&#34;word&#34;) -&gt; list:
         &#34;&#34;&#34;
-        Tokenizes text.
+        Tokenizes text into a list of sequences. By default
+        does word level tokenization.
 
         Args:
           text (str): Text to tokenize.
+          token_level (str, optional): Level of tokenization. Defaults
+            word tokens.
         Returns:
           list: List of tokens.
         &#34;&#34;&#34;
-        return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
+        if token_level is &#34;sent&#34;:
+            return [s for s in sent_tokenize(text)]
+        elif token_level is &#34;word&#34;:
+            return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
+        elif token_level is &#34;char&#34;:
+            return [
+                c for c in [w for s in sent_tokenize(text) for w in word_tokenize(s)]
+            ]
+        else:
+            return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
 
     def lemmatize_text(self, text: str, lemmatizer: object = default_lemmatizer) -&gt; str:
         &#34;&#34;&#34;
@@ -728,14 +752,18 @@ and trailing whitespaces).</p>
 </details>
 </dd>
 <dt id="restless.components.nlp.text_normalizer.text_normalizer.TextNormalizer.tokenize_text"><code class="name flex">
-<span>def <span class="ident">tokenize_text</span></span>(<span>self, text)</span>
+<span>def <span class="ident">tokenize_text</span></span>(<span>self, text, token_level='word')</span>
 </code></dt>
 <dd>
-<section class="desc"><p>Tokenizes text.</p>
+<section class="desc"><p>Tokenizes text into a list of sequences. By default
+does word level tokenization.</p>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
 <dd>Text to tokenize.</dd>
+<dt><strong><code>token_level</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>Level of tokenization. Defaults
+word tokens.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -746,16 +774,28 @@ and trailing whitespaces).</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def tokenize_text(self, text: str) -&gt; list:
+<pre><code class="python">def tokenize_text(self, text: str, token_level=&#34;word&#34;) -&gt; list:
     &#34;&#34;&#34;
-    Tokenizes text.
+    Tokenizes text into a list of sequences. By default
+    does word level tokenization.
 
     Args:
       text (str): Text to tokenize.
+      token_level (str, optional): Level of tokenization. Defaults
+        word tokens.
     Returns:
       list: List of tokens.
     &#34;&#34;&#34;
-    return [w for s in sent_tokenize(text) for w in word_tokenize(s)]</code></pre>
+    if token_level is &#34;sent&#34;:
+        return [s for s in sent_tokenize(text)]
+    elif token_level is &#34;word&#34;:
+        return [w for s in sent_tokenize(text) for w in word_tokenize(s)]
+    elif token_level is &#34;char&#34;:
+        return [
+            c for c in [w for s in sent_tokenize(text) for w in word_tokenize(s)]
+        ]
+    else:
+        return [w for s in sent_tokenize(text) for w in word_tokenize(s)]</code></pre>
 </details>
 </dd>
 </dl>

@@ -28,14 +28,32 @@
 # https://github.com/richliao/textClassifier/blob/master/textClassifierHATT.py,
 # which implemented this https://www.cs.cmu.edu/~hovy/papers/16HLT-hierarchical-attention-networks.pdf.
 
-# The architecture from the paper has been modified in this model
-# to accept a vector (array) as well as scalars for both the words / sentences
-# that comprise a document&#39;s vocabulary. This allows us to represent any arbitrary set
+# Here we use the HANN model with data that follows a structured format (extracted from a CSV dataset
+# of portable executable header data). If we consider each feature of the dataset to correspond
+# to a `sentence`, and thus the tokens of the features to comprise `words` in our model vocab,
+# can we build arbitrary reprensentations of documents for classification for HANN&#39;s architecture?
+# And, if we keep the order of our training and input data consistent, our model should actually learn
+# which features matter the most and focus on those, and also be able to visualize this hierarchy
+# using HANN&#39;s attention maps.
+
+# The architecture from the paper has been modified in this model to custom levels of tokenization
+# at the word and sentence level, which allows us to represent any arbitrary set
 # of features as a document that the HAN model can learn from, as GloVe will have
 # have weights for words as well as numbers.
 
+# We can also pass in a list of features to the class instance (that should be mapped to the columns
+# in the training CSV file). If the class is instantiated with features, models will be trained
+# with only those column headers / features, otherwise, all columns will be taken.
+# The $feature_map will be built automatically from $features, but can also be manually passed in.
+# See the example in &#34;..&#34; on the data structure, which follows this form:
+# { &#34;name&#34;: &#34;CheckSum&#34;, &#34;index&#34;: &#34;42&#34;, &#34;tokenization&#34;: &#34;char&#34; }, where name corresponds to the feature
+# / column name, index with the column index, and tokenization (optional, defaulting to whitespace tokenization)
+# being the custom tokenization level for this feature.
+
 import numpy as np
 import pandas as pd
+
+import matplotlib.pyplot as plt
 
 import sys
 import os
@@ -65,11 +83,7 @@ from keras.layers import (
     Bidirectional,
     TimeDistributed,
 )
-from keras.models import Model, load_model
-
-from keras import backend as K
-from keras.engine.topology import Layer, InputSpec
-from keras import initializers
+from keras.models import Model, load_model, Sequential
 
 from sklearn.model_selection import KFold
 
@@ -79,9 +93,13 @@ from sklearn.utils.multiclass import type_of_target
 
 scaler = RobustScaler()
 
-from sklearn.feature_extraction.text import CountVectorizer
-
 import nltk
+
+from attention import AttentionLayer, ATTENTION_DIM
+
+import pickle  # Once we train the model we&#39;ll load the corpus / word index
+
+# as serialized objs so we don&#39;t have to preprocess in prediction
 
 # make dep imports work when running as lib / in high-levels scripts
 PACKAGE_PARENT = &#34;../../../..&#34;
@@ -100,7 +118,6 @@ except:
 # Hyperparams
 MAX_SENTENCE_LENGTH = 100
 MAX_SENTENCE_COUNT = 48
-ATTENTION_DIM = 50
 GLOVE_DIMENSION_SIZE = ATTENTION_DIM  # needs same dimension
 MAX_DOCS = 1000000  # Limit number of records to train for speed if needed
 MAX_WORDS = 100000  # Max number of words for our corpus
@@ -119,21 +136,30 @@ DEFAULT_TRAINING_DATA_PATH = os.path.abspath(
 )
 
 DEFAULT_MODEL_DIR_PATH = os.path.abspath(os.path.join(DEFAULT_DATA_PATH, &#34;models&#34;))
-
 DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, &#34;default.h5&#34;))
+
+# Pickled objects to load when we load models
+DEFAULT_MODEL_ASSETS_DIR_PATH = os.path.abspath(
+    os.path.join(DEFAULT_MODEL_DIR_PATH, &#34;model_assets&#34;)
+)
 
 stats = utils.stats
 stats_vis = utils.stats_vis
-
-compute_steps_per_epoch = lambda x: int(math.ceil(1.0 * x / BATCH_SIZE))
+misc = utils.misc
 
 kf = KFold(n_splits=K_NUM, shuffle=True, random_state=1618)
 
 metrics = [&#34;accuracy&#34;]
 
-cv = CountVectorizer()
+from keras import backend as K
 
-import pickle
+# K.clear_session()
+
+import tensorflow as tf
+from tensorflow.python.keras.backend import set_session
+
+graph = None
+session = None
 
 
 class HierarchicalAttentionNetwork:
@@ -141,18 +167,28 @@ class HierarchicalAttentionNetwork:
     Hierarchical Attention Network implementation.
     &#34;&#34;&#34;
 
-    def __init__(self, load_default_model: bool = False, features: list = [], **kwargs):
+    def __init__(
+        self,
+        load_default_model: bool = False,
+        features: list = [],  # List of features
+        word_token_level: str = &#34;word&#34;,  # Default tokenization level for words
+        sent_token_level: str = &#34;sent&#34;,  # Default tokenization level for sentences
+        **kwargs
+    ):
         self.model = None
+        self.model_name = &#34;&#34;
 
-        self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
-        self.records = self.data_train.to_dict(&#34;records&#34;)
-
+        self.data_train = pd.read_csv(
+            DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS
+        )  # Training data
+        self.records = self.data_train.to_dict(
+            &#34;records&#34;
+        )  # Same as data_train but in dict
         self.data = None
 
-        self.labels = None
+        self.texts = None  # will become X
+        self.labels = []  # will become Y
         self.labels_matrix = None  # Map labels into matrix for prediction
-
-        self.feature_keys = []  # Mappings of feature indices from dataset
 
         self.word_index = None
         self.embeddings_index = None
@@ -164,28 +200,45 @@ class HierarchicalAttentionNetwork:
         self.X = None
         self.Y = None
 
-        self.texts = None
         self.features = features  # List of features to extract
+        self.feature_map = []  # Mappings of feature indices from dataset (will be
+        # automatically done with default indices and
+        # tokenization levels, see docs for more details)
+
         self.num_classes = 2  # number of classes in our model; default is binary model
+
+        # By defining custom tokenizations at the word and sentence level, we can create
+        # arbitrary representations of documents using things like metadata and numbers
+        self.word_token_level = word_token_level
+        self.sent_token_level = sent_token_level
+
         if load_default_model:
-            # try:
-            self.model = load_model(
-                DEFAULT_MODEL_PATH, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer},
+            self.model = self.load_model(
+                DEFAULT_MODEL_PATH,
+                custom_objects={&#34;AttentionLayer&#34;: AttentionLayer},
+                compile=False,
             )
-            # self.model.load_weights(DEFAULT_MODEL_PATH)
+            self.model_name = DEFAULT_MODEL_PATH.split(&#34;/&#34;)[
+                len(DEFAULT_MODEL_PATH.split(&#34;/&#34;)) - 1
+            ]
+            # Get the original training vocabulary (should load from file / db later)
             self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
-            if len(self.feature_keys) is 0:
-                self.feature_keys = self._get_feature_keys(
+            if len(self.feature_map) is 0:
+                # Automatically map our features from CSV columns (if not manually specified)
+                self.feature_map = self._get_feature_map(
                     DEFAULT_TRAINING_DATA_PATH, top_features=self.features
                 )
-            self.preprocess_data(self.data_train, self.feature_keys)
+            self.preprocess_data(
+                self.data_train,
+                self.feature_map,
+                word_token_level=self.word_token_level,
+                sent_token_level=self.sent_token_level,
+            )
             print(
-                &#34;Successfully loaded default HANN model - {} - {}.&#34;.format(
-                    DEFAULT_MODEL_PATH, self.model
+                &#34;Successfully loaded default HANN model - {} - {}.\n&#34;.format(
+                    DEFAULT_MODEL_PATH, self.model_name
                 )
             )
-        #  except Exception as e:
-        #   print(&#34;Error loading model: &#34;, e)
         return
 
     def read_and_train_data(
@@ -196,6 +249,8 @@ class HierarchicalAttentionNetwork:
         model_base: object = None,
         outputpath: str = DEFAULT_MODEL_PATH,
         save_model: bool = False,
+        word_token_level: str = &#34;word&#34;,
+        sent_token_level: str = &#34;sent&#34;,
     ):
         &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
         self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
@@ -205,39 +260,176 @@ class HierarchicalAttentionNetwork:
             if len(self.features) &gt; 0:
                 top_features = self.features
                 self.X = self.X.filter(self.features)
-        self.feature_keys = self._get_feature_keys(filepath, top_features=top_features)
-        self.preprocess_data(self.X, self.feature_keys)
+        self.feature_map = self._get_feature_map(filepath, top_features=top_features)
+        self.preprocess_data(
+            self.X, self.feature_map, word_token_level, sent_token_level
+        )
+        print(&#34;Finished preprocessing data.&#34;)
         self.embeddings_index = self.get_glove_embeddings()
+        print(&#34;Finished getting GlOve embeddings.&#34;)
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
+        print(&#34;Finished making embeddings matrix from word index.&#34;)
         model = self.build_network_and_train_model(
             embeddings_matrix, labels=labels, model_base=model_base
         )
+        print(&#34;Finished training model.&#34;)
         self.model = model
-        outputpath = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, &#34;model.p&#34;))
+        self.model_name = output_path.split(&#34;/&#34;)[len(output_path.split(&#34;/&#34;)) - 1]
         if save_model:
             self.save_model(model, outputpath)
+            print(&#34;Finished saving model: {} at {}&#34;.format(model_name, output_path))
         return model
 
-    def preprocess_data(self, data_train: object, feature_keys):
+    def _build_corpus(
+        self,
+        data_train: pd.DataFrame,
+        feature_map: dict,
+        word_token_level: str = &#34;word&#34;,
+        sent_token_level: str = &#34;sent&#34;,
+    ):
+        &#34;&#34;&#34;Builds a corpus from a dataframe, given a dictionary of features
+           mapped to their indices and tokenization level. These will be
+           automatically generated if they&#39;re not individually specified.
+           This allows arbitrary levels of tokenization, meaning we can
+           consider any feature or sequence of text (even if it&#39;s numbers)
+           as a sentence, and then we can take individual chars or groupings
+           of chars to count as words for the vocab.
+
+           Right now, by default we&#39;ll tokenize at the char level for words,
+           since our default HANN model will use PE header metadata (numbers).
+           Eventually though, we&#39;ll want to manually (or programmatically)
+           analyze and define which metadata features we should tokenize by
+           chars and which ones by other hierustics. For example, let&#39;s say
+           we have a rule that states if a sequence of numbers (a &#34;sentence&#34;)
+           is divisible by 4, 8, and 16, then we should not tokenize that
+           feature by individual chars, as that number probably is more meaningful
+           as a whole token. Or how about for numbers that correspond to commonly
+           used ports, like 80, and 8069? It may improve our model results to
+           build this into the pre-processing pipeline.
+        &#34;&#34;&#34;
+        data_train_dict = data_train.to_dict()
+        texts = []
+        texts_features = []
+        for idx in range(data_train.shape[0]):
+            sentences = []
+            for feature in feature_map:
+                key = feature[&#34;name&#34;]
+                sentence = str(data_train[key][idx])
+                sentence = text_normalizer.normalize_text_defaults(sentence)
+                if (
+                    &#34;tokenize&#34; in feature and feature[&#34;tokenize&#34;] is &#34;sent&#34;
+                ) or sent_token_level is &#34;sent&#34;:
+                    sentence = text_normalizer.tokenize_text(
+                        sentence, token_level=&#34;sent&#34;
+                    )
+                elif (
+                    &#34;tokenize&#34; in feature and feature[&#34;tokenize&#34;] is &#34;char&#34;
+                ) or sent_token_level is &#34;char&#34;:
+                    # We don&#39;t have &#34;sentences&#34; or &#34;words&#34; for PE header data,
+                    # so tokenize every string into a word
+                    # For example, &#34;4069&#34; will be considered a sentence,
+                    # tokenized as a sequence of words &#34;4&#34;, &#34;0&#34;, &#34;6&#34;, &#34;9&#34;.
+                    sentence = text_normalize.tokenize(sentence, token_level=&#34;char&#34;)
+                else:
+                    # by default we tokenize into sentences
+                    sentence = text_normalizer.tokenize_text(
+                        sentence, token_level=&#34;sent&#34;
+                    )
+                sentences.append(sentence)
+            texts.extend(sentences)
+            texts_features.append(sentences)
+        return (texts, texts_features)
+
+    def preprocess_data(
+        self,
+        data_train: pd.DataFrame,
+        feature_map: dict,
+        word_token_level: str = &#34;word&#34;,
+        sent_token_level: str = &#34;sent&#34;,
+        pickle_data: bool = True,
+    ):
         &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
         self.data = np.zeros(
             (len(data_train), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype=&#34;int32&#34;)
-        self.build_corpus(data_train, feature_keys)
-        self.build_features_vecs_from_data(data_train, feature_keys)
+        # Read or write preprocessed data into pickle
+        text_corpus_asset_path = os.path.join(
+            DEFAULT_MODEL_ASSETS_DIR_PATH,
+            self.model_name.split(&#34;.&#34;)[0] + &#34;_text_corpus.p&#34;,
+        )
+        word_index_asset_path = os.path.join(
+            DEFAULT_MODEL_ASSETS_DIR_PATH,
+            self.model_name.split(&#34;.&#34;)[0] + &#34;_word_index.p&#34;,
+        )
+        vectorized_data_asset_path = os.path.join(
+            DEFAULT_MODEL_ASSETS_DIR_PATH,
+            self.model_name.split(&#34;.&#34;)[0] + &#34;_vectorized_data.p&#34;,
+        )
+        read = misc.read_pickle_data(text_corpus_asset_path)
+        if read is None:
+            self.texts = self._build_corpus(
+                data_train, feature_map, word_token_level, sent_token_level
+            )[0]
+            print(&#34;Finished building corpus.&#34;)
+            if pickle_data:
+                misc.write_pickle_data(self.texts, text_corpus_asset_path)
+        else:
+            self.texts = read
+            print(&#34;Finished loading corpus.&#34;)
+        read = misc.read_pickle_data(word_index_asset_path)
+        if read is None:
+            self._build_feature_matrix_from_data(data_train, feature_map)
+            print(&#34;Finished building feature matrix from corupus.&#34;)
+            if pickle_data:
+                misc.write_pickle_data(self.word_index, word_index_asset_path)
+                misc.write_pickle_data(self.data, vectorized_data_asset_path)
+        else:
+            self.word_index = read
+            print(&#34;Finished loading word index.&#34;)
+            read = misc.read_pickle_data(vectorized_data_asset_path)
+            if read is None:
+                self._build_feature_matrix_from_data(data_train, feature_map)
+                print(&#34;Finished building feature matrix from corupus.&#34;)
+                misc.write_pickle_data(self.word_index, word_index_asset_path)
+                misc.write_pickle_data(self.data, vectorized_data_asset_path)
+            else:
+                self.data = read
+                print(&#34;Finished loading preprocessed data.&#34;)
         print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
-        print(&#34;Shape of data tensor: &#34;, self.data, self.data.shape)
         print(&#34;Finished preprocessing data.&#34;)
         return self.data
 
-    def load_model(self, filepath: str):
+    def predict(self, data):
+        &#34;&#34;&#34;Predicts binary classification of classes with probabilities given a feature matrix.&#34;&#34;&#34;
+        # res = self.model.predict(data)
+        self.model._make_predict_function()
+        with graph.as_default():
+            with session.as_default():
+                res = self.model.predict(data)
+                probs = res[0]
+                normal = probs[0]  # &#34;0&#34; class
+                deviant = probs[1]  # &#34;1&#34; class
+                attention_vals = res[1]
+                return (normal, deviant)
+
+    def load_model(self, filepath: str, custom_objects={}, compile=False):
         &#34;&#34;&#34;Loads a model with a custom AttentionLayer property.&#34;&#34;&#34;
-        model = load_model(
-            filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
-        )
-        if model:
+        # model = load_model(
+        #  filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
+        # )
+        if os.path.exists(filepath):
+            global graph
+            global session
+            graph = tf.get_default_graph()
+            session_conf = tf.ConfigProto(
+                intra_op_parallelism_threads=1, inter_op_parallelism_threads=1
+            )
+            session = tf.Session(graph=graph, config=session_conf)
+            K.set_session(session)
+            model = load_model(filepath, custom_objects=custom_objects, compile=compile)
             self.model = model
+            self.model._make_predict_function()
             return model
         else:
             return None
@@ -316,16 +508,17 @@ class HierarchicalAttentionNetwork:
         if self.num_classes &gt; 2:
             # multi-class classifier
             preds = Dense(self.num_classes, activation=&#34;softmax&#34;)(l_att_sent)
+            model = Model(input_layer)
             model = Model(input_layer, preds)
             model.compile(
-                loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics
+                loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;adadelta&#34;, metrics=metrics
             )
         else:
             # binary classifier
-            preds = Dense(2, activation=&#34;sigmoid&#34;)(l_att_sent)
+            preds = Dense(2, activation=&#34;softmax&#34;)(l_att_sent)
             model = Model(input_layer, preds)
             model.compile(
-                loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics
+                loss=&#34;binary_crossentropy&#34;, optimizer=&#34;adadelta&#34;, metrics=metrics
             )
         return model
 
@@ -393,7 +586,6 @@ class HierarchicalAttentionNetwork:
                 )
                 model.fit(x_train, y_train)
             models.append(model)
-            # f_importances(model.coef_, feature_keys_list)
             k_ct += 1
             y_pred = model.predict(x_val)
             # Reverse one-hot encoding
@@ -434,53 +626,107 @@ class HierarchicalAttentionNetwork:
             pass
         return model
 
-    def _get_feature_keys(
+    def get_attention_map(self, input_data):
+        att_model_output = self.model.layers[0:-2]
+        att_model = Model(att_model_output[0].input, att_model_output[-1].output)
+        att_model.compile(
+            optimizer=&#34;adam&#34;,
+            loss=&#34;sparse_categorical_crossentropy&#34;,
+            metrics=[&#34;accuracy&#34;],
+        )
+        return att_model.predict(input_data)[1]
+
+    def build_feature_matrix_from_input_arr(
+        self, input_features, feature_map: dict = None
+    ):
+        &#34;&#34;&#34;Vectorizes a feature matrix from extracted PE data for HANN classification.&#34;&#34;&#34;
+        results = []
+        texts_features = []
+        if feature_map is None:
+            if self.feature_map is None:
+                self.feature_map = self._get_feature_map()
+            feature_map = self.feature_map
+        else:
+            self.feature_map = feature_map
+        for idx in range(len(input_features)):
+            sentences = []
+            for dict in self.feature_map:
+                val = dict[&#34;index&#34;]
+                sentence = str(input_features[val])
+                sentence = text_normalizer.normalize_text(sentence)
+                if &#34;tokenize&#34; in dict and dict[&#34;tokenize&#34;] is &#34;char&#34;:
+                    sentence = [char for char in sentence]
+                sentences.append(sentence)
+            texts_features.append(sentences)
+        feature_vector = np.zeros(
+            (len(input_features), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
+            dtype=&#34;int32&#34;,
+        )
+        feature_vector = self._fill_feature_vec(texts_features, feature_vector)
+        return feature_vector
+
+    def _build_feature_matrix_from_data(
+        self, data_train: pd.DataFrame, feature_map: dict = None
+    ):
+        &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
+        results = []
+        self.texts, texts_features = self._build_corpus(data_train, feature_map)
+        self.data = self._fill_feature_vec(texts_features, self.data)
+        # Get unique classes from labels (in same order of occurence)
+        classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
+        self.num_classes = len(classes)
+        self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
+        self.Y = self.labels_matrix
+        self.X = self.data
+        return self.data
+
+    def _get_feature_map(
         self, filepath: str = DEFAULT_TRAINING_DATA_PATH, top_features: list = []
     ) -&gt; list:
         df = pd.read_csv(filepath, nrows=MAX_DOCS)
-        feature_keys = []
+        feature_map = []
         if len(top_features) &gt; 0:
-            feature_keys = [
+            feature_map = [
                 key
                 for key in list(df.columns)
                 if key != &#34;classification&#34; and key in top_features
             ]
         else:
-            if len(self.feature_keys) is 0:
+            if len(self.feature_map) is 0:
                 if len(self.features) &gt; 0:
-                    feature_keys = [
+                    feature_map = [
                         key
                         for key in list(df.columns)
                         if key != &#34;classification&#34; and key in self.features
                     ]
                 else:
-                    feature_keys = [
+                    feature_map = [
                         key for key in list(df.columns) if key != &#34;classification&#34;
                     ]
             else:
-                return self.feature_keys
+                return self.feature_map
             # Map feature keys with their indices (since eventually we may want to eliminate features
             # from being trained, without modifiying the original dataset, so order of indices may not
             # be continuous. Also, we can define a tokenization level in these mappings.
-        feature_keys = [
+        feature_map = [
             {&#34;name&#34;: feature_key, &#34;index&#34;: i}
-            for i, feature_key in enumerate(feature_keys)
+            for i, feature_key in enumerate(feature_map)
         ]
-        return feature_keys
+        return feature_map
 
     def _fill_feature_vec(self, texts_features: list, feature_vector):
         &#34;&#34;&#34;Helper function to build feature vector for HANN to classify.&#34;&#34;&#34;
         self.tokenizer = Tokenizer()
         _texts = []
         for i, each in enumerate(self.texts):
-            if type(each) is list:
+            if isinstance(each, list):
                 each = &#34;&#34;.join(each)
             _texts.append(str(each))
         for i in range(len(self.records)):
             self.labels.append(self.records[i][&#34;classification&#34;])
         texts = _texts
         self.texts = _texts
-        self.tokenizer.fit_on_texts(texts)
+        self.tokenizer.fit_on_texts(self.texts)
         self.word_index = self.tokenizer.word_index
         self.vocab_size = len(self.word_index)
         for i, sentences in enumerate(texts_features):
@@ -504,125 +750,9 @@ class HierarchicalAttentionNetwork:
                             break
         return feature_vector
 
-    def build_corpus(self, data_train, feature_keys):
-        data_train_dict = data_train.to_dict()
-        texts = []
-        texts_features = []
-        self.labels = []
-        for idx in range(
-            data_train.shape[0]
-        ):  # doesn&#39;t matter we&#39;re just getting count here
-            sentences = []
-            for dict in feature_keys:
-                key = dict[&#34;name&#34;]
-                sentence = str(data_train[key][idx])
-                sentence = text_normalizer.normalize_text_defaults(sentence)
-                if &#34;tokenize&#34; in dict and dict[&#34;tokenize&#34;] is &#34;char&#34;:
-                    sentence = [char for char in sentence]
-                sentences.append(sentence)
-            texts.extend(sentences)
-            texts_features.append(sentences)
-        self.texts = texts
-        return (texts, texts_features)
-
-    def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
-        &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
-        results = []
-        self.texts, texts_features = self.build_corpus(data_train, feature_keys)
-        self.data = self._fill_feature_vec(texts_features, self.data)
-        # Get unique classes from labels (in same order of occurence)
-        classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
-        self.num_classes = len(classes)
-        self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
-        self.Y = self.labels_matrix
-        self.X = self.data
-        return self.data
-
-    def build_features_vecs_from_input(self, input_features, feature_keys: dict = None):
-        &#34;&#34;&#34;Vectorizes a feature matrix from extracted PE data for HANN classification.&#34;&#34;&#34;
-        results = []
-        texts_features = []
-        if feature_keys is None:
-            if self.feature_keys is None:
-                self.feature_keys = self._get_feature_keys()
-            feature_keys = self.feature_keys
-        else:
-            self.feature_keys = feature_keys
-        for idx in range(len(input_features)):
-            sentences = []
-            for dict in self.feature_keys:
-                val = dict[&#34;index&#34;]
-                sentence = str(input_features[val])
-                sentence = text_normalizer.normalize_text(sentence)
-                if &#34;tokenize&#34; in dict and dict[&#34;tokenize&#34;] is &#34;char&#34;:
-                    sentence = [char for char in sentence]
-                sentences.append(sentence)
-            texts_features.append(sentences)
-        feature_vector = np.zeros(
-            (len(input_features), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
-            dtype=&#34;int32&#34;,
-        )
-        feature_vector = self._fill_feature_vec(texts_features, feature_vector)
-        return feature_vector
-
-    def predict(self, data):
-        &#34;&#34;&#34;Predicts binary classification of classes with probabilities given a feature matrix.&#34;&#34;&#34;
-        res = self.model.predict(data)
-        probs = res[0]
-        malicious = probs[1]
-        benign = probs[0]
-        return (benign, malicious)
-
-
-class AttentionLayer(Layer):
-    &#34;&#34;&#34;
-    Attention layer for Hierarchical Attention Network.
-    &#34;&#34;&#34;
-
-    def __init__(self, attention_dim=ATTENTION_DIM, **kwargs):
-        self.init = initializers.get(&#34;normal&#34;)
-        self.supports_masking = False
-        self.attention_dim = attention_dim
-        super(AttentionLayer, self).__init__()
-
-    def build(self, input_shape):
-        assert len(input_shape) == 3
-        self.W = K.variable(self.init((input_shape[-1], self.attention_dim)), name=&#34;W&#34;)
-        self.b = K.variable(self.init((self.attention_dim,)), name=&#34;b&#34;)
-        self.u = K.variable(self.init((self.attention_dim, 1)), name=&#34;u&#34;)
-        self.trainable_weights = [self.W, self.b, self.u]
-        super(AttentionLayer, self).build(input_shape)
-
-    def compute_mask(self, inputs, mask=None):
-        # return mask
-        # Masking layers is no longer supported in newer version of keras
-        return None
-
-    def call(self, x, mask=None):
-        # size of x :[batch_size, sel_len, attention_dim]
-        # size of u :[batch_size, attention_dim]
-        # uit = tanh(xW+b)
-        uit = K.tanh(K.bias_add(K.dot(x, self.W), self.b))
-        ait = K.dot(uit, self.u)
-        ait = K.squeeze(ait, -1)
-        ait = K.exp(ait)
-        if mask is not None:
-            # Cast the mask to floatX to avoid float64 upcasting in theano
-            ait *= K.cast(mask, K.floatx())
-        ait /= K.cast(K.sum(ait, axis=1, keepdims=True) + K.epsilon(), K.floatx())
-        ait = K.expand_dims(ait)
-        weighted_input = x * ait
-        output = K.sum(weighted_input, axis=1)
-        return output
-
-    def compute_output_shape(self, input_shape):
-        return (input_shape[0], input_shape[-1])
-
 
 if __name__ == &#34;__main__&#34;:
-    print(&#34;Use train_hann.py to train the HANN network, or import as a module.&#34;)
-else:
-    utils.print_logm(&#34;Initializing HANN module.&#34;)</code></pre>
+    print(&#34;Use train_hann.py to train the HANN network, or import as a module.&#34;)</code></pre>
 </details>
 </section>
 <section>
@@ -630,195 +760,13 @@ else:
 <section>
 </section>
 <section>
-<h2 class="section-title" id="header-functions">Functions</h2>
-<dl>
-<dt id="restless.components.nlp.hann.hann.compute_steps_per_epoch"><code class="name flex">
-<span>def <span class="ident">compute_steps_per_epoch</span></span>(<span>x)</span>
-</code></dt>
-<dd>
-<section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">compute_steps_per_epoch = lambda x: int(math.ceil(1.0 * x / BATCH_SIZE))</code></pre>
-</details>
-</dd>
-</dl>
 </section>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="restless.components.nlp.hann.hann.AttentionLayer"><code class="flex name class">
-<span>class <span class="ident">AttentionLayer</span></span>
-<span>(</span><span>attention_dim=50, **kwargs)</span>
-</code></dt>
-<dd>
-<section class="desc"><p>Attention layer for Hierarchical Attention Network.</p></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">class AttentionLayer(Layer):
-    &#34;&#34;&#34;
-    Attention layer for Hierarchical Attention Network.
-    &#34;&#34;&#34;
-
-    def __init__(self, attention_dim=ATTENTION_DIM, **kwargs):
-        self.init = initializers.get(&#34;normal&#34;)
-        self.supports_masking = False
-        self.attention_dim = attention_dim
-        super(AttentionLayer, self).__init__()
-
-    def build(self, input_shape):
-        assert len(input_shape) == 3
-        self.W = K.variable(self.init((input_shape[-1], self.attention_dim)), name=&#34;W&#34;)
-        self.b = K.variable(self.init((self.attention_dim,)), name=&#34;b&#34;)
-        self.u = K.variable(self.init((self.attention_dim, 1)), name=&#34;u&#34;)
-        self.trainable_weights = [self.W, self.b, self.u]
-        super(AttentionLayer, self).build(input_shape)
-
-    def compute_mask(self, inputs, mask=None):
-        # return mask
-        # Masking layers is no longer supported in newer version of keras
-        return None
-
-    def call(self, x, mask=None):
-        # size of x :[batch_size, sel_len, attention_dim]
-        # size of u :[batch_size, attention_dim]
-        # uit = tanh(xW+b)
-        uit = K.tanh(K.bias_add(K.dot(x, self.W), self.b))
-        ait = K.dot(uit, self.u)
-        ait = K.squeeze(ait, -1)
-        ait = K.exp(ait)
-        if mask is not None:
-            # Cast the mask to floatX to avoid float64 upcasting in theano
-            ait *= K.cast(mask, K.floatx())
-        ait /= K.cast(K.sum(ait, axis=1, keepdims=True) + K.epsilon(), K.floatx())
-        ait = K.expand_dims(ait)
-        weighted_input = x * ait
-        output = K.sum(weighted_input, axis=1)
-        return output
-
-    def compute_output_shape(self, input_shape):
-        return (input_shape[0], input_shape[-1])</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li>keras.engine.base_layer.Layer</li>
-</ul>
-<h3>Methods</h3>
-<dl>
-<dt id="restless.components.nlp.hann.hann.AttentionLayer.build"><code class="name flex">
-<span>def <span class="ident">build</span></span>(<span>self, input_shape)</span>
-</code></dt>
-<dd>
-<section class="desc"><p>Creates the layer weights.</p>
-<p>Must be implemented on all layers that have weights.</p>
-<h1 id="arguments">Arguments</h1>
-<pre><code>input_shape: Keras tensor (future input to layer)
-    or list/tuple of Keras tensors to reference
-    for weight shape computations.
-</code></pre></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def build(self, input_shape):
-    assert len(input_shape) == 3
-    self.W = K.variable(self.init((input_shape[-1], self.attention_dim)), name=&#34;W&#34;)
-    self.b = K.variable(self.init((self.attention_dim,)), name=&#34;b&#34;)
-    self.u = K.variable(self.init((self.attention_dim, 1)), name=&#34;u&#34;)
-    self.trainable_weights = [self.W, self.b, self.u]
-    super(AttentionLayer, self).build(input_shape)</code></pre>
-</details>
-</dd>
-<dt id="restless.components.nlp.hann.hann.AttentionLayer.call"><code class="name flex">
-<span>def <span class="ident">call</span></span>(<span>self, x, mask=None)</span>
-</code></dt>
-<dd>
-<section class="desc"><p>This is where the layer's logic lives.</p>
-<h1 id="arguments">Arguments</h1>
-<pre><code>inputs: Input tensor, or list/tuple of input tensors.
-**kwargs: Additional keyword arguments.
-</code></pre>
-<h1 id="returns">Returns</h1>
-<pre><code>A tensor or list/tuple of tensors.
-</code></pre></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def call(self, x, mask=None):
-    # size of x :[batch_size, sel_len, attention_dim]
-    # size of u :[batch_size, attention_dim]
-    # uit = tanh(xW+b)
-    uit = K.tanh(K.bias_add(K.dot(x, self.W), self.b))
-    ait = K.dot(uit, self.u)
-    ait = K.squeeze(ait, -1)
-    ait = K.exp(ait)
-    if mask is not None:
-        # Cast the mask to floatX to avoid float64 upcasting in theano
-        ait *= K.cast(mask, K.floatx())
-    ait /= K.cast(K.sum(ait, axis=1, keepdims=True) + K.epsilon(), K.floatx())
-    ait = K.expand_dims(ait)
-    weighted_input = x * ait
-    output = K.sum(weighted_input, axis=1)
-    return output</code></pre>
-</details>
-</dd>
-<dt id="restless.components.nlp.hann.hann.AttentionLayer.compute_mask"><code class="name flex">
-<span>def <span class="ident">compute_mask</span></span>(<span>self, inputs, mask=None)</span>
-</code></dt>
-<dd>
-<section class="desc"><p>Computes an output mask tensor.</p>
-<h1 id="arguments">Arguments</h1>
-<pre><code>inputs: Tensor or list of tensors.
-mask: Tensor or list of tensors.
-</code></pre>
-<h1 id="returns">Returns</h1>
-<pre><code>None or a tensor (or list of tensors,
-    one per output tensor of the layer).
-</code></pre></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def compute_mask(self, inputs, mask=None):
-    # return mask
-    # Masking layers is no longer supported in newer version of keras
-    return None</code></pre>
-</details>
-</dd>
-<dt id="restless.components.nlp.hann.hann.AttentionLayer.compute_output_shape"><code class="name flex">
-<span>def <span class="ident">compute_output_shape</span></span>(<span>self, input_shape)</span>
-</code></dt>
-<dd>
-<section class="desc"><p>Computes the output shape of the layer.</p>
-<p>Assumes that the layer will be built
-to match that input shape provided.</p>
-<h1 id="arguments">Arguments</h1>
-<pre><code>input_shape: Shape tuple (tuple of integers)
-    or list of shape tuples (one per output tensor of the layer).
-    Shape tuples can include None for free dimensions,
-    instead of an integer.
-</code></pre>
-<h1 id="returns">Returns</h1>
-<pre><code>An output shape tuple.
-</code></pre></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def compute_output_shape(self, input_shape):
-    return (input_shape[0], input_shape[-1])</code></pre>
-</details>
-</dd>
-</dl>
-</dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork"><code class="flex name class">
 <span>class <span class="ident">HierarchicalAttentionNetwork</span></span>
-<span>(</span><span>load_default_model=False, features=[], **kwargs)</span>
+<span>(</span><span>load_default_model=False, features=[], word_token_level='word', sent_token_level='sent', **kwargs)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Hierarchical Attention Network implementation.</p></section>
@@ -831,18 +779,28 @@ to match that input shape provided.</p>
     Hierarchical Attention Network implementation.
     &#34;&#34;&#34;
 
-    def __init__(self, load_default_model: bool = False, features: list = [], **kwargs):
+    def __init__(
+        self,
+        load_default_model: bool = False,
+        features: list = [],  # List of features
+        word_token_level: str = &#34;word&#34;,  # Default tokenization level for words
+        sent_token_level: str = &#34;sent&#34;,  # Default tokenization level for sentences
+        **kwargs
+    ):
         self.model = None
+        self.model_name = &#34;&#34;
 
-        self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
-        self.records = self.data_train.to_dict(&#34;records&#34;)
-
+        self.data_train = pd.read_csv(
+            DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS
+        )  # Training data
+        self.records = self.data_train.to_dict(
+            &#34;records&#34;
+        )  # Same as data_train but in dict
         self.data = None
 
-        self.labels = None
+        self.texts = None  # will become X
+        self.labels = []  # will become Y
         self.labels_matrix = None  # Map labels into matrix for prediction
-
-        self.feature_keys = []  # Mappings of feature indices from dataset
 
         self.word_index = None
         self.embeddings_index = None
@@ -854,28 +812,45 @@ to match that input shape provided.</p>
         self.X = None
         self.Y = None
 
-        self.texts = None
         self.features = features  # List of features to extract
+        self.feature_map = []  # Mappings of feature indices from dataset (will be
+        # automatically done with default indices and
+        # tokenization levels, see docs for more details)
+
         self.num_classes = 2  # number of classes in our model; default is binary model
+
+        # By defining custom tokenizations at the word and sentence level, we can create
+        # arbitrary representations of documents using things like metadata and numbers
+        self.word_token_level = word_token_level
+        self.sent_token_level = sent_token_level
+
         if load_default_model:
-            # try:
-            self.model = load_model(
-                DEFAULT_MODEL_PATH, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer},
+            self.model = self.load_model(
+                DEFAULT_MODEL_PATH,
+                custom_objects={&#34;AttentionLayer&#34;: AttentionLayer},
+                compile=False,
             )
-            # self.model.load_weights(DEFAULT_MODEL_PATH)
+            self.model_name = DEFAULT_MODEL_PATH.split(&#34;/&#34;)[
+                len(DEFAULT_MODEL_PATH.split(&#34;/&#34;)) - 1
+            ]
+            # Get the original training vocabulary (should load from file / db later)
             self.data_train = pd.read_csv(DEFAULT_TRAINING_DATA_PATH, nrows=MAX_DOCS)
-            if len(self.feature_keys) is 0:
-                self.feature_keys = self._get_feature_keys(
+            if len(self.feature_map) is 0:
+                # Automatically map our features from CSV columns (if not manually specified)
+                self.feature_map = self._get_feature_map(
                     DEFAULT_TRAINING_DATA_PATH, top_features=self.features
                 )
-            self.preprocess_data(self.data_train, self.feature_keys)
+            self.preprocess_data(
+                self.data_train,
+                self.feature_map,
+                word_token_level=self.word_token_level,
+                sent_token_level=self.sent_token_level,
+            )
             print(
-                &#34;Successfully loaded default HANN model - {} - {}.&#34;.format(
-                    DEFAULT_MODEL_PATH, self.model
+                &#34;Successfully loaded default HANN model - {} - {}.\n&#34;.format(
+                    DEFAULT_MODEL_PATH, self.model_name
                 )
             )
-        #  except Exception as e:
-        #   print(&#34;Error loading model: &#34;, e)
         return
 
     def read_and_train_data(
@@ -886,6 +861,8 @@ to match that input shape provided.</p>
         model_base: object = None,
         outputpath: str = DEFAULT_MODEL_PATH,
         save_model: bool = False,
+        word_token_level: str = &#34;word&#34;,
+        sent_token_level: str = &#34;sent&#34;,
     ):
         &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
         self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
@@ -895,39 +872,176 @@ to match that input shape provided.</p>
             if len(self.features) &gt; 0:
                 top_features = self.features
                 self.X = self.X.filter(self.features)
-        self.feature_keys = self._get_feature_keys(filepath, top_features=top_features)
-        self.preprocess_data(self.X, self.feature_keys)
+        self.feature_map = self._get_feature_map(filepath, top_features=top_features)
+        self.preprocess_data(
+            self.X, self.feature_map, word_token_level, sent_token_level
+        )
+        print(&#34;Finished preprocessing data.&#34;)
         self.embeddings_index = self.get_glove_embeddings()
+        print(&#34;Finished getting GlOve embeddings.&#34;)
         embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
+        print(&#34;Finished making embeddings matrix from word index.&#34;)
         model = self.build_network_and_train_model(
             embeddings_matrix, labels=labels, model_base=model_base
         )
+        print(&#34;Finished training model.&#34;)
         self.model = model
-        outputpath = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, &#34;model.p&#34;))
+        self.model_name = output_path.split(&#34;/&#34;)[len(output_path.split(&#34;/&#34;)) - 1]
         if save_model:
             self.save_model(model, outputpath)
+            print(&#34;Finished saving model: {} at {}&#34;.format(model_name, output_path))
         return model
 
-    def preprocess_data(self, data_train: object, feature_keys):
+    def _build_corpus(
+        self,
+        data_train: pd.DataFrame,
+        feature_map: dict,
+        word_token_level: str = &#34;word&#34;,
+        sent_token_level: str = &#34;sent&#34;,
+    ):
+        &#34;&#34;&#34;Builds a corpus from a dataframe, given a dictionary of features
+           mapped to their indices and tokenization level. These will be
+           automatically generated if they&#39;re not individually specified.
+           This allows arbitrary levels of tokenization, meaning we can
+           consider any feature or sequence of text (even if it&#39;s numbers)
+           as a sentence, and then we can take individual chars or groupings
+           of chars to count as words for the vocab.
+
+           Right now, by default we&#39;ll tokenize at the char level for words,
+           since our default HANN model will use PE header metadata (numbers).
+           Eventually though, we&#39;ll want to manually (or programmatically)
+           analyze and define which metadata features we should tokenize by
+           chars and which ones by other hierustics. For example, let&#39;s say
+           we have a rule that states if a sequence of numbers (a &#34;sentence&#34;)
+           is divisible by 4, 8, and 16, then we should not tokenize that
+           feature by individual chars, as that number probably is more meaningful
+           as a whole token. Or how about for numbers that correspond to commonly
+           used ports, like 80, and 8069? It may improve our model results to
+           build this into the pre-processing pipeline.
+        &#34;&#34;&#34;
+        data_train_dict = data_train.to_dict()
+        texts = []
+        texts_features = []
+        for idx in range(data_train.shape[0]):
+            sentences = []
+            for feature in feature_map:
+                key = feature[&#34;name&#34;]
+                sentence = str(data_train[key][idx])
+                sentence = text_normalizer.normalize_text_defaults(sentence)
+                if (
+                    &#34;tokenize&#34; in feature and feature[&#34;tokenize&#34;] is &#34;sent&#34;
+                ) or sent_token_level is &#34;sent&#34;:
+                    sentence = text_normalizer.tokenize_text(
+                        sentence, token_level=&#34;sent&#34;
+                    )
+                elif (
+                    &#34;tokenize&#34; in feature and feature[&#34;tokenize&#34;] is &#34;char&#34;
+                ) or sent_token_level is &#34;char&#34;:
+                    # We don&#39;t have &#34;sentences&#34; or &#34;words&#34; for PE header data,
+                    # so tokenize every string into a word
+                    # For example, &#34;4069&#34; will be considered a sentence,
+                    # tokenized as a sequence of words &#34;4&#34;, &#34;0&#34;, &#34;6&#34;, &#34;9&#34;.
+                    sentence = text_normalize.tokenize(sentence, token_level=&#34;char&#34;)
+                else:
+                    # by default we tokenize into sentences
+                    sentence = text_normalizer.tokenize_text(
+                        sentence, token_level=&#34;sent&#34;
+                    )
+                sentences.append(sentence)
+            texts.extend(sentences)
+            texts_features.append(sentences)
+        return (texts, texts_features)
+
+    def preprocess_data(
+        self,
+        data_train: pd.DataFrame,
+        feature_map: dict,
+        word_token_level: str = &#34;word&#34;,
+        sent_token_level: str = &#34;sent&#34;,
+        pickle_data: bool = True,
+    ):
         &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
         self.data = np.zeros(
             (len(data_train), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype=&#34;int32&#34;)
-        self.build_corpus(data_train, feature_keys)
-        self.build_features_vecs_from_data(data_train, feature_keys)
+        # Read or write preprocessed data into pickle
+        text_corpus_asset_path = os.path.join(
+            DEFAULT_MODEL_ASSETS_DIR_PATH,
+            self.model_name.split(&#34;.&#34;)[0] + &#34;_text_corpus.p&#34;,
+        )
+        word_index_asset_path = os.path.join(
+            DEFAULT_MODEL_ASSETS_DIR_PATH,
+            self.model_name.split(&#34;.&#34;)[0] + &#34;_word_index.p&#34;,
+        )
+        vectorized_data_asset_path = os.path.join(
+            DEFAULT_MODEL_ASSETS_DIR_PATH,
+            self.model_name.split(&#34;.&#34;)[0] + &#34;_vectorized_data.p&#34;,
+        )
+        read = misc.read_pickle_data(text_corpus_asset_path)
+        if read is None:
+            self.texts = self._build_corpus(
+                data_train, feature_map, word_token_level, sent_token_level
+            )[0]
+            print(&#34;Finished building corpus.&#34;)
+            if pickle_data:
+                misc.write_pickle_data(self.texts, text_corpus_asset_path)
+        else:
+            self.texts = read
+            print(&#34;Finished loading corpus.&#34;)
+        read = misc.read_pickle_data(word_index_asset_path)
+        if read is None:
+            self._build_feature_matrix_from_data(data_train, feature_map)
+            print(&#34;Finished building feature matrix from corupus.&#34;)
+            if pickle_data:
+                misc.write_pickle_data(self.word_index, word_index_asset_path)
+                misc.write_pickle_data(self.data, vectorized_data_asset_path)
+        else:
+            self.word_index = read
+            print(&#34;Finished loading word index.&#34;)
+            read = misc.read_pickle_data(vectorized_data_asset_path)
+            if read is None:
+                self._build_feature_matrix_from_data(data_train, feature_map)
+                print(&#34;Finished building feature matrix from corupus.&#34;)
+                misc.write_pickle_data(self.word_index, word_index_asset_path)
+                misc.write_pickle_data(self.data, vectorized_data_asset_path)
+            else:
+                self.data = read
+                print(&#34;Finished loading preprocessed data.&#34;)
         print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
-        print(&#34;Shape of data tensor: &#34;, self.data, self.data.shape)
         print(&#34;Finished preprocessing data.&#34;)
         return self.data
 
-    def load_model(self, filepath: str):
+    def predict(self, data):
+        &#34;&#34;&#34;Predicts binary classification of classes with probabilities given a feature matrix.&#34;&#34;&#34;
+        # res = self.model.predict(data)
+        self.model._make_predict_function()
+        with graph.as_default():
+            with session.as_default():
+                res = self.model.predict(data)
+                probs = res[0]
+                normal = probs[0]  # &#34;0&#34; class
+                deviant = probs[1]  # &#34;1&#34; class
+                attention_vals = res[1]
+                return (normal, deviant)
+
+    def load_model(self, filepath: str, custom_objects={}, compile=False):
         &#34;&#34;&#34;Loads a model with a custom AttentionLayer property.&#34;&#34;&#34;
-        model = load_model(
-            filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
-        )
-        if model:
+        # model = load_model(
+        #  filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
+        # )
+        if os.path.exists(filepath):
+            global graph
+            global session
+            graph = tf.get_default_graph()
+            session_conf = tf.ConfigProto(
+                intra_op_parallelism_threads=1, inter_op_parallelism_threads=1
+            )
+            session = tf.Session(graph=graph, config=session_conf)
+            K.set_session(session)
+            model = load_model(filepath, custom_objects=custom_objects, compile=compile)
             self.model = model
+            self.model._make_predict_function()
             return model
         else:
             return None
@@ -1006,16 +1120,17 @@ to match that input shape provided.</p>
         if self.num_classes &gt; 2:
             # multi-class classifier
             preds = Dense(self.num_classes, activation=&#34;softmax&#34;)(l_att_sent)
+            model = Model(input_layer)
             model = Model(input_layer, preds)
             model.compile(
-                loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics
+                loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;adadelta&#34;, metrics=metrics
             )
         else:
             # binary classifier
-            preds = Dense(2, activation=&#34;sigmoid&#34;)(l_att_sent)
+            preds = Dense(2, activation=&#34;softmax&#34;)(l_att_sent)
             model = Model(input_layer, preds)
             model.compile(
-                loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics
+                loss=&#34;binary_crossentropy&#34;, optimizer=&#34;adadelta&#34;, metrics=metrics
             )
         return model
 
@@ -1083,7 +1198,6 @@ to match that input shape provided.</p>
                 )
                 model.fit(x_train, y_train)
             models.append(model)
-            # f_importances(model.coef_, feature_keys_list)
             k_ct += 1
             y_pred = model.predict(x_val)
             # Reverse one-hot encoding
@@ -1124,53 +1238,107 @@ to match that input shape provided.</p>
             pass
         return model
 
-    def _get_feature_keys(
+    def get_attention_map(self, input_data):
+        att_model_output = self.model.layers[0:-2]
+        att_model = Model(att_model_output[0].input, att_model_output[-1].output)
+        att_model.compile(
+            optimizer=&#34;adam&#34;,
+            loss=&#34;sparse_categorical_crossentropy&#34;,
+            metrics=[&#34;accuracy&#34;],
+        )
+        return att_model.predict(input_data)[1]
+
+    def build_feature_matrix_from_input_arr(
+        self, input_features, feature_map: dict = None
+    ):
+        &#34;&#34;&#34;Vectorizes a feature matrix from extracted PE data for HANN classification.&#34;&#34;&#34;
+        results = []
+        texts_features = []
+        if feature_map is None:
+            if self.feature_map is None:
+                self.feature_map = self._get_feature_map()
+            feature_map = self.feature_map
+        else:
+            self.feature_map = feature_map
+        for idx in range(len(input_features)):
+            sentences = []
+            for dict in self.feature_map:
+                val = dict[&#34;index&#34;]
+                sentence = str(input_features[val])
+                sentence = text_normalizer.normalize_text(sentence)
+                if &#34;tokenize&#34; in dict and dict[&#34;tokenize&#34;] is &#34;char&#34;:
+                    sentence = [char for char in sentence]
+                sentences.append(sentence)
+            texts_features.append(sentences)
+        feature_vector = np.zeros(
+            (len(input_features), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
+            dtype=&#34;int32&#34;,
+        )
+        feature_vector = self._fill_feature_vec(texts_features, feature_vector)
+        return feature_vector
+
+    def _build_feature_matrix_from_data(
+        self, data_train: pd.DataFrame, feature_map: dict = None
+    ):
+        &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
+        results = []
+        self.texts, texts_features = self._build_corpus(data_train, feature_map)
+        self.data = self._fill_feature_vec(texts_features, self.data)
+        # Get unique classes from labels (in same order of occurence)
+        classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
+        self.num_classes = len(classes)
+        self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
+        self.Y = self.labels_matrix
+        self.X = self.data
+        return self.data
+
+    def _get_feature_map(
         self, filepath: str = DEFAULT_TRAINING_DATA_PATH, top_features: list = []
     ) -&gt; list:
         df = pd.read_csv(filepath, nrows=MAX_DOCS)
-        feature_keys = []
+        feature_map = []
         if len(top_features) &gt; 0:
-            feature_keys = [
+            feature_map = [
                 key
                 for key in list(df.columns)
                 if key != &#34;classification&#34; and key in top_features
             ]
         else:
-            if len(self.feature_keys) is 0:
+            if len(self.feature_map) is 0:
                 if len(self.features) &gt; 0:
-                    feature_keys = [
+                    feature_map = [
                         key
                         for key in list(df.columns)
                         if key != &#34;classification&#34; and key in self.features
                     ]
                 else:
-                    feature_keys = [
+                    feature_map = [
                         key for key in list(df.columns) if key != &#34;classification&#34;
                     ]
             else:
-                return self.feature_keys
+                return self.feature_map
             # Map feature keys with their indices (since eventually we may want to eliminate features
             # from being trained, without modifiying the original dataset, so order of indices may not
             # be continuous. Also, we can define a tokenization level in these mappings.
-        feature_keys = [
+        feature_map = [
             {&#34;name&#34;: feature_key, &#34;index&#34;: i}
-            for i, feature_key in enumerate(feature_keys)
+            for i, feature_key in enumerate(feature_map)
         ]
-        return feature_keys
+        return feature_map
 
     def _fill_feature_vec(self, texts_features: list, feature_vector):
         &#34;&#34;&#34;Helper function to build feature vector for HANN to classify.&#34;&#34;&#34;
         self.tokenizer = Tokenizer()
         _texts = []
         for i, each in enumerate(self.texts):
-            if type(each) is list:
+            if isinstance(each, list):
                 each = &#34;&#34;.join(each)
             _texts.append(str(each))
         for i in range(len(self.records)):
             self.labels.append(self.records[i][&#34;classification&#34;])
         texts = _texts
         self.texts = _texts
-        self.tokenizer.fit_on_texts(texts)
+        self.tokenizer.fit_on_texts(self.texts)
         self.word_index = self.tokenizer.word_index
         self.vocab_size = len(self.word_index)
         for i, sentences in enumerate(texts_features):
@@ -1192,135 +1360,12 @@ to match that input shape provided.</p>
                             k = k + 1
                         else:
                             break
-        return feature_vector
-
-    def build_corpus(self, data_train, feature_keys):
-        data_train_dict = data_train.to_dict()
-        texts = []
-        texts_features = []
-        self.labels = []
-        for idx in range(
-            data_train.shape[0]
-        ):  # doesn&#39;t matter we&#39;re just getting count here
-            sentences = []
-            for dict in feature_keys:
-                key = dict[&#34;name&#34;]
-                sentence = str(data_train[key][idx])
-                sentence = text_normalizer.normalize_text_defaults(sentence)
-                if &#34;tokenize&#34; in dict and dict[&#34;tokenize&#34;] is &#34;char&#34;:
-                    sentence = [char for char in sentence]
-                sentences.append(sentence)
-            texts.extend(sentences)
-            texts_features.append(sentences)
-        self.texts = texts
-        return (texts, texts_features)
-
-    def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
-        &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
-        results = []
-        self.texts, texts_features = self.build_corpus(data_train, feature_keys)
-        self.data = self._fill_feature_vec(texts_features, self.data)
-        # Get unique classes from labels (in same order of occurence)
-        classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
-        self.num_classes = len(classes)
-        self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
-        self.Y = self.labels_matrix
-        self.X = self.data
-        return self.data
-
-    def build_features_vecs_from_input(self, input_features, feature_keys: dict = None):
-        &#34;&#34;&#34;Vectorizes a feature matrix from extracted PE data for HANN classification.&#34;&#34;&#34;
-        results = []
-        texts_features = []
-        if feature_keys is None:
-            if self.feature_keys is None:
-                self.feature_keys = self._get_feature_keys()
-            feature_keys = self.feature_keys
-        else:
-            self.feature_keys = feature_keys
-        for idx in range(len(input_features)):
-            sentences = []
-            for dict in self.feature_keys:
-                val = dict[&#34;index&#34;]
-                sentence = str(input_features[val])
-                sentence = text_normalizer.normalize_text(sentence)
-                if &#34;tokenize&#34; in dict and dict[&#34;tokenize&#34;] is &#34;char&#34;:
-                    sentence = [char for char in sentence]
-                sentences.append(sentence)
-            texts_features.append(sentences)
-        feature_vector = np.zeros(
-            (len(input_features), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH),
-            dtype=&#34;int32&#34;,
-        )
-        feature_vector = self._fill_feature_vec(texts_features, feature_vector)
-        return feature_vector
-
-    def predict(self, data):
-        &#34;&#34;&#34;Predicts binary classification of classes with probabilities given a feature matrix.&#34;&#34;&#34;
-        res = self.model.predict(data)
-        probs = res[0]
-        malicious = probs[1]
-        benign = probs[0]
-        return (benign, malicious)</code></pre>
+        return feature_vector</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
-<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_corpus"><code class="name flex">
-<span>def <span class="ident">build_corpus</span></span>(<span>self, data_train, feature_keys)</span>
-</code></dt>
-<dd>
-<section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def build_corpus(self, data_train, feature_keys):
-    data_train_dict = data_train.to_dict()
-    texts = []
-    texts_features = []
-    self.labels = []
-    for idx in range(
-        data_train.shape[0]
-    ):  # doesn&#39;t matter we&#39;re just getting count here
-        sentences = []
-        for dict in feature_keys:
-            key = dict[&#34;name&#34;]
-            sentence = str(data_train[key][idx])
-            sentence = text_normalizer.normalize_text_defaults(sentence)
-            if &#34;tokenize&#34; in dict and dict[&#34;tokenize&#34;] is &#34;char&#34;:
-                sentence = [char for char in sentence]
-            sentences.append(sentence)
-        texts.extend(sentences)
-        texts_features.append(sentences)
-    self.texts = texts
-    return (texts, texts_features)</code></pre>
-</details>
-</dd>
-<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data"><code class="name flex">
-<span>def <span class="ident">build_features_vecs_from_data</span></span>(<span>self, data_train, feature_keys=None)</span>
-</code></dt>
-<dd>
-<section class="desc"><p>Vectorizes the training dataset for HANN.</p></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def build_features_vecs_from_data(self, data_train, feature_keys: dict = None):
-    &#34;&#34;&#34;Vectorizes the training dataset for HANN.&#34;&#34;&#34;
-    results = []
-    self.texts, texts_features = self.build_corpus(data_train, feature_keys)
-    self.data = self._fill_feature_vec(texts_features, self.data)
-    # Get unique classes from labels (in same order of occurence)
-    classes = [x for i, x in enumerate(self.labels) if self.labels.index(x) == i]
-    self.num_classes = len(classes)
-    self.labels_matrix = to_categorical(self.labels, num_classes=self.num_classes)
-    self.Y = self.labels_matrix
-    self.X = self.data
-    return self.data</code></pre>
-</details>
-</dd>
-<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_input"><code class="name flex">
-<span>def <span class="ident">build_features_vecs_from_input</span></span>(<span>self, input_features, feature_keys=None)</span>
+<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_feature_matrix_from_input_arr"><code class="name flex">
+<span>def <span class="ident">build_feature_matrix_from_input_arr</span></span>(<span>self, input_features, feature_map=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Vectorizes a feature matrix from extracted PE data for HANN classification.</p></section>
@@ -1328,19 +1373,21 @@ to match that input shape provided.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def build_features_vecs_from_input(self, input_features, feature_keys: dict = None):
+<pre><code class="python">def build_feature_matrix_from_input_arr(
+    self, input_features, feature_map: dict = None
+):
     &#34;&#34;&#34;Vectorizes a feature matrix from extracted PE data for HANN classification.&#34;&#34;&#34;
     results = []
     texts_features = []
-    if feature_keys is None:
-        if self.feature_keys is None:
-            self.feature_keys = self._get_feature_keys()
-        feature_keys = self.feature_keys
+    if feature_map is None:
+        if self.feature_map is None:
+            self.feature_map = self._get_feature_map()
+        feature_map = self.feature_map
     else:
-        self.feature_keys = feature_keys
+        self.feature_map = feature_map
     for idx in range(len(input_features)):
         sentences = []
-        for dict in self.feature_keys:
+        for dict in self.feature_map:
             val = dict[&#34;index&#34;]
             sentence = str(input_features[val])
             sentence = text_normalizer.normalize_text(sentence)
@@ -1430,7 +1477,6 @@ to a filename).</p></section>
             )
             model.fit(x_train, y_train)
         models.append(model)
-        # f_importances(model.coef_, feature_keys_list)
         k_ct += 1
         y_pred = model.predict(x_val)
         # Reverse one-hot encoding
@@ -1515,18 +1561,39 @@ self.num_classes to number of classes.</p></section>
     if self.num_classes &gt; 2:
         # multi-class classifier
         preds = Dense(self.num_classes, activation=&#34;softmax&#34;)(l_att_sent)
+        model = Model(input_layer)
         model = Model(input_layer, preds)
         model.compile(
-            loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics
+            loss=&#34;categorical_crossentropy&#34;, optimizer=&#34;adadelta&#34;, metrics=metrics
         )
     else:
         # binary classifier
-        preds = Dense(2, activation=&#34;sigmoid&#34;)(l_att_sent)
+        preds = Dense(2, activation=&#34;softmax&#34;)(l_att_sent)
         model = Model(input_layer, preds)
         model.compile(
-            loss=&#34;binary_crossentropy&#34;, optimizer=&#34;rmsprop&#34;, metrics=metrics
+            loss=&#34;binary_crossentropy&#34;, optimizer=&#34;adadelta&#34;, metrics=metrics
         )
     return model</code></pre>
+</details>
+</dd>
+<dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_attention_map"><code class="name flex">
+<span>def <span class="ident">get_attention_map</span></span>(<span>self, input_data)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_attention_map(self, input_data):
+    att_model_output = self.model.layers[0:-2]
+    att_model = Model(att_model_output[0].input, att_model_output[-1].output)
+    att_model.compile(
+        optimizer=&#34;adam&#34;,
+        loss=&#34;sparse_categorical_crossentropy&#34;,
+        metrics=[&#34;accuracy&#34;],
+    )
+    return att_model.predict(input_data)[1]</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_glove_embeddings"><code class="name flex">
@@ -1559,7 +1626,7 @@ make our own for the model.</p></section>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.load_model"><code class="name flex">
-<span>def <span class="ident">load_model</span></span>(<span>self, filepath)</span>
+<span>def <span class="ident">load_model</span></span>(<span>self, filepath, custom_objects={}, compile=False)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Loads a model with a custom AttentionLayer property.</p></section>
@@ -1567,13 +1634,23 @@ make our own for the model.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def load_model(self, filepath: str):
+<pre><code class="python">def load_model(self, filepath: str, custom_objects={}, compile=False):
     &#34;&#34;&#34;Loads a model with a custom AttentionLayer property.&#34;&#34;&#34;
-    model = load_model(
-        filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
-    )
-    if model:
+    # model = load_model(
+    #  filepath, custom_objects={&#34;AttentionLayer&#34;: AttentionLayer(Layer)}
+    # )
+    if os.path.exists(filepath):
+        global graph
+        global session
+        graph = tf.get_default_graph()
+        session_conf = tf.ConfigProto(
+            intra_op_parallelism_threads=1, inter_op_parallelism_threads=1
+        )
+        session = tf.Session(graph=graph, config=session_conf)
+        K.set_session(session)
+        model = load_model(filepath, custom_objects=custom_objects, compile=compile)
         self.model = model
+        self.model._make_predict_function()
         return model
     else:
         return None</code></pre>
@@ -1614,15 +1691,20 @@ make our own for the model.</p></section>
 </summary>
 <pre><code class="python">def predict(self, data):
     &#34;&#34;&#34;Predicts binary classification of classes with probabilities given a feature matrix.&#34;&#34;&#34;
-    res = self.model.predict(data)
-    probs = res[0]
-    malicious = probs[1]
-    benign = probs[0]
-    return (benign, malicious)</code></pre>
+    # res = self.model.predict(data)
+    self.model._make_predict_function()
+    with graph.as_default():
+        with session.as_default():
+            res = self.model.predict(data)
+            probs = res[0]
+            normal = probs[0]  # &#34;0&#34; class
+            deviant = probs[1]  # &#34;1&#34; class
+            attention_vals = res[1]
+            return (normal, deviant)</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.preprocess_data"><code class="name flex">
-<span>def <span class="ident">preprocess_data</span></span>(<span>self, data_train, feature_keys)</span>
+<span>def <span class="ident">preprocess_data</span></span>(<span>self, data_train, feature_map, word_token_level='word', sent_token_level='sent', pickle_data=True)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Preprocesses data given a df object.</p></section>
@@ -1630,22 +1712,69 @@ make our own for the model.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def preprocess_data(self, data_train: object, feature_keys):
+<pre><code class="python">def preprocess_data(
+    self,
+    data_train: pd.DataFrame,
+    feature_map: dict,
+    word_token_level: str = &#34;word&#34;,
+    sent_token_level: str = &#34;sent&#34;,
+    pickle_data: bool = True,
+):
     &#34;&#34;&#34;Preprocesses data given a df object.&#34;&#34;&#34;
     self.data = np.zeros(
         (len(data_train), MAX_SENTENCE_COUNT, MAX_SENTENCE_LENGTH), dtype=&#34;int32&#34;,
     )
     self.labels_matrix = np.zeros((self.num_classes,), dtype=&#34;int32&#34;)
-    self.build_corpus(data_train, feature_keys)
-    self.build_features_vecs_from_data(data_train, feature_keys)
+    # Read or write preprocessed data into pickle
+    text_corpus_asset_path = os.path.join(
+        DEFAULT_MODEL_ASSETS_DIR_PATH,
+        self.model_name.split(&#34;.&#34;)[0] + &#34;_text_corpus.p&#34;,
+    )
+    word_index_asset_path = os.path.join(
+        DEFAULT_MODEL_ASSETS_DIR_PATH,
+        self.model_name.split(&#34;.&#34;)[0] + &#34;_word_index.p&#34;,
+    )
+    vectorized_data_asset_path = os.path.join(
+        DEFAULT_MODEL_ASSETS_DIR_PATH,
+        self.model_name.split(&#34;.&#34;)[0] + &#34;_vectorized_data.p&#34;,
+    )
+    read = misc.read_pickle_data(text_corpus_asset_path)
+    if read is None:
+        self.texts = self._build_corpus(
+            data_train, feature_map, word_token_level, sent_token_level
+        )[0]
+        print(&#34;Finished building corpus.&#34;)
+        if pickle_data:
+            misc.write_pickle_data(self.texts, text_corpus_asset_path)
+    else:
+        self.texts = read
+        print(&#34;Finished loading corpus.&#34;)
+    read = misc.read_pickle_data(word_index_asset_path)
+    if read is None:
+        self._build_feature_matrix_from_data(data_train, feature_map)
+        print(&#34;Finished building feature matrix from corupus.&#34;)
+        if pickle_data:
+            misc.write_pickle_data(self.word_index, word_index_asset_path)
+            misc.write_pickle_data(self.data, vectorized_data_asset_path)
+    else:
+        self.word_index = read
+        print(&#34;Finished loading word index.&#34;)
+        read = misc.read_pickle_data(vectorized_data_asset_path)
+        if read is None:
+            self._build_feature_matrix_from_data(data_train, feature_map)
+            print(&#34;Finished building feature matrix from corupus.&#34;)
+            misc.write_pickle_data(self.word_index, word_index_asset_path)
+            misc.write_pickle_data(self.data, vectorized_data_asset_path)
+        else:
+            self.data = read
+            print(&#34;Finished loading preprocessed data.&#34;)
     print(&#34;Total %s unique tokens.&#34; % len(self.word_index))
-    print(&#34;Shape of data tensor: &#34;, self.data, self.data.shape)
     print(&#34;Finished preprocessing data.&#34;)
     return self.data</code></pre>
 </details>
 </dd>
 <dt id="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.read_and_train_data"><code class="name flex">
-<span>def <span class="ident">read_and_train_data</span></span>(<span>self, filepath, top_features=None, labels=None, model_base=None, outputpath='/home/ubuntu/restless/restless/data/models/default.h5', save_model=False)</span>
+<span>def <span class="ident">read_and_train_data</span></span>(<span>self, filepath, top_features=None, labels=None, model_base=None, outputpath='/home/ubuntu/restless/restless/data/models/default.h5', save_model=False, word_token_level='word', sent_token_level='sent')</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Reads a CSV file into training data and trains network.</p></section>
@@ -1661,6 +1790,8 @@ make our own for the model.</p></section>
     model_base: object = None,
     outputpath: str = DEFAULT_MODEL_PATH,
     save_model: bool = False,
+    word_token_level: str = &#34;word&#34;,
+    sent_token_level: str = &#34;sent&#34;,
 ):
     &#34;&#34;&#34;Reads a CSV file into training data and trains network.&#34;&#34;&#34;
     self.X = pd.read_csv(filepath, nrows=MAX_DOCS)
@@ -1670,17 +1801,24 @@ make our own for the model.</p></section>
         if len(self.features) &gt; 0:
             top_features = self.features
             self.X = self.X.filter(self.features)
-    self.feature_keys = self._get_feature_keys(filepath, top_features=top_features)
-    self.preprocess_data(self.X, self.feature_keys)
+    self.feature_map = self._get_feature_map(filepath, top_features=top_features)
+    self.preprocess_data(
+        self.X, self.feature_map, word_token_level, sent_token_level
+    )
+    print(&#34;Finished preprocessing data.&#34;)
     self.embeddings_index = self.get_glove_embeddings()
+    print(&#34;Finished getting GlOve embeddings.&#34;)
     embeddings_matrix = self.make_embeddings_matrix(self.embeddings_index)
+    print(&#34;Finished making embeddings matrix from word index.&#34;)
     model = self.build_network_and_train_model(
         embeddings_matrix, labels=labels, model_base=model_base
     )
+    print(&#34;Finished training model.&#34;)
     self.model = model
-    outputpath = os.path.abspath(os.path.join(DEFAULT_MODEL_DIR_PATH, &#34;model.p&#34;))
+    self.model_name = output_path.split(&#34;/&#34;)[len(output_path.split(&#34;/&#34;)) - 1]
     if save_model:
         self.save_model(model, outputpath)
+        print(&#34;Finished saving model: {} at {}&#34;.format(model_name, output_path))
     return model</code></pre>
 </details>
 </dd>
@@ -1720,30 +1858,15 @@ make our own for the model.</p></section>
 <li><code><a title="restless.components.nlp.hann" href="index.html">restless.components.nlp.hann</a></code></li>
 </ul>
 </li>
-<li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="">
-<li><code><a title="restless.components.nlp.hann.hann.compute_steps_per_epoch" href="#restless.components.nlp.hann.hann.compute_steps_per_epoch">compute_steps_per_epoch</a></code></li>
-</ul>
-</li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="restless.components.nlp.hann.hann.AttentionLayer" href="#restless.components.nlp.hann.hann.AttentionLayer">AttentionLayer</a></code></h4>
-<ul class="">
-<li><code><a title="restless.components.nlp.hann.hann.AttentionLayer.build" href="#restless.components.nlp.hann.hann.AttentionLayer.build">build</a></code></li>
-<li><code><a title="restless.components.nlp.hann.hann.AttentionLayer.call" href="#restless.components.nlp.hann.hann.AttentionLayer.call">call</a></code></li>
-<li><code><a title="restless.components.nlp.hann.hann.AttentionLayer.compute_mask" href="#restless.components.nlp.hann.hann.AttentionLayer.compute_mask">compute_mask</a></code></li>
-<li><code><a title="restless.components.nlp.hann.hann.AttentionLayer.compute_output_shape" href="#restless.components.nlp.hann.hann.AttentionLayer.compute_output_shape">compute_output_shape</a></code></li>
-</ul>
-</li>
-<li>
 <h4><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork">HierarchicalAttentionNetwork</a></code></h4>
 <ul class="">
-<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_corpus" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_corpus">build_corpus</a></code></li>
-<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_data">build_features_vecs_from_data</a></code></li>
-<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_input" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_features_vecs_from_input">build_features_vecs_from_input</a></code></li>
+<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_feature_matrix_from_input_arr" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_feature_matrix_from_input_arr">build_feature_matrix_from_input_arr</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_network_and_train_model" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.build_network_and_train_model">build_network_and_train_model</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.create_model_base" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.create_model_base">create_model_base</a></code></li>
+<li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_attention_map" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_attention_map">get_attention_map</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_glove_embeddings" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.get_glove_embeddings">get_glove_embeddings</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.load_model" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.load_model">load_model</a></code></li>
 <li><code><a title="restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.make_embeddings_matrix" href="#restless.components.nlp.hann.hann.HierarchicalAttentionNetwork.make_embeddings_matrix">make_embeddings_matrix</a></code></li>
