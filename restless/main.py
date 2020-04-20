@@ -153,21 +153,15 @@ class Restless(object):
             colored_malicious = misc.prob_to_percentage(malicious)
             clr_b = "d_gray"  # benign color(s)
             clr_m = "d_gray"  # malicious color(s)
-            if benign > .3:
-                clr_b = (
-                    "yellow" if benign < 0.45 else ["yellow", "bold"]
-                )
+            if benign > 0.3:
+                clr_b = "yellow" if benign < 0.45 else ["yellow", "bold"]
             if benign >= 0.6:
                 clr_b = ["green"] if benign < 0.8 else ["green", "bold"]
             if malicious > 0.15:
+                clr_m = "yellow" if malicious < 0.25 else ["yellow", "bold"]
+            if malicious >= 0.4:
                 clr_m = (
-                    "yellow" if malicious < .25 else ["yellow", "bold"]
-                )
-            if malicious >= .4:
-                clr_m = (
-                    "red"
-                    if malicious >= 0.6 and malicious <= 0.8
-                    else ["red", "bold"]
+                    "red" if malicious >= 0.6 and malicious <= 0.8 else ["red", "bold"]
                 )
             colored_benign = colored(colored_benign, clr_b)
             colored_malicious = colored(colored_malicious, clr_m)
@@ -192,10 +186,15 @@ class Restless(object):
         )
         flush(newline=True)
         if len(potential_malware) > 0:
-            logger.critical(colored(
-                "Found {} files to be potentially infected!".format(
-                    colored(str(len(potential_malware)), ["bold", "red", "underline"])
-                ), "red")
+            logger.critical(
+                colored(
+                    "Found {} files to be potentially infected!".format(
+                        colored(
+                            str(len(potential_malware)), ["bold", "red", "underline"]
+                        )
+                    ),
+                    "red",
+                )
             )
             self.clean_files(potential_malware)
         else:
