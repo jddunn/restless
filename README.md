@@ -7,13 +7,13 @@
     Always-on anti-malware software using malicious language processing (nlp-inspired) techniques.
         <br><br>
   <a href="./screenshots/Restless - CLI Full Scan Demo.gif">
-    <img src="./screenshots/Restless - CLI Full Scan Demo.gif" alt="Restless - CLI Full Scan Demo" width="650">
+    <img src="./screenshots/Restless - CLI Full Scan Demo.gif" alt="Restless - CLI Full Scan Demo" width="700">
     <br>
     <sup>Restless - CLI Full Scan Demo</sup>
   </a>
   <br>
   <a href="./screenshots/Restless - CLI Constant Watch Demo.gif">
-    <img src="./screenshots/Restless - CLI Constant Watch Demo.gif" alt="Restless - CLI Constant Watch Demo Demo" width="650">
+    <img src="./screenshots/Restless - CLI Constant Watch Demo.gif" alt="Restless - CLI Constant Watch Demo Demo" width="700">
     <br>
     <sup>Restless - CLI Constant Watch Demo</sup>
   </a>
