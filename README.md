@@ -11,6 +11,11 @@
     <br>
     <sup>Restless - CLI Full Scan Demo</sup>
   </a>
+  <a href="./screenshots/Restless - CLI Constant Watch Demo.gif">
+    <img src="./screenshots/Restless - CLI Constant Watch Demo.gif" alt="Restless - CLI Constant Watch Demo Demo">
+    <br>
+    <sup>Restless - CLI Constant Watch Demo</sup>
+  </a>
   </p>
 </p>
 
