@@ -36,9 +36,9 @@ class Scanner:
         path = os.path.abspath(path)
         # recursive walk
         if os.path.isfile(path):
+            logger.info("Prechecking " + colored("1", ["bold", "d_gray"]) + " file for metadata - {}.".format(path))
             result = await self.pea.analyze_file(path)
             flush(newline=True)
-            logger.info("Prechecking " + colored("1", ["bold", "d_gray"]) + " file for metadata - {}.".format(path))
             results.append(result)
         else:
             count = 0

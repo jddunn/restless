@@ -105,9 +105,10 @@ class Restless(object):
             )
             return
         else:
+             count = len(file_results) - 1 if len(file_results) -1 > 0 else len(file_results)
              logger.info(
                     colored("Sending {} files to the malware analysis / defense pipeline.".format(
-                        colored(str(len(file_results) - 1)), ["d_gray", "underline", "bold"]), "bold")
+                        colored(str(count), ["d_gray", "underline", "bold"]), "bold"))
                 )
         for file_result in file_results:
             fname = file_result[0]
@@ -117,7 +118,7 @@ class Restless(object):
             short_fname = fname.split("/")[len(fname.split("/")) - 1]
             features = file_result[1]
             if len(self.nlp.hann.features) > 0:
-                features = [x for x in features if x in self.nlp.hann.features]
+                features = [self.nlp.hann.text_normalizer.normalize_text(x) for x in features if x in self.nlp.hann.features]
             matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
             result = (fname, self.nlp.hann.predict(matrix_results))
             results.append(result)

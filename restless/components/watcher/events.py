@@ -1,5 +1,6 @@
 import os, sys
 import asyncio
+import time
 
 from watchdog.events import FileSystemEventHandler
 
@@ -77,10 +78,12 @@ class EventHandler(FileSystemEventHandler):
         # self._loop.call_soon_threadsafe(self._ensure_future, _method(event))
 
     async def on_moved(self, event):
+        time.sleep(.1)
         await self.event_cb(event.src_path)
         pass
 
     async def on_created(self, event):
+        time.sleep(.1)
         await self.event_cb(event.src_path)
         pass
 
@@ -88,5 +91,6 @@ class EventHandler(FileSystemEventHandler):
         pass
 
     async def on_modified(self, event):
+        time.sleep(.1)
         pass
 
