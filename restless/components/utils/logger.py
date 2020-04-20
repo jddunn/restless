@@ -3,7 +3,7 @@ import logging as logging
 import sys
 
 # Format logs with extended metadata like functions, files, lineno
-extended_log_data = True
+extended_log_data = False
 
 import time
 

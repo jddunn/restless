@@ -78,12 +78,12 @@ class EventHandler(FileSystemEventHandler):
         # self._loop.call_soon_threadsafe(self._ensure_future, _method(event))
 
     async def on_moved(self, event):
-        time.sleep(0.1)
+        time.sleep(0.25)
         await self.event_cb(event.src_path)
         pass
 
     async def on_created(self, event):
-        time.sleep(0.1)
+        time.sleep(0.25)
         await self.event_cb(event.src_path)
         pass
 
@@ -91,5 +91,5 @@ class EventHandler(FileSystemEventHandler):
         pass
 
     async def on_modified(self, event):
-        time.sleep(0.1)
+        time.sleep(0.25)
         pass
