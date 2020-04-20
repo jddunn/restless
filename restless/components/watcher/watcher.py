@@ -92,12 +92,12 @@ class Watcher:
         to_watch = []
         if dirs == ["*"] or dirs == ([],) or dirs == "*":
             msg = (
-                logging.colored("Restless", "bold")
+                logging.colored("Restless", "framed")
                 + " is now "
                 + logging.colored("watching over", "slow_blink")
                 + " the full system."
                 )
-            logger.info(msg)
+            logger.info(logging.colored(msg, "cyan"))
             root = misc.get_os_root_path()
             dirs = [root]
             self.watch_pool = dirs
@@ -112,37 +112,38 @@ class Watcher:
                             continue
                     msg = "Adding: {} to the Watcher pool.".format(fp)
                     to_watch.append(fp)
-                    logger.info(msg)
+                    logger.info(logging.colored(msg, "cyan"))
                 if len(to_watch) == 0:
                     return
                 self.watch_pool.extend(to_watch)
                 msg = (
-                    logging.colored("Restless", "bold")
+                    logging.colored("Restless", "framed")
                     + " is now "
                     + logging.colored("watching over", "slow_blink")
                     + " the system."
                 )
-                logger.info(msg)
+                logger.info(logging.colored(msg, "cyan"))
             else:
                 fp = dirs  # root dir
                 if not skip_check:
                     found = self.check_if_already_watching_fp(fp, self.watch_pool)
                     if found:
-                        msg = "{} is already being watched!".format(fp)
+                        msg = "{} is already being watched! Skipping..".format(fp)
+                        logger.error(msg)
                     else:
                         msg = "Adding: {} to the Watcher pool.".format(fp)
+                        logger.info(logging.colored(msg, "cyan"))
                     to_watch.append(fp)
-                    logger.info(msg)
                 if len(to_watch) == 0:
                     return
                 self.watch_pool.extend(to_watch)
                 msg = (
-                    logging.colored("Restless", "bold")
+                    logging.colored("Restless", "framed")
                     + " is now "
                     + logging.colored("watching over", "slow_blink")
                     + " the system."
                 )
-                logger.info(msg)
+                logger.info(logging.colored(msg, ["cyan", "bold"]))
         self.watchdog = AIOWatchdog(
             self.watch_pool, event_handler=self.default_evt_handler, recursive=True
         )

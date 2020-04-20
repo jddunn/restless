@@ -74,9 +74,9 @@ class Restless(object):
             )
         return
 
-    def scan_full_system(self):
+    async def scan_full_system(self):
         root = misc.get_os_root_path()
-        results = self.scan(root)
+        results = await self.scan(root)
         return results
 
     async def scan(self, filepath: str, malware_prob_threshold: float = None):
