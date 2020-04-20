@@ -7,6 +7,7 @@ extended_log_data = True
 
 import time
 
+
 class Logger:
     """
     Logging with colors.
@@ -35,12 +36,12 @@ class Logger:
         return
 
     def flush(self, newline=False) -> None:
-        CURSOR_UP_ONE = '\033[K'
-        ERASE_LINE = '\x1b[2K'
+        CURSOR_UP_ONE = "\033[K"
+        ERASE_LINE = "\x1b[2K"
         sys.stdout.write(CURSOR_UP_ONE)
-        sys.stdout.write(ERASE_LINE+'\r')
+        sys.stdout.write(ERASE_LINE + "\r")
         if newline:
-            sys.stdout.write(ERASE_LINE+'\n')
+            sys.stdout.write(ERASE_LINE + "\n")
         return
 
     def change_logging_config(self, config: dict) -> None:
@@ -152,6 +153,7 @@ class ANSIColor:
 
 colored = ANSIColor().colored
 same_line = ANSIColor().same_line
+
 
 class CustomFormatter(logging.Formatter):
     """

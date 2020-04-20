@@ -48,7 +48,9 @@ class Restless(object):
         watch_pool = [os.path.abspath(path) for path in watch_pool]
         self.event_loop = asyncio.get_event_loop()  # reset event loop
         self.event_loop = asyncio.new_event_loop()
-        self.watcher = Watcher(watch_pool, loop=self.event_loop, default_event_handler_cb=self.scan)
+        self.watcher = Watcher(
+            watch_pool, loop=self.event_loop, default_event_handler_cb=self.scan
+        )
         # Our default model will extract PE header data for classification
         self.nlp = NLP(load_default_hann_model=True)
         if self.run_system_scan:
@@ -68,9 +70,7 @@ class Restless(object):
         self.event_loop = asyncio.new_event_loop()
         with ThreadPoolExecutor(max_workers=2) as executor:
             self.event_loop.run_until_complete(
-                self.watcher.start_new_watch_thread(
-                    self.watch_pool
-                )
+                self.watcher.start_new_watch_thread(self.watch_pool)
             )
         return
 
@@ -82,14 +82,19 @@ class Restless(object):
     async def scan(self, filepath: str, malware_prob_threshold: float = None):
         if not malware_prob_threshold:
             malware_prob_threshold = self.default_malware_prob_threshold
-        logger.info(colored("Scanning", "rapid_blink") + " system now at {}.".format(colored(filepath, "cyan")))
+        logger.info(
+            colored("Scanning", "rapid_blink")
+            + " system now at {}.".format(colored(filepath, "cyan"))
+        )
         results = []
         potential_malware = []
         file_results = await self.scanner.scan_recursive(filepath)
         files_scanned = len(file_results)
         flush(newline=True)
         msg = "\t" + colored("Restless", ["bold", "slow_blink", "magenta", "underline"])
-        msg += " " + colored("defense pipeline working.", ["magenta", "bold", "slow_blink"])
+        msg += " " + colored(
+            "defense pipeline working.", ["magenta", "bold", "slow_blink"]
+        )
         logger.success(msg)
         flush(newline=True)
         # Remove none from our results (meaning those files did not have any
@@ -101,15 +106,23 @@ class Restless(object):
                     "Found no files that were scannable for malware (checked {} files).".format(
                         colored(str(files_scanned), ["bold", "underline"])
                     )
-                ) + colored(" The system seems to be safe.", ["bold", "green"])
+                )
+                + colored(" The system seems to be safe.", ["bold", "green"])
             )
             return
         else:
-             count = len(file_results) - 1 if len(file_results) -1 > 0 else len(file_results)
-             logger.info(
-                    colored("Sending {} files to the malware analysis / defense pipeline.".format(
-                        colored(str(count), ["d_gray", "underline", "bold"]), "bold"))
+            count = (
+                len(file_results) - 1
+                if len(file_results) - 1 > 0
+                else len(file_results)
+            )
+            logger.info(
+                colored(
+                    "Sending {} files to the malware analysis / defense pipeline.".format(
+                        colored(str(count), ["d_gray", "underline", "bold"]), "bold"
+                    )
                 )
+            )
         for file_result in file_results:
             fname = file_result[0]
             path_to_fname = fname.split("/")
@@ -118,7 +131,11 @@ class Restless(object):
             short_fname = fname.split("/")[len(fname.split("/")) - 1]
             features = file_result[1]
             if len(self.nlp.hann.features) > 0:
-                features = [self.nlp.hann.text_normalizer.normalize_text(x) for x in features if x in self.nlp.hann.features]
+                features = [
+                    self.nlp.hann.text_normalizer.normalize_text(x)
+                    for x in features
+                    if x in self.nlp.hann.features
+                ]
             matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
             result = (fname, self.nlp.hann.predict(matrix_results))
             results.append(result)

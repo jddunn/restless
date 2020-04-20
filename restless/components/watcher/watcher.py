@@ -41,21 +41,25 @@ class Watcher:
     """
 
     def __init__(
-        self, watch_pool: list, loop=None, default_event_handler_cb = None, default_evt_handler=CustomEventHandler()
+        self,
+        watch_pool: list,
+        loop=None,
+        default_event_handler_cb=None,
+        default_evt_handler=CustomEventHandler(),
     ):
         self.watch_pool = watch_pool  # Array of paths to watch
         self.default_evt_handler = (
             default_evt_handler  # Event callback on watch modification signal
         )
         self.watching = True  # As long as this is true, Watcher will be watching
-        self.default_event_handler_cb = default_event_handler_cb # What method the event cb will call
+        self.default_event_handler_cb = (
+            default_event_handler_cb  # What method the event cb will call
+        )
         if self.default_event_handler_cb is not None:
             self.default_evt_handler.event_cb = self.default_event_handler_cb
         return
 
-    async def start_new_watch_thread(
-        self, dirs: list = None
-    ) -> None:
+    async def start_new_watch_thread(self, dirs: list = None) -> None:
         try:
             # result = start_new_thread(self.constant_watch, (dirs,))
             result = self.constant_watch(dirs)
@@ -99,7 +103,7 @@ class Watcher:
                 + " is now "
                 + colored("watching over", "slow_blink")
                 + " the full system."
-                )
+            )
             logger.info(colored(msg, ["cyan", "bold", "underline"]))
             root = misc.get_os_root_path()
             dirs = [root]

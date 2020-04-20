@@ -22,6 +22,7 @@ colored = logging.colored
 same_line = logging.same_line
 flush = logging.flush
 
+
 class Scanner:
     """
     Extracts and analyzes information from files and classifies it for malware probability using NLP models.
@@ -36,7 +37,11 @@ class Scanner:
         path = os.path.abspath(path)
         # recursive walk
         if os.path.isfile(path):
-            logger.info("Prechecking " + colored("1", ["bold", "d_gray"]) + " file for metadata - {}.".format(path))
+            logger.info(
+                "Prechecking "
+                + colored("1", ["bold", "d_gray"])
+                + " file for metadata - {}.".format(path)
+            )
             result = await self.pea.analyze_file(path)
             flush(newline=True)
             results.append(result)
@@ -48,7 +53,14 @@ class Scanner:
                     fname = os.path.join(dirpath, filename)
                     # Unfortunately the logging lib doesn't support printing on
                     # the same line easily, so we have to flush the last printed line
-                    logger.info(same_line("Prechecking {} files for metadata - {}.".format(colored(count, ["bold", "d_gray"]), colored(filename, ["underline", "d_gray"]))))
+                    logger.info(
+                        same_line(
+                            "Prechecking {} files for metadata - {}.".format(
+                                colored(count, ["bold", "d_gray"]),
+                                colored(filename, ["underline", "d_gray"]),
+                            )
+                        )
+                    )
                     flush()
                     result = await self.pea.analyze_file(fname)
                     results.append(result)

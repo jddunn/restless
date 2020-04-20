@@ -13,7 +13,7 @@ EVENT_TYPE_MODIFIED = "modified"
 class AIOEventHandler(FileSystemEventHandler):
     """An asyncio-compatible event handler."""
 
-    def __init__(self, loop=None, event_cb = None):
+    def __init__(self, loop=None, event_cb=None):
         self._loop = loop or asyncio.get_event_loop()
         # prefer asyncio.create_task starting from Python 3.7
         if hasattr(asyncio, "create_task"):
@@ -55,9 +55,9 @@ class AIOEventHandler(FileSystemEventHandler):
         for handler in handlers:
             self._loop.call_soon_threadsafe(self._ensure_future, handler(event))
 
-class EventHandler(FileSystemEventHandler):
 
-    def __init__(self, loop=None, event_cb = None):
+class EventHandler(FileSystemEventHandler):
+    def __init__(self, loop=None, event_cb=None):
         self._loop = loop or asyncio.get_event_loop()
         # prefer asyncio.create_task starting from Python 3.7
         if hasattr(asyncio, "create_task"):
@@ -78,12 +78,12 @@ class EventHandler(FileSystemEventHandler):
         # self._loop.call_soon_threadsafe(self._ensure_future, _method(event))
 
     async def on_moved(self, event):
-        time.sleep(.1)
+        time.sleep(0.1)
         await self.event_cb(event.src_path)
         pass
 
     async def on_created(self, event):
-        time.sleep(.1)
+        time.sleep(0.1)
         await self.event_cb(event.src_path)
         pass
 
@@ -91,6 +91,5 @@ class EventHandler(FileSystemEventHandler):
         pass
 
     async def on_modified(self, event):
-        time.sleep(.1)
+        time.sleep(0.1)
         pass
-

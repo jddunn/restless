@@ -126,6 +126,7 @@ kf = KFold(n_splits=K_NUM, shuffle=True, random_state=1618)
 metrics = ["accuracy"]
 
 from keras import backend as K
+
 # K.clear_session()
 
 import tensorflow as tf
@@ -184,7 +185,6 @@ class HierarchicalAttentionNetwork:
         # arbitrary representations of documents using things like metadata and numbers
         self.word_token_level = word_token_level
         self.sent_token_level = sent_token_level
-
 
         if load_default_model:
             self.model = self.load_model(
@@ -321,7 +321,7 @@ class HierarchicalAttentionNetwork:
         feature_map: dict,
         word_token_level: str = "word",
         sent_token_level: str = "sent",
-        pickle_data: bool = True
+        pickle_data: bool = True,
     ):
         """Preprocesses data given a df object."""
         self.data = np.zeros(
@@ -329,12 +329,23 @@ class HierarchicalAttentionNetwork:
         )
         self.labels_matrix = np.zeros((self.num_classes,), dtype="int32")
         # Read or write preprocessed data into pickle
-        text_corpus_asset_path = os.path.join(DEFAULT_MODEL_ASSETS_DIR_PATH, self.model_name.split(".")[0] + "_text_corpus.p")
-        word_index_asset_path = os.path.join(DEFAULT_MODEL_ASSETS_DIR_PATH, self.model_name.split(".")[0] + "_word_index.p")
-        vectorized_data_asset_path = os.path.join(DEFAULT_MODEL_ASSETS_DIR_PATH, self.model_name.split(".")[0] + "_vectorized_data.p")
+        text_corpus_asset_path = os.path.join(
+            DEFAULT_MODEL_ASSETS_DIR_PATH,
+            self.model_name.split(".")[0] + "_text_corpus.p",
+        )
+        word_index_asset_path = os.path.join(
+            DEFAULT_MODEL_ASSETS_DIR_PATH,
+            self.model_name.split(".")[0] + "_word_index.p",
+        )
+        vectorized_data_asset_path = os.path.join(
+            DEFAULT_MODEL_ASSETS_DIR_PATH,
+            self.model_name.split(".")[0] + "_vectorized_data.p",
+        )
         read = misc.read_pickle_data(text_corpus_asset_path)
         if read is None:
-            self.texts = self._build_corpus(data_train, feature_map, word_token_level, sent_token_level)[0]
+            self.texts = self._build_corpus(
+                data_train, feature_map, word_token_level, sent_token_level
+            )[0]
             print("Finished building corpus.")
             if pickle_data:
                 misc.write_pickle_data(self.texts, text_corpus_asset_path)
@@ -380,13 +391,15 @@ class HierarchicalAttentionNetwork:
     def load_model(self, filepath: str, custom_objects={}, compile=False):
         """Loads a model with a custom AttentionLayer property."""
         # model = load_model(
-          #  filepath, custom_objects={"AttentionLayer": AttentionLayer(Layer)}
+        #  filepath, custom_objects={"AttentionLayer": AttentionLayer(Layer)}
         # )
         if os.path.exists(filepath):
             global graph
             global session
             graph = tf.get_default_graph()
-            session_conf = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
+            session_conf = tf.ConfigProto(
+                intra_op_parallelism_threads=1, inter_op_parallelism_threads=1
+            )
             session = tf.Session(graph=graph, config=session_conf)
             K.set_session(session)
             model = load_model(filepath, custom_objects=custom_objects, compile=compile)
