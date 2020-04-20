@@ -56,10 +56,6 @@ class NLP:
 
     def __init__(self, load_default_hann_model=False):
         self.load_default_hann_model = load_default_hann_model
-        # We don't have "sentences" or "words" for PE header data,
-        # so tokenize every string into a word
-        # For example, "4069" will be considered a sentence,
-        # tokenized as a sequence of words "4", "0", "6", "9".
         hann = HierarchicalAttentionNetwork(
             load_default_model=load_default_hann_model,
             features=top_features,
