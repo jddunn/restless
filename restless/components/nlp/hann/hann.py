@@ -203,6 +203,7 @@ class HierarchicalAttentionNetwork:
                     DEFAULT_MODEL_PATH, self.model_name
                 )
             )
+            print("\n")
         return
 
     def read_and_train_data(
@@ -350,8 +351,7 @@ class HierarchicalAttentionNetwork:
                 self.data = read
                 print("Finished loading preprocessed data.")
         print("Total %s unique tokens." % len(self.word_index))
-        print("Shape of data tensor: ", self.data, self.data.shape)
-        print("Finished preprocessing data.")
+        print("Finished preprocessing data.\n")
         return self.data
 
     def predict(self, data):
