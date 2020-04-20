@@ -1,8 +1,11 @@
-# PE extraction code Written by: Ajit kumar, urwithajit9@gmail.com ,25Feb2015
+# PE extraction code
+# Original code written by: Ajit kumar, urwithajit9@gmail.com ,25Feb2015
 
 import os
+import time
 import pefile
 import csv
+import mmap
 
 # Change this based on the PE file we're analyzing -
 # [0] for benign and [1] for malicious, or leave empty if we do$
@@ -157,13 +160,24 @@ class PEAnalyzer:
 
     async def analyze_file(self, fp: str):
         try:
-            pe = pefile.PE(fp)
-        except Exception as e:
+            with open(fp, "rb") as f:
+                # Map the executable in memory
+                pe_data = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+                # Parse the data contained in the buffer
+                pe = pefile.PE(data=pe_data)
+                try:
+                    pe = pefile.PE(data=pe_data)
+                except Exception as e:
+                    try:
+                        pe = pefile.PE(fp)
+                    except Exception as e:
+                        pass
+                else:
+                    try:
+                        features = self.extract_features(pe)
+                        result = (fp, features)
+                        return result
+                    except Exception as e:
+                        pass
+        except:
             pass
-        else:
-            try:
-                features = self.extract_features(pe)
-                result = (fp, features)
-                return result
-            except Exception as e:
-                pass

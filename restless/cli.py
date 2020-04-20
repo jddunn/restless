@@ -32,6 +32,7 @@ if __name__ == "__main__":
     uvloop.install()
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     event_loop = asyncio.get_event_loop()
+    restless = Restless(run_system_scan=False)
     fp = args.input
     wfp = args.watch
     if fp and wfp:
@@ -39,23 +40,24 @@ if __name__ == "__main__":
             "Error! Please only pass in either an -i or -w (for input directory to scan now, or directory to watch and defend)."
         )
     if fp is None and wfp:
-        restless = Restless(run_system_scan=False)
         try:
             event_loop.run_until_complete(restless.constant_watch(wfp))
+        finally:
+            event_loop.close()
+        try:
+            event_loop.run_until_complete(restless.scan_full_system())
         finally:
             event_loop.close()
     else:
         if fp is None and wfp is None:
             fp = "*"
         if fp is "*":
-            restless = Restless(run_system_scan=False)
             try:
                 event_loop.run_until_complete(restless.scan_full_system())
             finally:
                 event_loop.close()
         else:
             if os.path.exists(fp):
-                restless = Restless(run_system_scan=False)
                 try:
                     event_loop.run_until_complete(restless.scan(fp))
                 finally:

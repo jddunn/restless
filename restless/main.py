@@ -74,9 +74,9 @@ class Restless(object):
             )
         return
 
-    def scan_full_system(self):
+    async def scan_full_system(self):
         root = misc.get_os_root_path()
-        results = self.scan(root)
+        results = await self.scan(root)
         return results
 
     async def scan(self, filepath: str, malware_prob_threshold: float = None):
@@ -88,29 +88,28 @@ class Restless(object):
         file_results = await self.scanner.scan_recursive(filepath)
         files_scanned = len(file_results)
         flush(newline=True)
-        msg = "\t" + colored("Restless", ["bold", "slow_blink", "magenta"])
-        msg += " " + colored("defense pipeline activated.", ["magenta", "bold"])
+        msg = "\t" + colored("Restless", ["bold", "slow_blink", "magenta", "underline"])
+        msg += " " + colored("defense pipeline working.", ["magenta", "bold", "slow_blink"])
         logger.success(msg)
         flush(newline=True)
         # Remove none from our results (meaning those files did not have any
         # extractable metadata for our classifier, for now at least)
-        file_results = [res for res in file_results if res]
+        file_results = [res for res in file_results if res is not None]
         if len(file_results) == 0:
             logger.success(
                 colored(
                     "Found no files that were scannable for malware (checked {} files).".format(
-                        colored(str(files_scanned), "bold"), "green"
+                        colored(str(files_scanned), ["bold", "underline"])
                     )
-                )
+                ) + colored(" The system seems to be safe.", ["bold", "green"])
             )
-            logger.success(colored("The system appears to be safe.", "green"))
             return
         else:
+             count = len(file_results) - 1 if len(file_results) -1 > 0 else len(file_results)
              logger.info(
                     colored("Sending {} files to the malware analysis / defense pipeline.".format(
-                        colored(str(files_scanned - 1), ["d_gray", "underline"]), "bold")
+                        colored(str(count), ["d_gray", "underline", "bold"]), "bold"))
                 )
-            )
         for file_result in file_results:
             fname = file_result[0]
             path_to_fname = fname.split("/")
@@ -119,7 +118,7 @@ class Restless(object):
             short_fname = fname.split("/")[len(fname.split("/")) - 1]
             features = file_result[1]
             if len(self.nlp.hann.features) > 0:
-                features = [x for x in features if x in self.nlp.hann.features]
+                features = [self.nlp.hann.text_normalizer.normalize_text(x) for x in features if x in self.nlp.hann.features]
             matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
             result = (fname, self.nlp.hann.predict(matrix_results))
             results.append(result)
@@ -161,7 +160,7 @@ class Restless(object):
         if len(potential_malware) > 0:
             logger.critical(
                 "Found {} files to be potentially infected!".format(
-                    colored(str(len(potential_malware)), ["bold", "red"])
+                    colored(str(len(potential_malware)), ["bold", "red", "underline"])
                 )
             )
             self.clean_files(potential_malware)

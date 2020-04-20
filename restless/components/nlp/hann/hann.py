@@ -125,6 +125,15 @@ kf = KFold(n_splits=K_NUM, shuffle=True, random_state=1618)
 
 metrics = ["accuracy"]
 
+from keras import backend as K
+# K.clear_session()
+
+import tensorflow as tf
+from tensorflow.python.keras.backend import set_session
+
+graph = None
+session = None
+
 
 class HierarchicalAttentionNetwork:
     """
@@ -176,8 +185,9 @@ class HierarchicalAttentionNetwork:
         self.word_token_level = word_token_level
         self.sent_token_level = sent_token_level
 
+
         if load_default_model:
-            self.model = load_model(
+            self.model = self.load_model(
                 DEFAULT_MODEL_PATH,
                 custom_objects={"AttentionLayer": AttentionLayer},
                 compile=False,
@@ -203,6 +213,7 @@ class HierarchicalAttentionNetwork:
                     DEFAULT_MODEL_PATH, self.model_name
                 )
             )
+            print("\n")
         return
 
     def read_and_train_data(
@@ -350,26 +361,37 @@ class HierarchicalAttentionNetwork:
                 self.data = read
                 print("Finished loading preprocessed data.")
         print("Total %s unique tokens." % len(self.word_index))
-        print("Shape of data tensor: ", self.data, self.data.shape)
-        print("Finished preprocessing data.")
+        print("Finished preprocessing data.\n")
         return self.data
 
     def predict(self, data):
         """Predicts binary classification of classes with probabilities given a feature matrix."""
-        res = self.model.predict(data)
-        probs = res[0]
-        normal = probs[0]  # "0" class
-        deviant = probs[1]  # "1" class
-        attention_vals = res[1]
-        return (normal, deviant)
+        # res = self.model.predict(data)
+        self.model._make_predict_function()
+        with graph.as_default():
+            with session.as_default():
+                res = self.model.predict(data)
+                probs = res[0]
+                normal = probs[0]  # "0" class
+                deviant = probs[1]  # "1" class
+                attention_vals = res[1]
+                return (normal, deviant)
 
-    def load_model(self, filepath: str):
+    def load_model(self, filepath: str, custom_objects={}, compile=False):
         """Loads a model with a custom AttentionLayer property."""
-        model = load_model(
-            filepath, custom_objects={"AttentionLayer": AttentionLayer(Layer)}
-        )
-        if model:
+        # model = load_model(
+          #  filepath, custom_objects={"AttentionLayer": AttentionLayer(Layer)}
+        # )
+        if os.path.exists(filepath):
+            global graph
+            global session
+            graph = tf.get_default_graph()
+            session_conf = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
+            session = tf.Session(graph=graph, config=session_conf)
+            K.set_session(session)
+            model = load_model(filepath, custom_objects=custom_objects, compile=compile)
             self.model = model
+            self.model._make_predict_function()
             return model
         else:
             return None
