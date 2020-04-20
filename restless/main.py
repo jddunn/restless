@@ -97,6 +97,12 @@ class Restless(object):
             )
             logger.success(colored("The system appears to be safe.", "green"))
             return
+        else:
+             logger.info(
+                    "Sending {} files to the malware analysis / defense pipeline.".format(
+                        colored(str(files_scanned - 1), ["d_gray", "bold"])
+                )
+            )
         for file_result in file_results:
             fname = file_result[0]
             path_to_fname = fname.split("/")
