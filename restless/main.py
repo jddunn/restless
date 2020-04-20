@@ -88,8 +88,8 @@ class Restless(object):
         file_results = await self.scanner.scan_recursive(filepath)
         files_scanned = len(file_results)
         flush(newline=True)
-        msg = "\t" + colored("Restless", ["bold", "slow_blink", "magenta"])
-        msg += " " + colored("defense pipeline activated.", ["magenta", "bold"])
+        msg = "\t" + colored("Restless", ["bold", "slow_blink", "magenta", "underline"])
+        msg += " " + colored("defense pipeline working.", ["magenta", "bold", "slow_blink"])
         logger.success(msg)
         flush(newline=True)
         # Remove none from our results (meaning those files did not have any
