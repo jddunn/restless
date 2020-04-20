@@ -167,7 +167,7 @@ class CustomFormatter(logging.Formatter):
         "ERROR": "red",
         "CRITICAL": "bg_red",
         "DEBUG": "bg_gray",
-        "SUCCESS": "green",
+        "SUCCESS": "bg_green",
     }
 
     def format(self, record):
