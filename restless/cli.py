@@ -5,6 +5,8 @@ import argparse
 
 import os
 import asyncio
+import uvloop
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -27,6 +29,8 @@ if __name__ == "__main__":
         + " the home dir. New / modified files will be sent to the defense pipeline.",
     )
     args = parser.parse_args()
+    uvloop.install()
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     event_loop = asyncio.get_event_loop()
     fp = args.input
     wfp = args.watch

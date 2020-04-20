@@ -73,9 +73,9 @@ class EventHandler(FileSystemEventHandler):
             "deleted": self.on_deleted,
         }
         _method = _method_map[event.event_type]
-        asyncio.run_coroutine_threadsafe(_method(event), self._loop)
+        self._loop.run_until_complete(_method(event))
         # self._loop.call_soon_threadsafe(self._ensure_future, _method)
-        _method(event)
+        # _method(event)
 
     async def on_moved(self, event):
         print("EVENT: ", event)

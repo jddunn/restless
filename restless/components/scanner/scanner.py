@@ -19,7 +19,6 @@ pea = PEAnalyzer()
 logging = utils.logger
 logger = utils.logger.logger
 
-
 class Scanner:
     """
     Extracts and analyzes information from files and classifies it for malware probability using NLP models.

@@ -79,7 +79,7 @@ class Restless(object):
     async def scan(self, filepath: str, malware_prob_threshold: float = None):
         if not malware_prob_threshold:
             malware_prob_threshold = self.default_malware_prob_threshold
-        logger.info("Scanning system now at {}.".format(colored(filepath, "cyan")))
+        logger.info(colored("Scanning", "slow_blink") + " system now at {}.".format(colored(filepath, "cyan")))
         results = []
         potential_malware = []
         file_results = await self.scanner.scan_recursive(filepath)
