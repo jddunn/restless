@@ -81,7 +81,7 @@ class Classifier:
         )
         return classified_file_result
 
-    def analyze_scanned_files(
+    async def analyze_scanned_files(
         self, file_results: list, default_malware_prob_threshold: float = 0.6
     ) -> tuple:
 
