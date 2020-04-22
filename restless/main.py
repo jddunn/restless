@@ -68,6 +68,14 @@ class Restless(object):
         return
 
     def constant_watch(self, watch_pool: list = ["*"]) -> None:
+        """
+        Constantly watches a list of directories for new / modified files,
+        sending them to Restless's classification / defense pipeline.
+
+        Args:
+            watch_pool (list): List of directories or filepaths to
+                constantly watch and scan.
+        """
         self.watch_pool = watch_pool
         with ThreadPoolExecutor(max_workers=2) as executor:
             self.loop.run_until_complete(
@@ -76,16 +84,35 @@ class Restless(object):
         return
 
     def quarantine_files(self, files: list) -> None:
+        """Send potentially malicious files to quarantine for defense pipeline."""
         for file in files:
             pass
         return
 
-    async def scan_full_system(self):
+    async def scan_full_system(self) -> list:
+        """
+        Starts a full system scan at the root path.
+
+        Returns:
+            list: List of results containing dictionaries with keys:
+                "filename", "benign", "malicious", and "timestamp".
+        """
         root = misc.get_os_root_path()
         results = await self.scan(root)
         return results
 
     async def scan(self, filepath: str, malware_prob_threshold: float = None):
+        """
+        Scans a file or directory recursively for malware.
+
+        Args:
+            filepath (str): File or directory to scan.
+            malware_prob_threshold (float, optional): Probability threshold
+                to classify something as malware. Defaults to .6.
+        Returns:
+            list: List of results containing dictionaries with keys:
+                "filename", "benign", "malicious", and "timestamp".
+        """
         start_time = time.time()
 
         if not malware_prob_threshold:
