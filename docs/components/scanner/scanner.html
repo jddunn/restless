@@ -26,6 +26,8 @@
 </summary>
 <pre><code class="python">import sys
 import os
+import concurrent.futures
+import asyncio
 
 # make dep imports work when running in dir and in outside scripts
 PACKAGE_PARENT = &#34;../../..&#34;
@@ -48,6 +50,8 @@ colored = logging.colored
 same_line = logging.same_line
 flush = logging.flush
 
+from multiprocessing import cpu_count
+
 
 class Scanner:
     &#34;&#34;&#34;
@@ -58,39 +62,38 @@ class Scanner:
         self.pea = pea
         return
 
+    def scan_file(self, path: str, flush_line: bool = False) -&gt; list:
+        logger.info(
+            same_line(
+                &#34;Prechecking &#34;
+                + &#34;file for metadata - {}.&#34;.format(colored(path, &#34;d_gray&#34;))
+            )
+        )
+        if flush_line:
+            flush()
+        return self.pea.analyze_file(path)
+
     async def scan_recursive(self, path: str) -&gt; list:
         results = []
         path = os.path.abspath(path)
-        # recursive walk
+        loop = asyncio.get_event_loop()
         if os.path.isfile(path):
-            logger.info(
-                &#34;Prechecking &#34;
-                + colored(&#34;1&#34;, [&#34;bold&#34;, &#34;d_gray&#34;])
-                + &#34; file for metadata - {}.&#34;.format(path)
-            )
-            result = await self.pea.analyze_file(path)
-            flush(newline=True)
-            results.append(result)
+            return self.scan_file(path)
         else:
-            count = 0
             flush(newline=True)
+            # recursive walk
             for dirpath, dirs, files in os.walk(path):
-                for filename in files:
-                    fname = os.path.join(dirpath, filename)
-                    # Unfortunately the logging lib doesn&#39;t support printing on
-                    # the same line easily, so we have to flush the last printed line
-                    logger.info(
-                        same_line(
-                            &#34;Prechecking {} files for metadata - {}.&#34;.format(
-                                colored(count, [&#34;bold&#34;, &#34;d_gray&#34;]),
-                                colored(filename, [&#34;underline&#34;, &#34;d_gray&#34;]),
-                            )
+                # use multiprocessing
+                with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
+                    future_to_scan = [
+                        loop.run_in_executor(
+                            executor, self.scan_file, os.path.join(dirpath, file), True
                         )
-                    )
-                    flush()
-                    result = await self.pea.analyze_file(fname)
-                    results.append(result)
-                    count += 1
+                        for file in files
+                    ]
+                    if future_to_scan:
+                        completed, pending = await asyncio.wait(future_to_scan)
+                        results.extend([t.result() for t in completed])
         return results</code></pre>
 </details>
 </section>
@@ -121,43 +124,63 @@ class Scanner:
         self.pea = pea
         return
 
+    def scan_file(self, path: str, flush_line: bool = False) -&gt; list:
+        logger.info(
+            same_line(
+                &#34;Prechecking &#34;
+                + &#34;file for metadata - {}.&#34;.format(colored(path, &#34;d_gray&#34;))
+            )
+        )
+        if flush_line:
+            flush()
+        return self.pea.analyze_file(path)
+
     async def scan_recursive(self, path: str) -&gt; list:
         results = []
         path = os.path.abspath(path)
-        # recursive walk
+        loop = asyncio.get_event_loop()
         if os.path.isfile(path):
-            logger.info(
-                &#34;Prechecking &#34;
-                + colored(&#34;1&#34;, [&#34;bold&#34;, &#34;d_gray&#34;])
-                + &#34; file for metadata - {}.&#34;.format(path)
-            )
-            result = await self.pea.analyze_file(path)
-            flush(newline=True)
-            results.append(result)
+            return self.scan_file(path)
         else:
-            count = 0
             flush(newline=True)
+            # recursive walk
             for dirpath, dirs, files in os.walk(path):
-                for filename in files:
-                    fname = os.path.join(dirpath, filename)
-                    # Unfortunately the logging lib doesn&#39;t support printing on
-                    # the same line easily, so we have to flush the last printed line
-                    logger.info(
-                        same_line(
-                            &#34;Prechecking {} files for metadata - {}.&#34;.format(
-                                colored(count, [&#34;bold&#34;, &#34;d_gray&#34;]),
-                                colored(filename, [&#34;underline&#34;, &#34;d_gray&#34;]),
-                            )
+                # use multiprocessing
+                with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
+                    future_to_scan = [
+                        loop.run_in_executor(
+                            executor, self.scan_file, os.path.join(dirpath, file), True
                         )
-                    )
-                    flush()
-                    result = await self.pea.analyze_file(fname)
-                    results.append(result)
-                    count += 1
+                        for file in files
+                    ]
+                    if future_to_scan:
+                        completed, pending = await asyncio.wait(future_to_scan)
+                        results.extend([t.result() for t in completed])
         return results</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
+<dt id="restless.components.scanner.scanner.Scanner.scan_file"><code class="name flex">
+<span>def <span class="ident">scan_file</span></span>(<span>self, path, flush_line=False)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def scan_file(self, path: str, flush_line: bool = False) -&gt; list:
+    logger.info(
+        same_line(
+            &#34;Prechecking &#34;
+            + &#34;file for metadata - {}.&#34;.format(colored(path, &#34;d_gray&#34;))
+        )
+    )
+    if flush_line:
+        flush()
+    return self.pea.analyze_file(path)</code></pre>
+</details>
+</dd>
 <dt id="restless.components.scanner.scanner.Scanner.scan_recursive"><code class="name flex">
 <span>async def <span class="ident">scan_recursive</span></span>(<span>self, path)</span>
 </code></dt>
@@ -170,36 +193,24 @@ class Scanner:
 <pre><code class="python">async def scan_recursive(self, path: str) -&gt; list:
     results = []
     path = os.path.abspath(path)
-    # recursive walk
+    loop = asyncio.get_event_loop()
     if os.path.isfile(path):
-        logger.info(
-            &#34;Prechecking &#34;
-            + colored(&#34;1&#34;, [&#34;bold&#34;, &#34;d_gray&#34;])
-            + &#34; file for metadata - {}.&#34;.format(path)
-        )
-        result = await self.pea.analyze_file(path)
-        flush(newline=True)
-        results.append(result)
+        return self.scan_file(path)
     else:
-        count = 0
         flush(newline=True)
+        # recursive walk
         for dirpath, dirs, files in os.walk(path):
-            for filename in files:
-                fname = os.path.join(dirpath, filename)
-                # Unfortunately the logging lib doesn&#39;t support printing on
-                # the same line easily, so we have to flush the last printed line
-                logger.info(
-                    same_line(
-                        &#34;Prechecking {} files for metadata - {}.&#34;.format(
-                            colored(count, [&#34;bold&#34;, &#34;d_gray&#34;]),
-                            colored(filename, [&#34;underline&#34;, &#34;d_gray&#34;]),
-                        )
+            # use multiprocessing
+            with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
+                future_to_scan = [
+                    loop.run_in_executor(
+                        executor, self.scan_file, os.path.join(dirpath, file), True
                     )
-                )
-                flush()
-                result = await self.pea.analyze_file(fname)
-                results.append(result)
-                count += 1
+                    for file in files
+                ]
+                if future_to_scan:
+                    completed, pending = await asyncio.wait(future_to_scan)
+                    results.extend([t.result() for t in completed])
     return results</code></pre>
 </details>
 </dd>
@@ -224,6 +235,7 @@ class Scanner:
 <li>
 <h4><code><a title="restless.components.scanner.scanner.Scanner" href="#restless.components.scanner.scanner.Scanner">Scanner</a></code></h4>
 <ul class="">
+<li><code><a title="restless.components.scanner.scanner.Scanner.scan_file" href="#restless.components.scanner.scanner.Scanner.scan_file">scan_file</a></code></li>
 <li><code><a title="restless.components.scanner.scanner.Scanner.scan_recursive" href="#restless.components.scanner.scanner.Scanner.scan_recursive">scan_recursive</a></code></li>
 </ul>
 </li>

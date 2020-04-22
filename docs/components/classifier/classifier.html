@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.7.5" />
+<title>restless.components.classifier.classifier API documentation</title>
+<meta name="description" content="" />
+<link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
+<link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
+<style>.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{font-weight:bold}#index h4 + ul{margin-bottom:.6em}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>restless.components.classifier.classifier</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import sys
+import os
+import time
+import concurrent.futures
+import asyncio
+
+# make dep imports work when running in dir and in outside scripts
+PACKAGE_PARENT = &#34;../../..&#34;
+SCRIPT_DIR = os.path.dirname(
+    os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__)))
+)
+sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
+try:
+    from restless.components.utils import utils as utils
+    from restless.components.nlp import NLP
+except Exception as e:
+    from ..utils import utils as utils
+    from ..nlp import NLP
+
+
+logging = utils.logger
+logger = utils.logger.logger
+colored = logging.colored
+same_line = logging.same_line
+flush = logging.flush
+misc = utils.misc
+
+from multiprocessing import cpu_count
+
+
+class Classifier:
+    def __init__(self, load_default_hann_model=False):
+        self.nlp = NLP(load_default_hann_model=load_default_hann_model)
+        return
+
+    def get_classification_results(
+        self, fname: str, benign: float, malicious: float
+    ) -&gt; None:
+        parent_path_to_fname = misc.get_parent_path_to_fname(fname)
+        short_fname = fname.split(&#34;/&#34;)[len(fname.split(&#34;/&#34;)) - 1]
+        classified_file_result = {
+            &#34;filename&#34;: fname,
+            &#34;benign&#34;: benign,
+            &#34;malicious&#34;: malicious,
+            &#34;time_scanned&#34;: misc.make_ts(),
+        }
+
+        # Colorizd percentages
+        colored_fname = (
+            colored(parent_path_to_fname, &#34;gray&#34;)
+            + colored(&#34;/&#34;, &#34;bold&#34;)
+            + &#34; &#34;
+            + colored(short_fname, [&#34;gray&#34;, &#34;underline&#34;, &#34;bold&#34;])
+        )
+        colored_benign = misc.prob_to_percentage(benign)
+        colored_malicious = misc.prob_to_percentage(malicious)
+
+        clr_b = &#34;d_gray&#34;  # benign color(s)
+        clr_m = &#34;d_gray&#34;  # malicious color(s)
+        if benign &gt; 0.3:
+            clr_b = &#34;yellow&#34; if benign &lt; 0.45 else [&#34;yellow&#34;, &#34;bold&#34;]
+        if benign &gt;= 0.6:
+            clr_b = [&#34;green&#34;] if benign &lt; 0.8 else [&#34;green&#34;, &#34;bold&#34;]
+        if malicious &gt; 0.15:
+            clr_m = &#34;yellow&#34; if malicious &lt; 0.25 else [&#34;yellow&#34;, &#34;bold&#34;]
+        if malicious &gt;= 0.4:
+            clr_m = &#34;red&#34; if malicious &gt;= 0.6 and malicious &lt;= 0.8 else [&#34;red&#34;, &#34;bold&#34;]
+
+        colored_benign = colored(colored_benign, clr_b)
+        colored_malicious = colored(colored_malicious, clr_m)
+        logger.info(
+            &#34;{} {} {} predicted: {} {} and {} {}.&#34;.format(
+                colored(&#34;Scanned&#34;, &#34;white&#34;),
+                colored_fname,
+                colored(&#34;-&#34;, &#34;d_gray&#34;),
+                colored_benign,
+                colored(&#34;benign&#34;, clr_b),
+                colored_malicious,
+                colored(&#34;malicious&#34;, clr_m),
+            )
+        )
+        return classified_file_result
+
+    async def analyze_scanned_files(
+        self, file_results: list, default_malware_prob_threshold: float = 0.6
+    ) -&gt; tuple:
+
+        all_results = []
+        potential_malware_results = (
+            []
+        )  # Only results that pass default_malware_prob_threshold
+
+        files_scanned = len(file_results)
+        # Remove none from our results (meaning those files did not have any
+        # extractable metadata for our classifier, for now at least)
+        file_results = [res for res in file_results if res is not None]
+        if not self._filter_initial_scan_results(
+            files_scanned
+        ):  # Checks to see if we have any files that can be classified
+            return all_results, potential_malware_results
+        count = (
+            len(file_results) - 1 if len(file_results) - 1 &gt; 0 else len(file_results)
+        )
+        logger.info(
+            colored(
+                &#34;Sending {} files to the malware analysis / defense pipeline.&#34;.format(
+                    colored(str(count), [&#34;d_gray&#34;, &#34;underline&#34;, &#34;bold&#34;]), &#34;bold&#34;
+                )
+            )
+        )
+
+        # Classification pipeline
+        for file_result in file_results:
+            fname = file_result[0]
+            features = file_result[1]
+            # Send features to NLP / HAN pipeline
+            matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
+            result = (fname, self.nlp.hann.predict(matrix_results))
+            benign = float(result[1][0])
+            malicious = float(result[1][1])
+            # Classify our results
+            res = self.get_classification_results(fname, benign, malicious)
+            if res[&#34;malicious&#34;] &gt;= default_malware_prob_threshold:
+                potential_malware_results.append(res)
+            all_results.append(res)
+
+        flush(newline=True)
+        logger.info(
+            &#34;\tRestless scanned a total of {} files, with {} sent to the malware classification / defense pipeline.&#34;.format(
+                colored(files_scanned, [&#34;d_gray&#34;, &#34;bold&#34;, &#34;underline&#34;]),
+                colored(len(all_results), [&#34;gray&#34;, &#34;bold&#34;, &#34;underline&#34;]),
+            )
+        )
+        flush(newline=True)
+
+        return all_results, potential_malware_results
+
+    def _filter_initial_scan_results(self, files_scanned: int) -&gt; bool:
+        &#34;&#34;&#34;Checks to see if we have any scanned files that can be analyzed.&#34;&#34;&#34;
+        if files_scanned == 0:
+            logger.success(
+                colored(
+                    &#34;Found no files that were scannable for malware (checked {} files).&#34;.format(
+                        colored(str(files_scanned), [&#34;bold&#34;, &#34;underline&#34;])
+                    )
+                )
+                + colored(&#34; The system seems to be safe.&#34;, [&#34;bold&#34;, &#34;green&#34;])
+            )
+            return False
+        else:
+            return True</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="restless.components.classifier.classifier.Classifier"><code class="flex name class">
+<span>class <span class="ident">Classifier</span></span>
+<span>(</span><span>load_default_hann_model=False)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Classifier:
+    def __init__(self, load_default_hann_model=False):
+        self.nlp = NLP(load_default_hann_model=load_default_hann_model)
+        return
+
+    def get_classification_results(
+        self, fname: str, benign: float, malicious: float
+    ) -&gt; None:
+        parent_path_to_fname = misc.get_parent_path_to_fname(fname)
+        short_fname = fname.split(&#34;/&#34;)[len(fname.split(&#34;/&#34;)) - 1]
+        classified_file_result = {
+            &#34;filename&#34;: fname,
+            &#34;benign&#34;: benign,
+            &#34;malicious&#34;: malicious,
+            &#34;time_scanned&#34;: misc.make_ts(),
+        }
+
+        # Colorizd percentages
+        colored_fname = (
+            colored(parent_path_to_fname, &#34;gray&#34;)
+            + colored(&#34;/&#34;, &#34;bold&#34;)
+            + &#34; &#34;
+            + colored(short_fname, [&#34;gray&#34;, &#34;underline&#34;, &#34;bold&#34;])
+        )
+        colored_benign = misc.prob_to_percentage(benign)
+        colored_malicious = misc.prob_to_percentage(malicious)
+
+        clr_b = &#34;d_gray&#34;  # benign color(s)
+        clr_m = &#34;d_gray&#34;  # malicious color(s)
+        if benign &gt; 0.3:
+            clr_b = &#34;yellow&#34; if benign &lt; 0.45 else [&#34;yellow&#34;, &#34;bold&#34;]
+        if benign &gt;= 0.6:
+            clr_b = [&#34;green&#34;] if benign &lt; 0.8 else [&#34;green&#34;, &#34;bold&#34;]
+        if malicious &gt; 0.15:
+            clr_m = &#34;yellow&#34; if malicious &lt; 0.25 else [&#34;yellow&#34;, &#34;bold&#34;]
+        if malicious &gt;= 0.4:
+            clr_m = &#34;red&#34; if malicious &gt;= 0.6 and malicious &lt;= 0.8 else [&#34;red&#34;, &#34;bold&#34;]
+
+        colored_benign = colored(colored_benign, clr_b)
+        colored_malicious = colored(colored_malicious, clr_m)
+        logger.info(
+            &#34;{} {} {} predicted: {} {} and {} {}.&#34;.format(
+                colored(&#34;Scanned&#34;, &#34;white&#34;),
+                colored_fname,
+                colored(&#34;-&#34;, &#34;d_gray&#34;),
+                colored_benign,
+                colored(&#34;benign&#34;, clr_b),
+                colored_malicious,
+                colored(&#34;malicious&#34;, clr_m),
+            )
+        )
+        return classified_file_result
+
+    async def analyze_scanned_files(
+        self, file_results: list, default_malware_prob_threshold: float = 0.6
+    ) -&gt; tuple:
+
+        all_results = []
+        potential_malware_results = (
+            []
+        )  # Only results that pass default_malware_prob_threshold
+
+        files_scanned = len(file_results)
+        # Remove none from our results (meaning those files did not have any
+        # extractable metadata for our classifier, for now at least)
+        file_results = [res for res in file_results if res is not None]
+        if not self._filter_initial_scan_results(
+            files_scanned
+        ):  # Checks to see if we have any files that can be classified
+            return all_results, potential_malware_results
+        count = (
+            len(file_results) - 1 if len(file_results) - 1 &gt; 0 else len(file_results)
+        )
+        logger.info(
+            colored(
+                &#34;Sending {} files to the malware analysis / defense pipeline.&#34;.format(
+                    colored(str(count), [&#34;d_gray&#34;, &#34;underline&#34;, &#34;bold&#34;]), &#34;bold&#34;
+                )
+            )
+        )
+
+        # Classification pipeline
+        for file_result in file_results:
+            fname = file_result[0]
+            features = file_result[1]
+            # Send features to NLP / HAN pipeline
+            matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
+            result = (fname, self.nlp.hann.predict(matrix_results))
+            benign = float(result[1][0])
+            malicious = float(result[1][1])
+            # Classify our results
+            res = self.get_classification_results(fname, benign, malicious)
+            if res[&#34;malicious&#34;] &gt;= default_malware_prob_threshold:
+                potential_malware_results.append(res)
+            all_results.append(res)
+
+        flush(newline=True)
+        logger.info(
+            &#34;\tRestless scanned a total of {} files, with {} sent to the malware classification / defense pipeline.&#34;.format(
+                colored(files_scanned, [&#34;d_gray&#34;, &#34;bold&#34;, &#34;underline&#34;]),
+                colored(len(all_results), [&#34;gray&#34;, &#34;bold&#34;, &#34;underline&#34;]),
+            )
+        )
+        flush(newline=True)
+
+        return all_results, potential_malware_results
+
+    def _filter_initial_scan_results(self, files_scanned: int) -&gt; bool:
+        &#34;&#34;&#34;Checks to see if we have any scanned files that can be analyzed.&#34;&#34;&#34;
+        if files_scanned == 0:
+            logger.success(
+                colored(
+                    &#34;Found no files that were scannable for malware (checked {} files).&#34;.format(
+                        colored(str(files_scanned), [&#34;bold&#34;, &#34;underline&#34;])
+                    )
+                )
+                + colored(&#34; The system seems to be safe.&#34;, [&#34;bold&#34;, &#34;green&#34;])
+            )
+            return False
+        else:
+            return True</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="restless.components.classifier.classifier.Classifier.analyze_scanned_files"><code class="name flex">
+<span>async def <span class="ident">analyze_scanned_files</span></span>(<span>self, file_results, default_malware_prob_threshold=0.6)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def analyze_scanned_files(
+    self, file_results: list, default_malware_prob_threshold: float = 0.6
+) -&gt; tuple:
+
+    all_results = []
+    potential_malware_results = (
+        []
+    )  # Only results that pass default_malware_prob_threshold
+
+    files_scanned = len(file_results)
+    # Remove none from our results (meaning those files did not have any
+    # extractable metadata for our classifier, for now at least)
+    file_results = [res for res in file_results if res is not None]
+    if not self._filter_initial_scan_results(
+        files_scanned
+    ):  # Checks to see if we have any files that can be classified
+        return all_results, potential_malware_results
+    count = (
+        len(file_results) - 1 if len(file_results) - 1 &gt; 0 else len(file_results)
+    )
+    logger.info(
+        colored(
+            &#34;Sending {} files to the malware analysis / defense pipeline.&#34;.format(
+                colored(str(count), [&#34;d_gray&#34;, &#34;underline&#34;, &#34;bold&#34;]), &#34;bold&#34;
+            )
+        )
+    )
+
+    # Classification pipeline
+    for file_result in file_results:
+        fname = file_result[0]
+        features = file_result[1]
+        # Send features to NLP / HAN pipeline
+        matrix_results = self.nlp.hann.build_feature_matrix_from_input_arr(features)
+        result = (fname, self.nlp.hann.predict(matrix_results))
+        benign = float(result[1][0])
+        malicious = float(result[1][1])
+        # Classify our results
+        res = self.get_classification_results(fname, benign, malicious)
+        if res[&#34;malicious&#34;] &gt;= default_malware_prob_threshold:
+            potential_malware_results.append(res)
+        all_results.append(res)
+
+    flush(newline=True)
+    logger.info(
+        &#34;\tRestless scanned a total of {} files, with {} sent to the malware classification / defense pipeline.&#34;.format(
+            colored(files_scanned, [&#34;d_gray&#34;, &#34;bold&#34;, &#34;underline&#34;]),
+            colored(len(all_results), [&#34;gray&#34;, &#34;bold&#34;, &#34;underline&#34;]),
+        )
+    )
+    flush(newline=True)
+
+    return all_results, potential_malware_results</code></pre>
+</details>
+</dd>
+<dt id="restless.components.classifier.classifier.Classifier.get_classification_results"><code class="name flex">
+<span>def <span class="ident">get_classification_results</span></span>(<span>self, fname, benign, malicious)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_classification_results(
+    self, fname: str, benign: float, malicious: float
+) -&gt; None:
+    parent_path_to_fname = misc.get_parent_path_to_fname(fname)
+    short_fname = fname.split(&#34;/&#34;)[len(fname.split(&#34;/&#34;)) - 1]
+    classified_file_result = {
+        &#34;filename&#34;: fname,
+        &#34;benign&#34;: benign,
+        &#34;malicious&#34;: malicious,
+        &#34;time_scanned&#34;: misc.make_ts(),
+    }
+
+    # Colorizd percentages
+    colored_fname = (
+        colored(parent_path_to_fname, &#34;gray&#34;)
+        + colored(&#34;/&#34;, &#34;bold&#34;)
+        + &#34; &#34;
+        + colored(short_fname, [&#34;gray&#34;, &#34;underline&#34;, &#34;bold&#34;])
+    )
+    colored_benign = misc.prob_to_percentage(benign)
+    colored_malicious = misc.prob_to_percentage(malicious)
+
+    clr_b = &#34;d_gray&#34;  # benign color(s)
+    clr_m = &#34;d_gray&#34;  # malicious color(s)
+    if benign &gt; 0.3:
+        clr_b = &#34;yellow&#34; if benign &lt; 0.45 else [&#34;yellow&#34;, &#34;bold&#34;]
+    if benign &gt;= 0.6:
+        clr_b = [&#34;green&#34;] if benign &lt; 0.8 else [&#34;green&#34;, &#34;bold&#34;]
+    if malicious &gt; 0.15:
+        clr_m = &#34;yellow&#34; if malicious &lt; 0.25 else [&#34;yellow&#34;, &#34;bold&#34;]
+    if malicious &gt;= 0.4:
+        clr_m = &#34;red&#34; if malicious &gt;= 0.6 and malicious &lt;= 0.8 else [&#34;red&#34;, &#34;bold&#34;]
+
+    colored_benign = colored(colored_benign, clr_b)
+    colored_malicious = colored(colored_malicious, clr_m)
+    logger.info(
+        &#34;{} {} {} predicted: {} {} and {} {}.&#34;.format(
+            colored(&#34;Scanned&#34;, &#34;white&#34;),
+            colored_fname,
+            colored(&#34;-&#34;, &#34;d_gray&#34;),
+            colored_benign,
+            colored(&#34;benign&#34;, clr_b),
+            colored_malicious,
+            colored(&#34;malicious&#34;, clr_m),
+        )
+    )
+    return classified_file_result</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="restless.components.classifier" href="index.html">restless.components.classifier</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="restless.components.classifier.classifier.Classifier" href="#restless.components.classifier.classifier.Classifier">Classifier</a></code></h4>
+<ul class="">
+<li><code><a title="restless.components.classifier.classifier.Classifier.analyze_scanned_files" href="#restless.components.classifier.classifier.Classifier.analyze_scanned_files">analyze_scanned_files</a></code></li>
+<li><code><a title="restless.components.classifier.classifier.Classifier.get_classification_results" href="#restless.components.classifier.classifier.Classifier.get_classification_results">get_classification_results</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.7.5</a>.</p>
+</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad()</script>
+</body>
+</html>

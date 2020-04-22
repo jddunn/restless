@@ -84,6 +84,14 @@ class Misc:
         return os.path.expanduser(&#34;~&#34;)
 
     @staticmethod
+    def get_parent_path_to_fname(fname: str) -&gt; str:
+        &#34;&#34;&#34;Gets the parent path to the file.&#34;&#34;&#34;
+        parent_path_to_fname = fname.split(&#34;/&#34;)
+        parent_path_to_fname.pop()
+        parent_path_to_fname = &#34;/&#34;.join(parent_path_to_fname)
+        return parent_path_to_fname
+
+    @staticmethod
     def read_pickle_data(path):
         &#34;&#34;&#34;Reads pickled data.&#34;&#34;&#34;
         if os.path.isfile(path):
@@ -112,7 +120,9 @@ class Misc:
         return path
 
     @staticmethod
-    def prob_to_percentage(val: float, dec_places: int = 4) -&gt; str:
+    def prob_to_percentage(val: float) -&gt; str:
+        &#34;&#34;&#34;Converts a probability value (from 0 to 1) into a percentage,
+            rounded to 4 decimal places.&#34;&#34;&#34;
         # round to 4 place
         result = &#34;{:.4%}&#34;.format(val)
         return result</code></pre>
@@ -190,6 +200,14 @@ class Misc:
         return os.path.expanduser(&#34;~&#34;)
 
     @staticmethod
+    def get_parent_path_to_fname(fname: str) -&gt; str:
+        &#34;&#34;&#34;Gets the parent path to the file.&#34;&#34;&#34;
+        parent_path_to_fname = fname.split(&#34;/&#34;)
+        parent_path_to_fname.pop()
+        parent_path_to_fname = &#34;/&#34;.join(parent_path_to_fname)
+        return parent_path_to_fname
+
+    @staticmethod
     def read_pickle_data(path):
         &#34;&#34;&#34;Reads pickled data.&#34;&#34;&#34;
         if os.path.isfile(path):
@@ -218,7 +236,9 @@ class Misc:
         return path
 
     @staticmethod
-    def prob_to_percentage(val: float, dec_places: int = 4) -&gt; str:
+    def prob_to_percentage(val: float) -&gt; str:
+        &#34;&#34;&#34;Converts a probability value (from 0 to 1) into a percentage,
+            rounded to 4 decimal places.&#34;&#34;&#34;
         # round to 4 place
         result = &#34;{:.4%}&#34;.format(val)
         return result</code></pre>
@@ -312,6 +332,24 @@ def get_os_root_path() -&gt; list:
     return os.path.expanduser(&#34;~&#34;)</code></pre>
 </details>
 </dd>
+<dt id="restless.components.utils.misc.Misc.get_parent_path_to_fname"><code class="name flex">
+<span>def <span class="ident">get_parent_path_to_fname</span></span>(<span>fname)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Gets the parent path to the file.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@staticmethod
+def get_parent_path_to_fname(fname: str) -&gt; str:
+    &#34;&#34;&#34;Gets the parent path to the file.&#34;&#34;&#34;
+    parent_path_to_fname = fname.split(&#34;/&#34;)
+    parent_path_to_fname.pop()
+    parent_path_to_fname = &#34;/&#34;.join(parent_path_to_fname)
+    return parent_path_to_fname</code></pre>
+</details>
+</dd>
 <dt id="restless.components.utils.misc.Misc.make_ts"><code class="name flex">
 <span>def <span class="ident">make_ts</span></span>(<span>)</span>
 </code></dt>
@@ -339,16 +377,19 @@ def make_ts() -&gt; str:
 </details>
 </dd>
 <dt id="restless.components.utils.misc.Misc.prob_to_percentage"><code class="name flex">
-<span>def <span class="ident">prob_to_percentage</span></span>(<span>val, dec_places=4)</span>
+<span>def <span class="ident">prob_to_percentage</span></span>(<span>val)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Converts a probability value (from 0 to 1) into a percentage,
+rounded to 4 decimal places.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@staticmethod
-def prob_to_percentage(val: float, dec_places: int = 4) -&gt; str:
+def prob_to_percentage(val: float) -&gt; str:
+    &#34;&#34;&#34;Converts a probability value (from 0 to 1) into a percentage,
+        rounded to 4 decimal places.&#34;&#34;&#34;
     # round to 4 place
     result = &#34;{:.4%}&#34;.format(val)
     return result</code></pre>
@@ -426,6 +467,7 @@ def write_pickle_data(data: object, path: str):
 <li><code><a title="restless.components.utils.misc.Misc.check_if_child_in_parent" href="#restless.components.utils.misc.Misc.check_if_child_in_parent">check_if_child_in_parent</a></code></li>
 <li><code><a title="restless.components.utils.misc.Misc.check_if_in_docker_container" href="#restless.components.utils.misc.Misc.check_if_in_docker_container">check_if_in_docker_container</a></code></li>
 <li><code><a title="restless.components.utils.misc.Misc.get_os_root_path" href="#restless.components.utils.misc.Misc.get_os_root_path">get_os_root_path</a></code></li>
+<li><code><a title="restless.components.utils.misc.Misc.get_parent_path_to_fname" href="#restless.components.utils.misc.Misc.get_parent_path_to_fname">get_parent_path_to_fname</a></code></li>
 <li><code><a title="restless.components.utils.misc.Misc.make_ts" href="#restless.components.utils.misc.Misc.make_ts">make_ts</a></code></li>
 <li><code><a title="restless.components.utils.misc.Misc.prob_to_percentage" href="#restless.components.utils.misc.Misc.prob_to_percentage">prob_to_percentage</a></code></li>
 <li><code><a title="restless.components.utils.misc.Misc.read_pickle_data" href="#restless.components.utils.misc.Misc.read_pickle_data">read_pickle_data</a></code></li>

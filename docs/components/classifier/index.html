@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.5" />
-<title>restless.components.nlp.nlp API documentation</title>
+<title>restless.components.classifier API documentation</title>
 <meta name="description" content="" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
@@ -17,7 +17,7 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>restless.components.nlp.nlp</code></h1>
+<h1 class="title">Module <code>restless.components.classifier</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
@@ -26,107 +26,25 @@
 </summary>
 <pre><code class="python">import os, sys
 
-# Silence TF warnings
-import warnings
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 
-warnings.filterwarnings(&#34;ignore&#34;, category=FutureWarning)
-warnings.filterwarnings(&#34;ignore&#34;, category=DeprecationWarning)
-
-os.environ[&#34;TF_CPP_MIN_LOG_LEVEL&#34;] = &#34;3&#34;
-import tensorflow as tf
-import tensorflow.python.util.deprecation as deprecation
-
-deprecation._PRINT_DEPRECATION_WARNINGS = False
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-# TF is still printing out warnings..
-
-import pandas as pd
-
-# make dep imports work when running in dir and in outside scripts
-PACKAGE_PARENT = &#34;../../..&#34;
-SCRIPT_DIR = os.path.dirname(
-    os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__)))
-)
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
-try:
-    from restless.components.nlp.hann.hann import (
-        HierarchicalAttentionNetwork,
-        DEFAULT_TRAINING_DATA_PATH,
-    )
-    from restless.components.utils import utils as utils
-except:
-    from hann import HierarchicalAttentionNetwork, DEFAULT_TRAINING_DATA_PATH
-    from ..utils import utils as utils
-
-stats = utils.stats
-
-# Get our X features to load into model
-df = pd.read_csv(DEFAULT_TRAINING_DATA_PATH)
-features = [x for x in list(df.columns) if x != &#34;classification&#34;]
-target_feature = &#34;classification&#34;
-corr = stats.get_correlation_for_features(
-    df, features, target_feature=target_feature, get_corr_with_target_feature_only=True
-)
-
-top_df, top_features = stats.transform_df_with_top_features_for_hann(
-    df, corr, features, target_feature, threshold=0.1
-)
-
-top_features = []
-
-
-class NLP:
-    &#34;&#34;&#34;
-    Module with all NLP and text processing related features.
-    &#34;&#34;&#34;
-
-    def __init__(self, load_default_hann_model=False):
-        self.load_default_hann_model = load_default_hann_model
-        hann = HierarchicalAttentionNetwork(
-            load_default_model=load_default_hann_model,
-            features=top_features,
-            word_token_level=&#34;char&#34;,
-            sent_token_level=&#34;sent&#34;,
-        )
-        self.hann = hann</code></pre>
+from .classifier import Classifier</code></pre>
 </details>
 </section>
 <section>
-</section>
-<section>
-</section>
-<section>
-</section>
-<section>
-<h2 class="section-title" id="header-classes">Classes</h2>
+<h2 class="section-title" id="header-submodules">Sub-modules</h2>
 <dl>
-<dt id="restless.components.nlp.nlp.NLP"><code class="flex name class">
-<span>class <span class="ident">NLP</span></span>
-<span>(</span><span>load_default_hann_model=False)</span>
-</code></dt>
+<dt><code class="name"><a title="restless.components.classifier.classifier" href="classifier.html">restless.components.classifier.classifier</a></code></dt>
 <dd>
-<section class="desc"><p>Module with all NLP and text processing related features.</p></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">class NLP:
-    &#34;&#34;&#34;
-    Module with all NLP and text processing related features.
-    &#34;&#34;&#34;
-
-    def __init__(self, load_default_hann_model=False):
-        self.load_default_hann_model = load_default_hann_model
-        hann = HierarchicalAttentionNetwork(
-            load_default_model=load_default_hann_model,
-            features=top_features,
-            word_token_level=&#34;char&#34;,
-            sent_token_level=&#34;sent&#34;,
-        )
-        self.hann = hann</code></pre>
-</details>
+<section class="desc"></section>
 </dd>
 </dl>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
 </section>
 </article>
 <nav id="sidebar">
@@ -137,14 +55,12 @@ class NLP:
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="restless.components.nlp" href="index.html">restless.components.nlp</a></code></li>
+<li><code><a title="restless.components" href="../index.html">restless.components</a></code></li>
 </ul>
 </li>
-<li><h3><a href="#header-classes">Classes</a></h3>
+<li><h3><a href="#header-submodules">Sub-modules</a></h3>
 <ul>
-<li>
-<h4><code><a title="restless.components.nlp.nlp.NLP" href="#restless.components.nlp.nlp.NLP">NLP</a></code></h4>
-</li>
+<li><code><a title="restless.components.classifier.classifier" href="classifier.html">restless.components.classifier.classifier</a></code></li>
 </ul>
 </li>
 </ul>
