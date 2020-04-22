@@ -1,5 +1,8 @@
 import sys
 import os
+import time
+import concurrent.futures
+import asyncio
 
 # make dep imports work when running in dir and in outside scripts
 PACKAGE_PARENT = "../../.."
@@ -22,6 +25,8 @@ colored = logging.colored
 same_line = logging.same_line
 flush = logging.flush
 
+from multiprocessing import cpu_count
+
 
 class Scanner:
     """
@@ -32,37 +37,44 @@ class Scanner:
         self.pea = pea
         return
 
+    def scan_file(self, path: str, flush_line: bool = False) -> list:
+        logger.info(
+            same_line(
+                "Prechecking "
+                + "file for metadata - {}.".format(colored(path, "d_gray"))
+            )
+        )
+        if flush_line:
+            flush()
+        return self.pea.analyze_file(path)
+
     async def scan_recursive(self, path: str) -> list:
+        start_time = time.time()
         results = []
         path = os.path.abspath(path)
-        # recursive walk
+        loop = asyncio.get_event_loop()
         if os.path.isfile(path):
-            logger.info(
-                "Prechecking "
-                + colored("1", ["bold", "d_gray"])
-                + " file for metadata - {}.".format(path)
-            )
-            result = await self.pea.analyze_file(path)
-            flush(newline=True)
-            results.append(result)
+            return self.scan_file(path)
         else:
-            count = 0
             flush(newline=True)
+            # recursive walk
             for dirpath, dirs, files in os.walk(path):
-                for filename in files:
-                    fname = os.path.join(dirpath, filename)
-                    # Unfortunately the logging lib doesn't support printing on
-                    # the same line easily, so we have to flush the last printed line
-                    logger.info(
-                        same_line(
-                            "Prechecking {} files for metadata - {}.".format(
-                                colored(count, ["bold", "d_gray"]),
-                                colored(filename, ["underline", "d_gray"]),
-                            )
+                # use multiprocessing
+                with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
+                    future_to_scan = [
+                        loop.run_in_executor(
+                            executor, self.scan_file, os.path.join(dirpath, file), True
                         )
-                    )
-                    flush()
-                    result = await self.pea.analyze_file(fname)
-                    results.append(result)
-                    count += 1
+                        for file in files
+                    ]
+                    if future_to_scan:
+                        completed, pending = await asyncio.wait(future_to_scan)
+                        results.extend([t.result() for t in completed])
+        end_time = time.time()
+        elapsed = end_time - start_time
+        logger.info(
+            "Scanning results took: {} seconds.".format(
+                colored(str(elapsed), ["d_gray", "bold"])
+            )
+        )
         return results

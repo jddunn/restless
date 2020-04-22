@@ -158,26 +158,16 @@ class PEAnalyzer:
         ]
         return IMAGE_DOS_HEADER_data + FILE_HEADER_data + OPTIONAL_HEADER_data
 
-    async def analyze_file(self, fp: str):
-        try:
-            with open(fp, "rb") as f:
-                # Map the executable in memory
-                pe_data = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-                # Parse the data contained in the buffer
-                pe = pefile.PE(data=pe_data)
+    def analyze_file(self, fp: str):
+        with open(fp, "rb") as f:
+            try:
+                pe = pefile.PE(fp)
+            except Exception as e:
+                pass
+            else:
                 try:
-                    pe = pefile.PE(data=pe_data)
+                    features = self.extract_features(pe)
+                    result = (fp, features)
+                    return result
                 except Exception as e:
-                    try:
-                        pe = pefile.PE(fp)
-                    except Exception as e:
-                        pass
-                else:
-                    try:
-                        features = self.extract_features(pe)
-                        result = (fp, features)
-                        return result
-                    except Exception as e:
-                        pass
-        except:
-            pass
+                    pass
