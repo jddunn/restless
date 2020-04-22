@@ -17,7 +17,6 @@ from components.utils import utils
 from components.watcher import Watcher
 from components.scanner import Scanner
 from components.classifier import Classifier
-from components.nlp import NLP
 
 misc = utils.misc
 logging = utils.logger
