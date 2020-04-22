@@ -140,9 +140,10 @@ class Restless(object):
         flush(newline=True)
 
         # Send scanned files to classification pipeline
-        all_results, potential_malware_results = await self.classifier.analyze_scanned_files(
-            file_results
-        )
+        (
+            all_results,
+            potential_malware_results,
+        ) = await self.classifier.analyze_scanned_files(file_results)
 
         if len(potential_malware_results) > 0:
             logger.critical(
