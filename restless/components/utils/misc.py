@@ -58,6 +58,14 @@ class Misc:
         return os.path.expanduser("~")
 
     @staticmethod
+    def get_parent_path_to_fname(fname: str) -> str:
+        """Gets the parent path to the file."""
+        parent_path_to_fname = fname.split("/")
+        parent_path_to_fname.pop()
+        parent_path_to_fname = "/".join(parent_path_to_fname)
+        return parent_path_to_fname
+
+    @staticmethod
     def read_pickle_data(path):
         """Reads pickled data."""
         if os.path.isfile(path):
@@ -86,7 +94,9 @@ class Misc:
         return path
 
     @staticmethod
-    def prob_to_percentage(val: float, dec_places: int = 4) -> str:
+    def prob_to_percentage(val: float) -> str:
+        """Converts a probability value (from 0 to 1) into a percentage,
+            rounded to 4 decimal places."""
         # round to 4 place
         result = "{:.4%}".format(val)
         return result

@@ -1,6 +1,5 @@
 import sys
 import os
-import time
 import concurrent.futures
 import asyncio
 
@@ -49,7 +48,6 @@ class Scanner:
         return self.pea.analyze_file(path)
 
     async def scan_recursive(self, path: str) -> list:
-        start_time = time.time()
         results = []
         path = os.path.abspath(path)
         loop = asyncio.get_event_loop()
@@ -70,11 +68,4 @@ class Scanner:
                     if future_to_scan:
                         completed, pending = await asyncio.wait(future_to_scan)
                         results.extend([t.result() for t in completed])
-        end_time = time.time()
-        elapsed = end_time - start_time
-        logger.info(
-            "Scanning results took: {} seconds.".format(
-                colored(str(elapsed), ["d_gray", "bold"])
-            )
-        )
         return results
