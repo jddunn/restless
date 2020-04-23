@@ -130,7 +130,7 @@ from keras import backend as K
 # K.clear_session()
 
 import tensorflow as tf
-from tensorflow.python.keras.backend import set_session
+#from tensorflow.python.keras.backend import set_session
 
 graph = None
 session = None
